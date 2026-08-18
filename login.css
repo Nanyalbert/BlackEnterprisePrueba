@@ -1,0 +1,302 @@
+:root{
+    --bg-0:#000000;
+    --bg-1:#0a0a0a;
+    --bg-card:#111111;
+    --line:#232323;
+    --line-strong:#333333;
+    --text-1:#f5f5f3;
+    --text-2:#9a9a94;
+    --text-3:#5c5c58;
+    --accent:#f5f5f3;
+    --danger:#e0574a;
+    --font-display:'Fraunces', Georgia, serif;
+    --font-body:'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg-0);
+    font-family:var(--font-body);
+    color:var(--text-1);
+    min-height:100vh;
+    min-height:100dvh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    overflow-x:hidden;
+    padding:24px 20px;
+  }
+
+  /* Ambient texture: faint concentric rings echoing an optical lens */
+  .lens-field{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    z-index:0;
+  }
+  .lens-ring{
+    position:absolute;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,0.035);
+  }
+  .lens-ring.r1{width:900px;height:900px;top:-320px;right:-280px;}
+  .lens-ring.r2{width:650px;height:650px;top:-195px;right:-105px;}
+  .lens-ring.r3{width:1100px;height:1100px;bottom:-560px;left:-460px;}
+  .lens-ring.r4{width:800px;height:800px;bottom:-420px;left:-260px;}
+
+  .stage{
+    position:relative;
+    z-index:1;
+    width:100%;
+    max-width:420px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.01));
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:28px;
+    padding:44px 40px 36px;
+    opacity:0;
+    transform:translateY(14px);
+    animation:rise 0.7s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+  @keyframes rise{to{opacity:1;transform:translateY(0);}}
+  @media (prefers-reduced-motion: reduce){
+    .stage{animation:none;opacity:1;transform:none;}
+  }
+
+  .brand{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:22px;
+    margin-bottom:40px;
+  }
+  .brand img{
+    width:168px;
+    height:auto;
+    display:block;
+  }
+  .brand-copy{
+    text-align:center;
+  }
+  .brand-copy h1{
+    font-family:var(--font-display);
+    font-weight:500;
+    font-size:23px;
+    letter-spacing:0.005em;
+    color:var(--text-1);
+    margin-bottom:7px;
+  }
+  .brand-copy p{
+    font-size:13px;
+    color:var(--text-3);
+    letter-spacing:0.02em;
+  }
+
+  form{
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+  }
+
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .field label{
+    font-size:11px;
+    font-weight:500;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--text-3);
+  }
+  .field-input{
+    position:relative;
+    display:flex;
+    align-items:center;
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    transition:border-color 0.2s ease;
+  }
+  .field-input:focus-within{
+    border-color:var(--line-strong);
+  }
+  .field-input svg{
+    flex-shrink:0;
+    margin-left:14px;
+    color:var(--text-3);
+  }
+  .field-input input{
+    flex:1;
+    width:100%;
+    min-width:0;
+    background:transparent;
+    border:none;
+    outline:none;
+    color:var(--text-1);
+    font-family:var(--font-body);
+    font-size:16px;
+    padding:14px 12px;
+  }
+  .field-input input::placeholder{
+    color:var(--text-3);
+  }
+  .toggle-pass{
+    background:none;
+    border:none;
+    cursor:pointer;
+    color:var(--text-3);
+    padding:0 14px;
+    min-width:44px;
+    min-height:44px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:color 0.2s ease;
+  }
+  .toggle-pass:hover{color:var(--text-2);}
+
+  .row-between{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px 16px;
+    margin-top:-4px;
+  }
+  .remember{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:12.5px;
+    color:var(--text-2);
+    cursor:pointer;
+    user-select:none;
+    padding:6px 0;
+  }
+  .remember input{
+    accent-color:var(--text-1);
+    width:15px;
+    height:15px;
+    min-width:15px;
+    cursor:pointer;
+  }
+  .forgot{
+    font-size:12.5px;
+    color:var(--text-2);
+    text-decoration:none;
+    border-bottom:1px solid transparent;
+    transition:border-color 0.2s ease, color 0.2s ease;
+    padding:6px 0;
+  }
+  .forgot:hover{color:var(--text-1);border-color:var(--text-3);}
+
+  .btn-submit{
+    margin-top:8px;
+    background:var(--text-1);
+    color:#000;
+    border:none;
+    border-radius:14px;
+    padding:14px;
+    font-family:var(--font-body);
+    font-size:14.5px;
+    font-weight:600;
+    letter-spacing:0.01em;
+    cursor:pointer;
+    transition:background 0.2s ease, transform 0.15s ease;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+  }
+  .btn-submit:hover{background:#e2e2de;}
+  .btn-submit:active{transform:scale(0.99);}
+  .btn-submit:disabled{opacity:0.6;cursor:not-allowed;}
+
+  .btn-submit .spinner{
+    width:15px;
+    height:15px;
+    border:2px solid rgba(0,0,0,0.25);
+    border-top-color:#000;
+    border-radius:50%;
+    animation:spin 0.7s linear infinite;
+    display:none;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .btn-submit.loading .spinner{display:block;}
+  .btn-submit.loading .btn-label{display:none;}
+
+  .error-msg{
+    display:none;
+    align-items:center;
+    gap:8px;
+    background:rgba(224,87,74,0.08);
+    border:1px solid rgba(224,87,74,0.25);
+    color:var(--danger);
+    font-size:12.5px;
+    padding:11px 13px;
+    border-radius:12px;
+  }
+  .error-msg.show{display:flex;}
+
+  footer{
+    position:fixed;
+    z-index:1;
+    left:50%;
+    bottom:20px;
+    transform:translateX(-50%);
+    width:100%;
+    text-align:center;
+    margin:0;
+    font-size:11px;
+    color:var(--text-3);
+    letter-spacing:0.02em;
+    max-width:420px;
+    padding:0 20px;
+  }
+
+  @media (max-width:480px){
+    body{padding:16px 14px;}
+    .stage{padding:32px 22px 26px;border-radius:20px;}
+    .brand{gap:18px;margin-bottom:32px;}
+    .brand img{width:128px;}
+    .brand-copy h1{font-size:20px;}
+    .brand-copy p{font-size:12.5px;}
+    form{gap:16px;}
+    footer{margin-top:28px;font-size:10.5px;padding:0 12px;}
+  }
+
+  @media (max-width:360px){
+    .stage{padding:26px 18px 22px;}
+    .brand img{width:112px;}
+    .brand-copy h1{font-size:19px;}
+  }
+
+  /* Pantallas de poca altura: celular en horizontal, teclado abierto, notebooks chicas */
+  @media (max-height:700px){
+    body{align-items:center;justify-content:center;padding-top:16px;padding-bottom:16px;}
+    .lens-ring{display:none;}
+    footer{bottom:10px;}
+  }
+  @media (max-height:560px){
+    .brand{gap:12px;margin-bottom:22px;}
+    .brand img{width:96px;}
+    .brand-copy p{display:none;}
+    form{gap:14px;}
+    footer{display:none;}
+  }
+
+  /* Zona intermedia (481px-767px): tablets chicas, celulares grandes en horizontal,
+     ventanas de escritorio angostas. La card no crece de más ni se aplasta. */
+  @media (min-width:481px) and (max-width:767px){
+    .stage{max-width:400px;}
+    footer{max-width:400px;}
+  }
+
+  /* Pantallas grandes: la card crece un poco para no verse perdida en el centro */
+  @media (min-width:768px){
+    .stage{max-width:440px;padding:52px 48px 42px;}
+    footer{max-width:440px;}
+  }
