@@ -1,111 +1,245 @@
 // Black Óptica — Login
 
-// ---------------------------------------------------------
-  // CONFIGURACIÓN DE SUPABASE
-  // Reemplazá estos dos valores por los de tu proyecto:
-  // Settings → API → Project URL / anon public key
-  // ---------------------------------------------------------
-  let supabaseClient = null;
-  try {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  } catch (err) {
-    console.warn('Supabase todavía no está configurado (reemplazá las claves en index.html).', err);
+// =========================================================
+// 01. SUPABASE
+// =========================================================
+
+let supabaseClient = null;
+
+try {
+  if (!window.BlackPortal || typeof window.BlackPortal.getSupabase !== 'function') {
+    throw new Error('BlackPortal / Supabase config no está disponible.');
   }
 
-  const form = document.getElementById('login-form');
-  const emailInput = document.getElementById('email');
-  const passwordInput = document.getElementById('password');
-  const submitBtn = document.getElementById('submit-btn');
-  const errorMsg = document.getElementById('error-msg');
-  const errorText = document.getElementById('error-text');
-  const togglePass = document.getElementById('toggle-pass');
-  const forgotLink = document.getElementById('forgot-link');
+  supabaseClient = window.BlackPortal.getSupabase();
+} catch (err) {
+  console.error('No se pudo inicializar Supabase:', err);
+}
 
-  // Mostrar / ocultar contraseña
+
+// =========================================================
+// 02. ELEMENTOS DEL DOM
+// =========================================================
+
+const form = document.getElementById('login-form');
+const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
+const submitBtn = document.getElementById('submit-btn');
+const errorMsg = document.getElementById('error-msg');
+const errorText = document.getElementById('error-text');
+const togglePass = document.getElementById('toggle-pass');
+const forgotLink = document.getElementById('forgot-link');
+
+
+// =========================================================
+// 03. HELPERS
+// =========================================================
+
+function showError(message) {
+  errorText.textContent = message;
+  errorMsg.classList.add('show');
+}
+
+function hideError() {
+  errorMsg.classList.remove('show');
+
+  // Restablecer estilo normal del mensaje de error
+  errorMsg.style.color = '';
+  errorMsg.style.borderColor = '';
+  errorMsg.style.background = '';
+}
+
+function showSuccess(message) {
+  errorText.textContent = message;
+  errorMsg.classList.add('show');
+
+  errorMsg.style.color = 'var(--text-1)';
+  errorMsg.style.borderColor = 'var(--line-strong)';
+  errorMsg.style.background = 'var(--bg-card)';
+}
+
+function setLoading(isLoading) {
+  submitBtn.disabled = isLoading;
+  submitBtn.classList.toggle('loading', isLoading);
+}
+
+
+// =========================================================
+// 04. MOSTRAR / OCULTAR CONTRASEÑA
+// =========================================================
+
+if (togglePass) {
   togglePass.addEventListener('click', () => {
     const isPassword = passwordInput.type === 'password';
+
     passwordInput.type = isPassword ? 'text' : 'password';
-    togglePass.setAttribute('aria-label', isPassword ? 'Ocultar contraseña' : 'Mostrar contraseña');
+
+    togglePass.setAttribute(
+      'aria-label',
+      isPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'
+    );
   });
+}
 
-  function showError(message){
-    errorText.textContent = message;
-    errorMsg.classList.add('show');
-  }
-  function hideError(){
-    errorMsg.classList.remove('show');
-  }
-  function setLoading(isLoading){
-    submitBtn.disabled = isLoading;
-    submitBtn.classList.toggle('loading', isLoading);
+
+// =========================================================
+// 05. VERIFICAR SESIÓN EXISTENTE
+// =========================================================
+
+async function checkExistingSession() {
+  if (!supabaseClient) {
+    return;
   }
 
-  // Si ya hay sesión activa, saltar directo al menú
-  (async () => {
-    if (!supabaseClient) return;
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (session) {
-      window.location.href = "menu.html";
+  try {
+    const {
+      data: { session },
+      error
+    } = await supabaseClient.auth.getSession();
+
+    if (error) {
+      console.error('Error verificando sesión:', error);
+      return;
     }
-  })();
 
+    if (session) {
+      window.location.replace('menu.html');
+    }
+  } catch (err) {
+    console.error('No se pudo verificar la sesión:', err);
+  }
+}
+
+checkExistingSession();
+
+
+// =========================================================
+// 06. LOGIN
+// =========================================================
+
+if (form) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+
     hideError();
 
-    if (!supabaseClient){
-      showError('El portal todavía no está conectado a Supabase. Completá las claves en el código.');
+    if (!supabaseClient) {
+      showError(
+        'No se pudo conectar con Supabase. Revisá la configuración del portal.'
+      );
       return;
     }
 
     const email = emailInput.value.trim();
     const password = passwordInput.value;
 
-    if (!email || !password){
+    if (!email || !password) {
       showError('Completá usuario y contraseña.');
       return;
     }
 
     setLoading(true);
 
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
-      email: email,
-      password: password
-    });
+    try {
+      const { data, error } =
+        await supabaseClient.auth.signInWithPassword({
+          email,
+          password
+        });
 
-    setLoading(false);
+      if (error) {
+        if (
+          error.message &&
+          error.message.toLowerCase().includes('invalid login credentials')
+        ) {
+          showError('Usuario o contraseña incorrectos.');
+        } else if (
+          error.message &&
+          error.message.toLowerCase().includes('email not confirmed')
+        ) {
+          showError('El email todavía no fue confirmado.');
+        } else {
+          console.error('Error de login:', error);
+          showError('No se pudo iniciar sesión. Intentá nuevamente.');
+        }
 
-    if (error){
-      if (error.message.includes('Invalid login credentials')){
-        showError('Usuario o contraseña incorrectos.');
-      } else {
-        showError('No se pudo iniciar sesión. Intentá de nuevo.');
+        return;
       }
-      return;
+
+      if (!data?.session) {
+        showError('No se pudo iniciar la sesión.');
+        return;
+      }
+
+      window.location.replace('menu.html');
+
+    } catch (err) {
+      console.error('Error inesperado durante el login:', err);
+
+      showError(
+        'Ocurrió un error al iniciar sesión. Intentá nuevamente.'
+      );
+
+    } finally {
+      setLoading(false);
     }
-
-    // Login correcto → redirigir al menú de accesos
-    window.location.href = "menu.html";
   });
+}
 
+
+// =========================================================
+// 07. RECUPERAR CONTRASEÑA
+// =========================================================
+
+if (forgotLink) {
   forgotLink.addEventListener('click', async (e) => {
     e.preventDefault();
-    if (!supabaseClient){
-      showError('El portal todavía no está conectado a Supabase.');
+
+    hideError();
+
+    if (!supabaseClient) {
+      showError('No se pudo conectar con Supabase.');
       return;
     }
+
     const email = emailInput.value.trim();
-    if (!email){
-      showError('Ingresá tu email arriba y volvé a tocar "Olvidé mi contraseña".');
+
+    if (!email) {
+      showError(
+        'Ingresá tu email arriba y volvé a tocar "Olvidé mi contraseña".'
+      );
       return;
     }
-    const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
-    if (error){
-      showError('No se pudo enviar el email de recuperación.');
-    } else {
-      showError('Te enviamos un email para restablecer tu contraseña.');
-      errorMsg.style.color = 'var(--text-1)';
-      errorMsg.style.borderColor = 'var(--line-strong)';
-      errorMsg.style.background = 'var(--bg-card)';
+
+    try {
+      const { error } =
+        await supabaseClient.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}${window.location.pathname}`
+        });
+
+      if (error) {
+        console.error('Error enviando recuperación:', error);
+
+        showError(
+          'No se pudo enviar el email de recuperación.'
+        );
+
+        return;
+      }
+
+      showSuccess(
+        'Te enviamos un email para restablecer tu contraseña.'
+      );
+
+    } catch (err) {
+      console.error(
+        'Error inesperado recuperando contraseña:',
+        err
+      );
+
+      showError(
+        'No se pudo enviar el email de recuperación.'
+      );
     }
   });
+}
