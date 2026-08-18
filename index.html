@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Black Óptica</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg-0:#000000;
+    --bg-1:#0a0a0a;
+    --bg-card:#111111;
+    --line:#232323;
+    --line-strong:#333333;
+    --text-1:#f5f5f3;
+    --text-2:#9a9a94;
+    --text-3:#5c5c58;
+    --accent:#f5f5f3;
+    --danger:#e0574a;
+
+    --font-display:'Fraunces', Georgia, serif;
+    --font-body:'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  *{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+  }
+
+  html,
+  body{
+    height:100%;
+  }
+
+  body{
+    background:var(--bg-0);
+    font-family:var(--font-body);
+    color:var(--text-1);
+
+    min-height:100vh;
+    min-height:100dvh;
+
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+
+    position:relative;
+    overflow-x:hidden;
+
+    padding:24px 20px;
+  }
+
+  /* Fondo óptico */
+  .lens-field{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    z-index:0;
+  }
+
+  .lens-ring{
+    position:absolute;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,0.035);
+  }
+
+  .lens-ring.r1{
+    width:900px;
+    height:900px;
+    top:-320px;
+    right:-280px;
+  }
+
+  .lens-ring.r2{
+    width:650px;
+    height:650px;
+    top:-195px;
+    right:-105px;
+  }
+
+  .lens-ring.r3{
+    width:1100px;
+    height:1100px;
+    bottom:-560px;
+    left:-460px;
+  }
+
+  .lens-ring.r4{
+    width:800px;
+    height:800px;
+    bottom:-420px;
+    left:-260px;
+  }
+
+  /* Tarjeta principal */
+  .stage{
+    position:relative;
+    z-index:1;
+
+    width:100%;
+    max-width:420px;
+
+    background:linear-gradient(
+      180deg,
+      rgba(255,255,255,0.035),
+      rgba(255,255,255,0.01)
+    );
+
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:28px;
+
+    padding:44px 40px 36px;
+
+    opacity:0;
+    transform:translateY(14px);
+
+    animation:rise 0.7s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+
+  @keyframes rise{
+    to{
+      opacity:1;
+      transform:translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .stage{
+      animation:none;
+      opacity:1;
+      transform:none;
+    }
+  }
+
+  /* Marca */
+  .brand{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+
+    gap:22px;
+
+    margin-bottom:40px;
+  }
+
+  .brand img{
+    width:168px;
+    height:auto;
+    display:block;
+  }
+
+  .brand-copy{
+    text-align:center;
+  }
+
+  .brand-copy h1{
+    font-family:var(--font-display);
+    font-weight:500;
+    font-size:23px;
+
+    letter-spacing:0.005em;
+
+    color:var(--text-1);
+
+    margin-bottom:7px;
+  }
+
+  .brand-copy p{
+    font-size:13px;
+    color:var(--text-3);
+    letter-spacing:0.02em;
+  }
+
+  /* Formulario */
+  form{
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+  }
+
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+
+  .field label{
+    font-size:11px;
+    font-weight:500;
+
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+
+    color:var(--text-3);
+  }
+
+  .field-input{
+    position:relative;
+
+    display:flex;
+    align-items:center;
+
+    background:var(--bg-card);
+
+    border:1px solid var(--line);
+    border-radius:14px;
+
+    transition:border-color 0.2s ease;
+  }
+
+  .field-input:focus-within{
+    border-color:var(--line-strong);
+  }
+
+  .field-input svg{
+    flex-shrink:0;
+    margin-left:14px;
+    color:var(--text-3);
+  }
+
+  .field-input input{
+    flex:1;
+
+    width:100%;
+    min-width:0;
+
+    background:transparent;
+    border:none;
+    outline:none;
+
+    color:var(--text-1);
+
+    font-family:var(--font-body);
+    font-size:16px;
+
+    padding:14px 12px;
+  }
+
+  .field-input input::placeholder{
+    color:var(--text-3);
+  }
+
+  .toggle-pass{
+    background:none;
+    border:none;
+
+    cursor:pointer;
+
+    color:var(--text-3);
+
+    padding:0 14px;
+
+    min-width:44px;
+    min-height:44px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    transition:color 0.2s ease;
+  }
+
+  .toggle-pass:hover{
+    color:var(--text-2);
+  }
+
+  .row-between{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+
+    flex-wrap:wrap;
+
+    gap:10px 16px;
+
+    margin-top:-4px;
+  }
+
+  .remember{
+    display:flex;
+    align-items:center;
+
+    gap:8px;
+
+    font-size:12.5px;
+    color:var(--text-2);
+
+    cursor:pointer;
+    user-select:none;
+
+    padding:6px 0;
+  }
+
+  .remember input{
+    accent-color:var(--text-1);
+
+    width:15px;
+    height:15px;
+    min-width:15px;
+
+    cursor:pointer;
+  }
+
+  .forgot{
+    font-size:12.5px;
+    color:var(--text-2);
+
+    text-decoration:none;
+
+    border-bottom:1px solid transparent;
+
+    transition:
+      border-color 0.2s ease,
+      color 0.2s ease;
+
+    padding:6px 0;
+  }
+
+  .forgot:hover{
+    color:var(--text-1);
+    border-color:var(--text-3);
+  }
+
+  /* Botón */
+  .btn-submit{
+    margin-top:8px;
+
+    background:var(--text-1);
+    color:#000;
+
+    border:none;
+    border-radius:14px;
+
+    padding:14px;
+
+    font-family:var(--font-body);
+    font-size:14.5px;
+    font-weight:600;
+
+    letter-spacing:0.01em;
+
+    cursor:pointer;
+
+    transition:
+      background 0.2s ease,
+      transform 0.15s ease;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    gap:10px;
+  }
+
+  .btn-submit:hover{
+    background:#e2e2de;
+  }
+
+  .btn-submit:active{
+    transform:scale(0.99);
+  }
+
+  .btn-submit:disabled{
+    opacity:0.6;
+    cursor:not-allowed;
+  }
+
+  .btn-submit .spinner{
+    width:15px;
+    height:15px;
+
+    border:2px solid rgba(0,0,0,0.25);
+    border-top-color:#000;
+
+    border-radius:50%;
+
+    animation:spin 0.7s linear infinite;
+
+    display:none;
+  }
+
+  @keyframes spin{
+    to{
+      transform:rotate(360deg);
+    }
+  }
+
+  .btn-submit.loading .spinner{
+    display:block;
+  }
+
+  .btn-submit.loading .btn-label{
+    display:none;
+  }
+
+  /* Mensajes */
+  .error-msg{
+    display:none;
+    align-items:center;
+
+    gap:8px;
+
+    background:rgba(224,87,74,0.08);
+
+    border:1px solid rgba(224,87,74,0.25);
+
+    color:var(--danger);
+
+    font-size:12.5px;
+
+    padding:11px 13px;
+
+    border-radius:12px;
+  }
+
+  .error-msg.show{
+    display:flex;
+  }
+
+  /* Footer */
+  footer{
+    position:fixed;
+
+    z-index:1;
+
+    left:50%;
+    bottom:20px;
+
+    transform:translateX(-50%);
+
+    width:100%;
+    max-width:420px;
+
+    text-align:center;
+
+    margin:0;
+
+    font-size:11px;
+
+    color:var(--text-3);
+
+    letter-spacing:0.02em;
+
+    padding:0 20px;
+  }
+
+  /* Responsive */
+  @media (max-width:480px){
+
+    body{
+      padding:16px 14px;
+    }
+
+    .stage{
+      padding:32px 22px 26px;
+      border-radius:20px;
+    }
+
+    .brand{
+      gap:18px;
+      margin-bottom:32px;
+    }
+
+    .brand img{
+      width:128px;
+    }
+
+    .brand-copy h1{
+      font-size:20px;
+    }
+
+    .brand-copy p{
+      font-size:12.5px;
+    }
+
+    form{
+      gap:16px;
+    }
+
+    footer{
+      font-size:10.5px;
+      padding:0 12px;
+    }
+  }
+
+  @media (max-width:360px){
+
+    .stage{
+      padding:26px 18px 22px;
+    }
+
+    .brand img{
+      width:112px;
+    }
+
+    .brand-copy h1{
+      font-size:19px;
+    }
+  }
+
+  /* Pantallas bajas */
+  @media (max-height:700px){
+
+    body{
+      align-items:center;
+      justify-content:center;
+
+      padding-top:16px;
+      padding-bottom:16px;
+    }
+
+    .lens-ring{
+      display:none;
+    }
+
+    footer{
+      bottom:10px;
+    }
+  }
+
+  @media (max-height:560px){
+
+    .brand{
+      gap:12px;
+      margin-bottom:22px;
+    }
+
+    .brand img{
+      width:96px;
+    }
+
+    .brand-copy p{
+      display:none;
+    }
+
+    form{
+      gap:14px;
+    }
+
+    footer{
+      display:none;
+    }
+  }
+
+  @media (min-width:481px) and (max-width:767px){
+
+    .stage{
+      max-width:400px;
+    }
+
+    footer{
+      max-width:400px;
+    }
+  }
+
+  @media (min-width:768px){
+
+    .stage{
+      max-width:440px;
+      padding:52px 48px 42px;
+    }
+
+    footer{
+      max-width:440px;
+    }
+  }
+</style>
+</head>
+
+<body>
+
+<div class="lens-field" aria-hidden="true">
+  <div class="lens-ring r1"></div>
+  <div class="lens-ring r2"></div>
+  <div class="lens-ring r3"></div>
+  <div class="lens-ring r4"></div>
+</div>
+
+<div class="stage">
+
+  <div class="brand">
+
+    <img
+      src="Logo---Black.png"
+      alt="Black Óptica"
+    >
+
+    <div class="brand-copy">
+
+      <h1>Bienvenido</h1>
+
+      <p>
+        Ingresá tus credenciales para continuar
+      </p>
+
+    </div>
+
+  </div>
+
+  <form id="login-form" novalidate>
+
+    <div class="field">
+
+      <label for="email">
+        Usuario
+      </label>
+
+      <div class="field-input">
+
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M4 4h16v16H4z" opacity="0"/>
+          <path d="M22 6l-10 7L2 6"/>
+          <path d="M2 6h20v12H2z"/>
+        </svg>
+
+        <input
+          type="email"
+          id="email"
+          name="email"
+          placeholder="nombre@blackoptica.ar"
+          autocomplete="username"
+          required
+        >
+
+      </div>
+
+    </div>
+
+    <div class="field">
+
+      <label for="password">
+        Contraseña
+      </label>
+
+      <div class="field-input">
+
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect
+            x="4"
+            y="10"
+            width="16"
+            height="10"
+            rx="1.5"
+          />
+
+          <path
+            d="M7 10V7a5 5 0 0 1 10 0v3"
+          />
+        </svg>
+
+        <input
+          type="password"
+          id="password"
+          name="password"
+          placeholder="••••••••"
+          autocomplete="current-password"
+          required
+        >
+
+        <button
+          type="button"
+          class="toggle-pass"
+          id="toggle-pass"
+          aria-label="Mostrar contraseña"
+        >
+
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+
+            <path
+              d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"
+            />
+
+            <circle
+              cx="12"
+              cy="12"
+              r="3"
+            />
+
+          </svg>
+
+        </button>
+
+      </div>
+
+    </div>
+
+    <div class="row-between">
+
+      <label class="remember">
+
+        <input
+          type="checkbox"
+          id="remember"
+        >
+
+        Recordarme
+
+      </label>
+
+      <a
+        href="#"
+        class="forgot"
+        id="forgot-link"
+      >
+        Olvidé mi contraseña
+      </a>
+
+    </div>
+
+    <div
+      class="error-msg"
+      id="error-msg"
+    >
+
+      <svg
+        width="15"
+        height="15"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        style="flex-shrink:0;"
+      >
+
+        <circle
+          cx="12"
+          cy="12"
+          r="10"
+        />
+
+        <line
+          x1="12"
+          y1="8"
+          x2="12"
+          y2="12"
+        />
+
+        <line
+          x1="12"
+          y1="16"
+          x2="12.01"
+          y2="16"
+        />
+
+      </svg>
+
+      <span id="error-text">
+        Usuario o contraseña incorrectos.
+      </span>
+
+    </div>
+
+    <button
+      type="submit"
+      class="btn-submit"
+      id="submit-btn"
+    >
+
+      <div class="spinner"></div>
+
+      <span class="btn-label">
+        Iniciar sesión
+      </span>
+
+    </button>
+
+  </form>
+
+</div>
+
+<footer>
+  &copy; 2026 Black Óptica. Todos los derechos reservados.
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<script>
+
+  const SUPABASE_URL =
+    "https://tjetppyqyzgxfhpuyoet.supabase.co";
+
+  const SUPABASE_ANON_KEY =
+    "sb_publishable_YCXt4mKeFDDso1N4wjtHxw_GK53l9gq";
+
+  let supabaseClient = null;
+
+  try {
+
+    supabaseClient =
+      window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
+      );
+
+  } catch(err){
+
+    console.warn(
+      "No se pudo inicializar Supabase.",
+      err
+    );
+
+  }
+
+  const form =
+    document.getElementById("login-form");
+
+  const emailInput =
+    document.getElementById("email");
+
+  const passwordInput =
+    document.getElementById("password");
+
+  const submitBtn =
+    document.getElementById("submit-btn");
+
+  const errorMsg =
+    document.getElementById("error-msg");
+
+  const errorText =
+    document.getElementById("error-text");
+
+  const togglePass =
+    document.getElementById("toggle-pass");
+
+  const forgotLink =
+    document.getElementById("forgot-link");
+
+
+  /* Mostrar contraseña */
+
+  togglePass.addEventListener(
+    "click",
+    () => {
+
+      const isPassword =
+        passwordInput.type === "password";
+
+      passwordInput.type =
+        isPassword
+        ? "text"
+        : "password";
+
+      togglePass.setAttribute(
+        "aria-label",
+        isPassword
+        ? "Ocultar contraseña"
+        : "Mostrar contraseña"
+      );
+
+    }
+  );
+
+
+  function showError(message){
+
+    errorText.textContent = message;
+
+    errorMsg.classList.add("show");
+
+  }
+
+
+  function hideError(){
+
+    errorMsg.classList.remove("show");
+
+  }
+
+
+  function setLoading(isLoading){
+
+    submitBtn.disabled = isLoading;
+
+    submitBtn.classList.toggle(
+      "loading",
+      isLoading
+    );
+
+  }
+
+
+  /* Si ya hay sesión iniciada */
+
+  (async () => {
+
+    if(!supabaseClient){
+      return;
+    }
+
+    const {
+      data:{
+        session
+      }
+    } =
+      await supabaseClient.auth.getSession();
+
+    if(session){
+
+      window.location.href =
+        "menu.html";
+
+    }
+
+  })();
+
+
+  /* Login */
+
+  form.addEventListener(
+    "submit",
+    async(e) => {
+
+      e.preventDefault();
+
+      hideError();
+
+      if(!supabaseClient){
+
+        showError(
+          "No se pudo conectar con el sistema."
+        );
+
+        return;
+
+      }
+
+      const email =
+        emailInput.value.trim();
+
+      const password =
+        passwordInput.value;
+
+
+      if(!email || !password){
+
+        showError(
+          "Completá usuario y contraseña."
+        );
+
+        return;
+
+      }
+
+
+      setLoading(true);
+
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient.auth
+          .signInWithPassword({
+
+            email:email,
+
+            password:password
+
+          });
+
+
+      setLoading(false);
+
+
+      if(error){
+
+        if(
+          error.message.includes(
+            "Invalid login credentials"
+          )
+        ){
+
+          showError(
+            "Usuario o contraseña incorrectos."
+          );
+
+        }else{
+
+          showError(
+            "No se pudo iniciar sesión. Intentá de nuevo."
+          );
+
+        }
+
+        return;
+
+      }
+
+
+      window.location.href =
+        "menu.html";
+
+    }
+  );
+
+
+  /* Recuperación de contraseña */
+
+  forgotLink.addEventListener(
+    "click",
+    async(e) => {
+
+      e.preventDefault();
+
+
+      if(!supabaseClient){
+
+        showError(
+          "No se pudo conectar con el sistema."
+        );
+
+        return;
+
+      }
+
+
+      const email =
+        emailInput.value.trim();
+
+
+      if(!email){
+
+        showError(
+          'Ingresá tu email arriba y volvé a tocar "Olvidé mi contraseña".'
+        );
+
+        return;
+
+      }
+
+
+      const {
+        error
+      } =
+        await supabaseClient.auth
+          .resetPasswordForEmail(email);
+
+
+      if(error){
+
+        showError(
+          "No se pudo enviar el email de recuperación."
+        );
+
+      }else{
+
+        showError(
+          "Te enviamos un email para restablecer tu contraseña."
+        );
+
+        errorMsg.style.color =
+          "var(--text-1)";
+
+        errorMsg.style.borderColor =
+          "var(--line-strong)";
+
+        errorMsg.style.background =
+          "var(--bg-card)";
+
+      }
+
+    }
+  );
+
+</script>
+
+</body>
+</html>
