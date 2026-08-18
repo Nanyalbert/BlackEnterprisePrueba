@@ -7789,7 +7789,381 @@ svg[fill="var(--arena)"]{
   }
 
 }
+/* ==========================================
+   ACENTOS DE COLOR — BLACK ÓPTICA
+   ========================================== */
 
+/* PALETA */
+:root{
+  --accent-blue:#4c8ca8;
+  --accent-blue-2:#69b7d0;
+
+  --accent-green:#4fa66f;
+  --accent-green-2:#7fd99a;
+
+  --accent-amber:#d7a84c;
+  --accent-amber-2:#f0c66c;
+
+  --accent-red:#d94f45;
+  --accent-red-2:#e86d63;
+}
+
+
+/* ==========================================
+   BARRAS DE ESTADÍSTICAS
+   ========================================== */
+
+.bar-fill{
+  background:
+    linear-gradient(
+      90deg,
+      var(--accent-blue),
+      var(--accent-blue-2)
+    )!important;
+
+  box-shadow:
+    none!important;
+}
+
+
+.bar-row.highlight .bar-fill{
+  background:
+    linear-gradient(
+      90deg,
+      var(--accent-green),
+      var(--accent-green-2)
+    )!important;
+}
+
+
+.bar-row.lowlight .bar-fill{
+  background:
+    linear-gradient(
+      90deg,
+      var(--accent-red),
+      var(--accent-red-2)
+    )!important;
+}
+
+
+.bar-val{
+  color:#071018!important;
+}
+
+
+
+/* ==========================================
+   KPI / TARJETAS DE ESTADÍSTICAS
+   ========================================== */
+
+.stat-card{
+  position:relative!important;
+  overflow:hidden!important;
+}
+
+
+.stat-card::after{
+  content:"";
+
+  position:absolute;
+
+  top:0;
+  left:16px;
+  right:16px;
+
+  height:2px;
+
+  border-radius:
+    0 0 2px 2px;
+
+  background:
+    linear-gradient(
+      90deg,
+      var(--accent-blue),
+      var(--accent-blue-2)
+    );
+}
+
+
+/* Segunda tarjeta: comisiones */
+.stats-summary .stat-card:nth-child(2)::after{
+  background:
+    linear-gradient(
+      90deg,
+      var(--accent-amber),
+      var(--accent-amber-2)
+    );
+}
+
+
+/* Tercera tarjeta: recetas */
+.stats-summary .stat-card:nth-child(3)::after{
+  background:
+    linear-gradient(
+      90deg,
+      #7d6dc7,
+      #a795ec
+    );
+}
+
+
+/* Cuarta tarjeta: médicos activos */
+.stats-summary .stat-card:nth-child(4)::after{
+  background:
+    linear-gradient(
+      90deg,
+      var(--accent-green),
+      var(--accent-green-2)
+    );
+}
+
+
+
+/* ==========================================
+   BOTÓN IMPORTAR EXCEL
+   ========================================== */
+
+.import-csv-btn{
+  background:
+    linear-gradient(
+      135deg,
+      var(--accent-blue),
+      #3b748e
+    )!important;
+
+  color:#fff!important;
+
+  border:none!important;
+
+  box-shadow:
+    0 6px 18px
+    rgba(76,140,168,.20)!important;
+}
+
+
+.import-csv-btn:hover{
+  background:
+    linear-gradient(
+      135deg,
+      #5a9bb7,
+      var(--accent-blue)
+    )!important;
+
+  color:#fff!important;
+
+  filter:none!important;
+}
+
+
+
+/* ==========================================
+   BOTÓN SUMAR MONTO
+   ========================================== */
+
+.btn-extra{
+  background:
+    rgba(215,168,76,.10)!important;
+
+  border:
+    1px solid
+    rgba(215,168,76,.35)!important;
+
+  color:
+    var(--accent-amber-2)!important;
+}
+
+
+.btn-extra:hover{
+  background:
+    rgba(215,168,76,.18)!important;
+
+  border-color:
+    var(--accent-amber)!important;
+
+  color:
+    #ffd786!important;
+}
+
+
+
+/* ==========================================
+   BOTONES PRINCIPALES
+   ========================================== */
+
+.btn-primary{
+  background:
+    linear-gradient(
+      135deg,
+      #f5f5f3,
+      #d9d9d4
+    )!important;
+
+  color:#000!important;
+
+  box-shadow:none!important;
+}
+
+
+.btn-primary:hover{
+  background:#fff!important;
+}
+
+
+
+/* ==========================================
+   WHATSAPP
+   ========================================== */
+
+.btn-wsp,
+.crm-contact-btn.wsp{
+  background:
+    linear-gradient(
+      135deg,
+      #35bd68,
+      #249653
+    )!important;
+
+  color:#fff!important;
+
+  box-shadow:
+    0 6px 18px
+    rgba(36,150,83,.18)!important;
+}
+
+
+.btn-wsp:hover,
+.crm-contact-btn.wsp:hover{
+  filter:
+    brightness(1.07)!important;
+}
+
+
+
+/* ==========================================
+   PAGOS
+   ========================================== */
+
+.check-toggle.on{
+  background:
+    linear-gradient(
+      135deg,
+      var(--accent-green-2),
+      var(--accent-green)
+    )!important;
+
+  color:#07130b!important;
+
+  border-color:
+    transparent!important;
+
+  box-shadow:
+    0 5px 16px
+    rgba(79,166,111,.20)!important;
+}
+
+
+.check-wrap.on .check-label{
+  color:
+    var(--accent-green-2)!important;
+}
+
+
+.commission-card.pagado{
+  border-color:
+    rgba(79,166,111,.32)!important;
+
+  background:
+    linear-gradient(
+      160deg,
+      var(--portal-card),
+      rgba(79,166,111,.055)
+    )!important;
+}
+
+
+
+/* ==========================================
+   ESTADO PENDIENTE
+   ========================================== */
+
+.btn-pago:not(.si){
+  border-color:
+    rgba(215,168,76,.24)!important;
+
+  color:
+    var(--accent-amber-2)!important;
+}
+
+
+
+/* ==========================================
+   DESTRUCTIVO / ALERTA
+   ========================================== */
+
+.btn-del,
+.btn-danger{
+  background:
+    rgba(217,79,69,.10)!important;
+
+  border-color:
+    rgba(217,79,69,.28)!important;
+
+  color:
+    var(--accent-red-2)!important;
+}
+
+
+.btn-del:hover{
+  background:
+    rgba(217,79,69,.18)!important;
+
+  border-color:
+    rgba(217,79,69,.45)!important;
+}
+
+
+.btn-danger{
+  background:
+    linear-gradient(
+      135deg,
+      var(--accent-red-2),
+      var(--accent-red)
+    )!important;
+
+  color:#fff!important;
+}
+
+
+
+/* ==========================================
+   CUMPLEAÑOS
+   ========================================== */
+
+.bday-icon{
+  background:
+    linear-gradient(
+      135deg,
+      var(--accent-amber-2),
+      var(--accent-amber)
+    )!important;
+
+  color:#171009!important;
+}
+
+
+.bday-when.hoy{
+  color:
+    var(--accent-green-2)!important;
+}
+
+
+
+/* ==========================================
+   EVOLUCIÓN / CANVAS
+   El gráfico se dibuja con JS, por eso
+   el color de la línea se cambia en JS
+   si después querés llevarlo a azul.
+   ========================================== */
 
 </style>
 
