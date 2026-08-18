@@ -1,0 +1,32 @@
+BLACK ÓPTICA — ESTRUCTURA ORGANIZADA
+
+RAÍZ
+- index.html                     Login
+- menu.html                      Portal principal
+- crm-oftalmologos.html          Estructura HTML del CRM Oftalmólogos
+
+ASSETS / CSS
+- assets/css/base.css            Variables y reglas compartidas
+- assets/css/login.css           Estilos del login
+- assets/css/portal.css          Estilos del portal/menu
+- assets/css/crm-oftalmologos.css Estilos del CRM Oftalmólogos + acentos de color
+
+ASSETS / JS
+- assets/js/supabase-config.js   URL/key publishable y cliente compartido
+- assets/js/login.js             Lógica de autenticación del login
+- assets/js/portal.js            Navegación del portal y sesión
+- assets/js/crm-oftalmologos.js  Agenda, médicos, recetas, CRM, comisiones, Excel, PDF, Word, backup
+
+ASSETS / IMG
+- assets/img/Logo---Black.png     Logo común
+
+IMPORTANTE
+1. Subir toda la estructura manteniendo las carpetas.
+2. No mover archivos individuales sin actualizar rutas relativas.
+3. La key pública/publishable de Supabase está centralizada en supabase-config.js. Nunca poner service_role en el frontend.
+4. El CRM Oftalmólogos sigue usando localStorage para sus datos de negocio hasta migrarlo a Supabase.
+5. El CRM está diseñado para abrirse embebido dentro de menu.html, conservando el menú lateral del portal.
+
+PRÓXIMO MÓDULO
+- crm-clientes.html / assets/css/crm-clientes.css / assets/js/crm-clientes.js
+  Debe mantenerse independiente del CRM Oftalmólogos.

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Black Óptica" />
+<title>Black Óptica — CRM Oftalmólogos</title>
+<link rel="manifest" href="#" id="manifest-link" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/crm-oftalmologos.css">
+
+
+
+</head>
+<body>
+
+<!-- ════ ONBOARDING ════ -->
+<div id="onboarding">
+  <img class="ob-logo" src="assets/img/Logo---Black.png" alt="Black Optica" />
+  <div class="ob-progress" id="ob-progress">
+    <div class="ob-dot active"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div>
+  </div>
+  <div class="ob-card active" id="ob-card-1">
+    <div class="ob-icon">👋</div>
+    <h2>¡Bienvenido a<br/>Black Óptica!</h2>
+    <p>¿Cómo preferís que te llamemos?</p>
+    <input class="ob-input" id="ob-name-input" type="text" placeholder="Tu nombre..." autocomplete="off" maxlength="30" />
+    <button class="ob-btn" id="ob-btn-1">Continuar →</button>
+  </div>
+  <div class="ob-card" id="ob-card-2">
+    <div class="ob-icon">📅</div>
+    <h2>Tu agenda de<br/>oftalmólogos</h2>
+    <p>Con esta app vas a poder:</p>
+    <div class="ob-feature"><div class="ob-feature-icon">📅</div><div class="ob-feature-text"><strong>Ver el cronograma del día</strong>Consultá qué oftalmólogos atienden hoy.</div></div>
+    <div class="ob-feature"><div class="ob-feature-icon">👥</div><div class="ob-feature-text"><strong>Gestionar profesionales</strong>Agregá, editá o eliminá oftalmólogos.</div></div>
+    <div class="ob-feature" style="margin-bottom:20px"><div class="ob-feature-icon">💰</div><div class="ob-feature-text"><strong>Dashboard de comisiones</strong>Importá recetas, controlá pagos y generá liquidaciones.</div></div>
+    <button class="ob-btn" id="ob-btn-2">Entendido →</button>
+  </div>
+  <div class="ob-card" id="ob-card-3">
+    <div class="ob-icon">📱</div>
+    <h2>Agregala a tu pantalla de inicio</h2>
+    <p>Usala como una app nativa.</p>
+    <div id="ob-ios-steps">
+      <div class="ob-platform-badge ios">📱 iPhone / iPad</div>
+      <div class="ob-install-step"><div class="ob-step-num">1</div><div class="ob-step-text">Tocá el botón <strong>Compartir</strong> (↑) en Safari.</div></div>
+      <div class="ob-install-step"><div class="ob-step-num">2</div><div class="ob-step-text">Tocá <strong>"Agregar a pantalla de inicio"</strong>.</div></div>
+      <div class="ob-install-step"><div class="ob-step-num">3</div><div class="ob-step-text">Confirmá tocando <strong>"Agregar"</strong>.</div></div>
+    </div>
+    <div id="ob-android-steps" style="display:none">
+      <div class="ob-platform-badge android">🤖 Android</div>
+      <div class="ob-install-step"><div class="ob-step-num">1</div><div class="ob-step-text">Tocá el menú <strong>⋮</strong> de Chrome.</div></div>
+      <div class="ob-install-step"><div class="ob-step-num">2</div><div class="ob-step-text">Seleccioná <strong>"Agregar a pantalla de inicio"</strong>.</div></div>
+    </div>
+    <div id="ob-desktop-msg" style="display:none;font-size:.82rem;color:rgba(255,255,255,.5);line-height:1.6;margin-bottom:20px">Instalala desde el ícono en la barra del navegador.</div>
+    <button class="ob-btn" id="ob-btn-3">¡Genial! →</button>
+    <button class="ob-btn-secondary" id="ob-btn-3-skip">Ahora no</button>
+  </div>
+  <div class="ob-card" id="ob-card-4">
+    <div class="ob-icon">✅</div>
+    <h2 id="ob-ready-title">¡Todo listo!</h2>
+    <p id="ob-ready-sub">Ya podés empezar a usar tu cronograma.</p>
+    <button class="ob-btn" id="ob-btn-4">Empezar</button>
+  </div>
+</div>
+
+<!-- ════ APP ════ -->
+<div id="app">
+  <nav class="navbar">
+    <img class="navbar-logo" src="assets/img/Logo---Black.png" alt="Black Optica" />
+    <div class="navbar-right">
+      <a class="portal-back-btn" href="menu.html" title="Volver al Portal Black">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        <span>Portal</span>
+      </a>
+      <button class="nav-icon-btn" onclick="openBackupModal()" title="Respaldo de datos">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+      <div class="user-chip" onclick="editUserName()">
+        <div class="user-avatar" id="nav-avatar">?</div>
+        <span class="user-name" id="nav-username">Usuario</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HOME PAGE -->
+  <div class="page active" id="page-home">
+    <div class="hero-section">
+      <div class="hero-greeting" id="hero-greeting">Buenos días,</div>
+      <div class="hero-name" id="hero-name">Hola, <span id="hero-username">!</span></div>
+      <div class="hero-date" id="hero-date">Cargando...</div>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="hero-stat-num" id="stat-docs">0</div><div class="hero-stat-label">Oftalmólogos hoy</div></div>
+        <div class="hero-stat"><div class="hero-stat-num" id="stat-shifts">0</div><div class="hero-stat-label">Instituciones</div></div>
+        <div class="hero-stat"><div class="hero-stat-num" id="stat-turns">0</div><div class="hero-stat-label">Turnos aprox.</div></div>
+      </div>
+    </div>
+    <div class="bday-strip" id="bday-strip"></div>
+    <div class="day-selector-wrap">
+      <div class="day-selector-label">Seleccioná el día</div>
+      <div class="day-selector" id="day-selector"></div>
+    </div>
+    <div class="schedule-wrap">
+      <div class="schedule-title">
+        <span id="schedule-day-label">Hoy</span>
+        <div class="schedule-title-right">
+          <span class="schedule-count" id="schedule-count">0 profesionales</span>
+          <button class="share-day-btn" onclick="shareDaySchedule()" title="Compartir cronograma del día">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="schedule-list"></div>
+    </div>
+  </div>
+
+  <!-- DOCTORS PAGE -->
+  <div class="page" id="page-doctors">
+    <div class="doctors-page-header">
+      <div class="doctors-page-title">Oftalmólogos</div>
+      <div class="doctors-page-sub" id="doctors-count-label">Cargando...</div>
+    </div>
+    <div class="doctors-toolbar">
+      <div class="search-input-wrap">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="search-input" id="search-input" type="search" placeholder="Buscar profesional..." oninput="renderDoctorsList()" />
+      </div>
+      <button class="upload-btn" onclick="openUploadModal()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Importar
+      </button>
+    </div>
+    <div class="doctors-grid" id="doctors-grid"></div>
+  </div>
+
+  <!-- COMISIONES PAGE -->
+  <div class="page" id="page-comisiones">
+    <div class="comisiones-header">
+      <div class="comisiones-header-title">Comisiones</div>
+      <div class="comisiones-header-sub">Dashboard de facturación y comisiones por oftalmólogo</div>
+      <div class="periodo-row">
+        <div class="periodo-group">
+          <div class="periodo-label">Desde</div>
+          <input class="periodo-input" type="date" id="periodo-desde" onchange="applyFilters()" />
+        </div>
+        <div class="periodo-group">
+          <div class="periodo-label">Hasta</div>
+          <input class="periodo-input" type="date" id="periodo-hasta" onchange="applyFilters()" />
+        </div>
+      </div>
+    </div>
+    <div class="comisiones-toolbar">
+      <select class="filter-select" id="filter-institucion" onchange="applyFilters()">
+        <option value="">Todas las instituciones</option>
+        <option value="OSCCPTAC">OSCCPTAC</option>
+        <option value="Reina Fabiola">Reina Fabiola</option>
+        <option value="Salvador">Salvador</option>
+        <option value="Lista Oftalmologia">Lista Oftalmologia</option>
+      </select>
+      <button class="import-csv-btn" onclick="openCsvModal()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Importar Excel
+      </button>
+      <button class="word-btn" onclick="openWordModal()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Word
+      </button>
+      <button class="word-btn" onclick="openExtraModal()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Sumar monto
+      </button>
+      <button class="word-btn" onclick="generatePdf()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        PDF
+      </button>
+    </div>
+
+    <!-- KPI Summary -->
+    <div class="stats-summary" id="stats-summary">
+      <div class="stat-card"><div class="stat-card-num" id="kpi-facturacion">$0</div><div class="stat-card-label">Facturación total</div><div class="stat-card-trend" id="kpi-trend"></div></div>
+      <div class="stat-card"><div class="stat-card-num" id="kpi-comisiones">$0</div><div class="stat-card-label">Comisiones totales</div><div class="stat-card-trend" id="kpi-pendiente"></div></div>
+      <div class="stat-card"><div class="stat-card-num" id="kpi-pacientes">0</div><div class="stat-card-label">Recetas procesadas</div></div>
+      <div class="stat-card"><div class="stat-card-num" id="kpi-medicos">0</div><div class="stat-card-label">Médicos activos</div></div>
+    </div>
+
+    <!-- Bar chart -->
+    <div class="chart-section">
+      <div class="chart-title">
+        Ranking de médicos
+        <div class="chart-tabs">
+          <button class="chart-tab active" onclick="setChartMode('facturacion',this)">Facturación</button>
+          <button class="chart-tab" onclick="setChartMode('comision',this)">Comisión</button>
+          <button class="chart-tab" onclick="setChartMode('pacientes',this)">Pacientes</button>
+        </div>
+      </div>
+      <div class="bar-chart" id="bar-chart"></div>
+    </div>
+
+    <!-- Evolution chart -->
+    <div class="evol-section" id="evol-section" style="display:none">
+      <div class="chart-title">Evolución en el tiempo</div>
+      <div class="evol-canvas-wrap"><canvas id="evol-canvas"></canvas></div>
+    </div>
+
+    <!-- Per-doctor commission cards -->
+    <div class="commission-list" id="commission-list"></div>
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab hidden" id="fab" onclick="openDoctorModal(null)">
+  <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="bottom-nav-tab active" id="bnav-home" onclick="showPage('home')">
+    <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Cronograma
+  </button>
+  <button class="bottom-nav-tab" id="bnav-doctors" onclick="showPage('doctors')">
+    <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+    Médicos
+  </button>
+  <button class="bottom-nav-tab" id="bnav-comisiones" onclick="showPage('comisiones')">
+    <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    Comisiones
+  </button>
+</nav>
+
+<!-- MODAL DOCTOR -->
+<div class="modal-overlay" id="modal-doctor">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title" id="modal-doctor-title">Nuevo oftalmólogo</span>
+      <button class="modal-close" onclick="closeModal('modal-doctor')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-doctor-id" />
+      <div class="form-group"><label class="form-label">Nombre completo</label><input class="form-input" id="input-nombre" type="text" placeholder="Apellido, Nombre" /></div>
+      <div class="turno-editor-row" style="margin-bottom:0">
+        <div class="form-group"><label class="form-label">Teléfono / WhatsApp</label><input class="form-input" id="input-telefono" type="tel" placeholder="351 555 0000" /></div>
+        <div class="form-group"><label class="form-label">Cumpleaños</label><input class="form-input" id="input-cumple" type="date" /></div>
+      </div>
+      <div class="form-group"><label class="form-label">Servicio</label>
+        <select class="form-select" id="input-servicio">
+          <option value="OFTALMOLOGIA-JR">OFTALMOLOGIA-JR</option>
+          <option value="DEMANDA DE OFTALMOLOGIA-JR">DEMANDA DE OFTALMOLOGIA-JR</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Instituciones y horarios</label>
+        <div id="instituciones-container"></div>
+        <button class="btn-add-turno" onclick="addInstitucionBlock()">+ Agregar institución</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary-out" onclick="closeModal('modal-doctor')">Cancelar</button>
+        <button class="btn-primary" onclick="saveDoctor()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL UPLOAD (horarios) -->
+<div class="modal-overlay" id="modal-upload">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><span class="modal-title">Importar desde Excel</span><button class="modal-close" onclick="closeModal('modal-upload')">✕</button></div>
+    <div class="modal-body">
+      <div class="upload-section" id="upload-dropzone" onclick="document.getElementById('file-input').click()" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="handleFileDrop(event)">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--arena)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <p><strong>Tocá para seleccionar</strong> o arrastrá un .xlsx</p>
+      </div>
+      <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none" onchange="handleFileInput(event)" />
+      <div id="upload-preview" style="display:none">
+        <div style="font-size:.85rem;font-weight:600;color:var(--black);margin-bottom:10px" id="preview-title">Vista previa</div>
+        <div style="background:#fff;border:1px solid var(--lino);border-radius:12px;padding:12px;max-height:180px;overflow-y:auto;font-size:.78rem;color:var(--roble);line-height:1.8" id="preview-content"></div>
+        <div style="margin-top:14px;font-size:.82rem;font-weight:600;color:var(--black);margin-bottom:10px">¿Qué hacemos con la lista actual?</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <label style="flex:1;padding:11px;border:1.5px solid var(--arena);border-radius:11px;cursor:pointer;font-size:.8rem;font-weight:600;color:var(--roble);text-align:center;display:flex;align-items:center;justify-content:center;gap:6px" id="opt-add" onclick="selectImportMode('add')">+ Agregar</label>
+          <label style="flex:1;padding:11px;border:1.5px solid var(--arena);border-radius:11px;cursor:pointer;font-size:.8rem;font-weight:600;color:var(--roble);text-align:center;display:flex;align-items:center;justify-content:center;gap:6px" id="opt-replace" onclick="selectImportMode('replace')">↺ Reemplazar</label>
+        </div>
+        <button class="btn-primary" onclick="confirmImport()">Confirmar importación</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EXCEL COMISIONES -->
+<div class="modal-overlay" id="modal-csv">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><span class="modal-title">Importar recetas (.xlsx)</span><button class="modal-close" onclick="closeModal('modal-csv')">✕</button></div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:var(--roble);margin-bottom:16px;line-height:1.6">Importá el Excel exportado de tu sistema. Columnas: <strong>Fecha Registro, Cliente, Medico, Total Receta S/IVA</strong>. Las filas sin médico y las recetas duplicadas se ignoran automáticamente.</p>
+      <div class="upload-section" id="csv-dropzone" onclick="document.getElementById('csv-input').click()" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="handleCsvDrop(event)">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--arena)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <p><strong>Tocá para seleccionar</strong> o arrastrá un archivo</p>
+        <p style="font-size:.72rem;opacity:.6;margin-top:4px">Formatos aceptados: .xlsx, .xls</p>
+      </div>
+      <input type="file" id="csv-input" accept=".xlsx,.xls" style="display:none" onchange="handleCsvInput(event)" />
+
+      <div id="csv-preview" style="display:none;margin-top:12px">
+        <div style="font-size:.85rem;font-weight:600;color:var(--black);margin-bottom:8px" id="csv-preview-title"></div>
+        <div style="background:#fff;border:1px solid var(--lino);border-radius:12px;padding:12px;max-height:160px;overflow-y:auto;font-size:.75rem;color:var(--roble);line-height:1.8" id="csv-preview-content"></div>
+        <div style="margin-top:14px;font-size:.82rem;font-weight:600;color:var(--black);margin-bottom:8px">¿Qué hacemos con los datos existentes?</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <label style="flex:1;padding:10px;border:1.5px solid var(--arena);border-radius:10px;cursor:pointer;font-size:.78rem;font-weight:600;color:var(--roble);text-align:center;display:flex;align-items:center;justify-content:center;gap:5px" id="csv-opt-add" onclick="selectCsvMode('add')">+ Agregar</label>
+          <label style="flex:1;padding:10px;border:1.5px solid var(--arena);border-radius:10px;cursor:pointer;font-size:.78rem;font-weight:600;color:var(--roble);text-align:center;display:flex;align-items:center;justify-content:center;gap:5px" id="csv-opt-replace" onclick="selectCsvMode('replace')">↺ Reemplazar</label>
+        </div>
+        <button class="btn-primary" onclick="confirmCsvImport()">Importar recetas</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL WORD -->
+<div class="modal-overlay" id="modal-word">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><span class="modal-title">Generar documento Word</span><button class="modal-close" onclick="closeModal('modal-word')">✕</button></div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:var(--roble);margin-bottom:16px;line-height:1.6">Generá el documento con el nombre de cada médico y la lista de sus pacientes del período seleccionado.</p>
+      <div class="word-option selected" id="word-opt-todos" onclick="selectWordOpt('todos')">
+        <div class="word-option-icon">📄</div>
+        <div><div class="word-option-text">Un solo documento</div><div class="word-option-sub">Todos los médicos en un archivo</div></div>
+      </div>
+      <div class="word-option" id="word-opt-individual" onclick="selectWordOpt('individual')">
+        <div class="word-option-icon">📁</div>
+        <div><div class="word-option-text">Documento por médico</div><div class="word-option-sub">Descarga un ZIP con un .docx por cada uno</div></div>
+      </div>
+      <div class="form-group" style="margin-top:16px">
+        <label class="form-label">Médico</label>
+        <select class="form-select" id="word-medico-filter">
+          <option value="">Todos los médicos</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Período (texto para el doc)</label>
+        <input class="form-input" id="word-periodo-texto" type="text" placeholder="ej: 1 al 28 de FEBRERO" />
+      </div>
+      <div id="word-filter-inst" style="margin-bottom:16px">
+        <label class="form-label">Filtrar por institución (opcional)</label>
+        <select class="form-select" id="word-inst-filter">
+          <option value="">Todas</option>
+          <option value="OSCCPTAC">OSCCPTAC</option>
+          <option value="Reina Fabiola">Reina Fabiola</option>
+          <option value="Salvador">Salvador</option>
+          <option value="Lista Oftalmologia">Lista Oftalmologia</option>
+        </select>
+      </div>
+      <button class="btn-primary" onclick="generateWord()">Generar y descargar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BACKUP -->
+<div class="modal-overlay" id="modal-backup">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><span class="modal-title">Respaldo de datos</span><button class="modal-close" onclick="closeModal('modal-backup')">✕</button></div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:var(--roble);margin-bottom:16px;line-height:1.6">Los datos viven en este navegador. Si borrás el historial o cambiás de teléfono, se pierden. Descargá un respaldo cada tanto y guardalo en Drive o donde prefieras.</p>
+      <div class="backup-btn-row">
+        <button class="btn-primary" onclick="exportBackup()">⬇ Descargar respaldo (.json)</button>
+        <button class="btn-secondary-out" style="width:100%" onclick="document.getElementById('backup-input').click()">⬆ Restaurar desde un respaldo</button>
+        <input type="file" id="backup-input" accept=".json" style="display:none" onchange="restoreBackup(event)" />
+      </div>
+      <p style="font-size:.72rem;color:var(--roble);margin-top:14px;line-height:1.5;opacity:.7">El respaldo incluye: médicos y horarios, recetas importadas, porcentajes de comisión y estados de pago.</p>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FICHA CRM -->
+<div class="modal-overlay" id="modal-crm">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><span class="modal-title">Ficha del profesional</span><button class="modal-close" onclick="closeModal('modal-crm')">✕</button></div>
+    <div class="modal-body" id="crm-body"></div>
+  </div>
+</div>
+
+<!-- MODAL FACTURACION ADICIONAL -->
+<div class="modal-overlay" id="modal-extra">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><span class="modal-title">Sumar monto a facturación</span><button class="modal-close" onclick="closeModal('modal-extra')">✕</button></div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:var(--roble);margin-bottom:16px;line-height:1.6;font-weight:300">Sumale un monto a la facturación del médico. Se incluye en su facturación, comisión y liquidación del período.</p>
+      <div class="form-group"><label class="form-label">Médico</label><select class="form-select" id="extra-medico"></select></div>
+      <div class="turno-editor-row" style="margin-bottom:0">
+        <div class="form-group"><label class="form-label">Fecha</label><input class="form-input" id="extra-fecha" type="date" /></div>
+        <div class="form-group"><label class="form-label">Monto ($)</label><input class="form-input" id="extra-monto" type="number" min="0" step="0.01" placeholder="0.00" /></div>
+      </div>
+      <div class="form-group"><label class="form-label">Descripción (opcional)</label><input class="form-input" id="extra-desc" type="text" placeholder="ej: Cobertura obra social" maxlength="60" /></div>
+      <button class="btn-primary" style="width:100%" onclick="saveExtra()">Agregar al período</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="confirm-overlay" id="confirm-dialog">
+  <div class="confirm-box">
+    <h3 id="confirm-title">¿Confirmás?</h3>
+    <p id="confirm-msg">Esta acción no se puede deshacer.</p>
+    <div class="confirm-actions">
+      <button class="btn-secondary-out" style="flex:1" onclick="closeConfirm()">Cancelar</button>
+      <button class="btn-danger" id="confirm-ok-btn">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+
+
+<script src="assets/js/supabase-config.js"></script>
+<script src="assets/js/crm-oftalmologos.js"></script>
+</body>
+</html>
