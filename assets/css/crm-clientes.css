@@ -367,3 +367,60 @@ body.is-embedded .portal-back-btn{display:none!important;}
   .kanban-wrap{padding-left:24px;padding-right:24px;}
 }
 
+/* =========================================================
+   FULL WIDTH OVERRIDE — CRM BLACK
+   Quita límites artificiales de ancho dentro del iframe
+   ========================================================= */
+@media (min-width:900px){
+  .content{
+    width:100%;
+    max-width:none!important;
+    margin:0!important;
+  }
+
+  .day-summary{
+    width:100%;
+    max-width:none!important;
+    margin:0!important;
+    border-left:0!important;
+    border-right:0!important;
+  }
+
+  .topbar{
+    width:100%;
+    max-width:none!important;
+    padding-left:24px!important;
+    padding-right:24px!important;
+  }
+
+  .work-list,
+  .section-header,
+  .resumen-wrap,
+  .ajustes-wrap{
+    width:100%;
+    max-width:none!important;
+    margin-left:0!important;
+    margin-right:0!important;
+  }
+
+  .work-list{
+    padding-left:24px!important;
+    padding-right:24px!important;
+  }
+
+  .section-header{
+    padding-left:24px!important;
+    padding-right:24px!important;
+  }
+
+  .resumen-wrap,
+  .ajustes-wrap,
+  .kanban-wrap{
+    width:100%;
+    max-width:none!important;
+    margin-left:0!important;
+    margin-right:0!important;
+    padding-left:24px!important;
+    padding-right:24px!important;
+  }
+}
