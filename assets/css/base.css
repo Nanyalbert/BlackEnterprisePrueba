@@ -30,9 +30,51 @@ img{max-width:100%;}
 /* =========================================================
    NORMALIZACIÓN DE MÓDULOS EMBEBIDOS
    Evita que un CRM se comprima artificialmente dentro del
-   iframe del Portal Black. Las reglas están deliberadamente
-   acotadas a elementos propios de cada CRM.
+   iframe del Portal Black.
    ========================================================= */
+
+/* ---------- SHELL DEL PORTAL / IFRAMES ---------- */
+.content.module-mode{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  height:calc(100vh - var(--topbar-h))!important;
+  height:calc(100dvh - var(--topbar-h))!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+
+.content.module-mode > .view.active{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:100%!important;
+  overflow:hidden!important;
+}
+
+.content.module-mode .module-frame-wrap{
+  width:100%!important;
+  height:100%!important;
+  min-height:100%!important;
+  overflow:hidden!important;
+}
+
+.content.module-mode .module-frame{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:100%!important;
+  border:0!important;
+}
+
+/* Fallback explícito: evita que el iframe vuelva a su alto HTML por defecto (~150px) */
+#crm-clientes-frame,
+#crm-oftalmologos-frame{
+  width:100%!important;
+  height:calc(100vh - var(--topbar-h))!important;
+  height:calc(100dvh - var(--topbar-h))!important;
+  min-height:calc(100vh - var(--topbar-h))!important;
+  min-height:calc(100dvh - var(--topbar-h))!important;
+}
 
 /* ---------- CRM OFTALMÓLOGOS ---------- */
 @media (min-width:900px){
@@ -103,7 +145,6 @@ img{max-width:100%;}
   }
 }
 
-/* Más información visible en monitores grandes */
 @media (min-width:1350px){
   body:has(.doctors-page-header) .doctors-grid{
     grid-template-columns:repeat(4,minmax(0,1fr))!important;
