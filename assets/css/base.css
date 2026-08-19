@@ -29,54 +29,8 @@ img{max-width:100%;}
 
 /* =========================================================
    NORMALIZACIÓN DE MÓDULOS EMBEBIDOS
-   Evita que un CRM se comprima artificialmente dentro del
-   iframe del Portal Black.
    ========================================================= */
 
-/* ---------- SHELL DEL PORTAL / IFRAMES ---------- */
-.content.module-mode{
-  flex:1 1 auto!important;
-  min-height:0!important;
-  height:calc(100vh - var(--topbar-h))!important;
-  height:calc(100dvh - var(--topbar-h))!important;
-  padding:0!important;
-  overflow:hidden!important;
-}
-
-.content.module-mode > .view.active{
-  display:block!important;
-  width:100%!important;
-  height:100%!important;
-  min-height:100%!important;
-  overflow:hidden!important;
-}
-
-.content.module-mode .module-frame-wrap{
-  width:100%!important;
-  height:100%!important;
-  min-height:100%!important;
-  overflow:hidden!important;
-}
-
-.content.module-mode .module-frame{
-  display:block!important;
-  width:100%!important;
-  height:100%!important;
-  min-height:100%!important;
-  border:0!important;
-}
-
-/* Fallback explícito: evita que el iframe vuelva a su alto HTML por defecto (~150px) */
-#crm-clientes-frame,
-#crm-oftalmologos-frame{
-  width:100%!important;
-  height:calc(100vh - var(--topbar-h))!important;
-  height:calc(100dvh - var(--topbar-h))!important;
-  min-height:calc(100vh - var(--topbar-h))!important;
-  min-height:calc(100dvh - var(--topbar-h))!important;
-}
-
-/* ---------- CRM OFTALMÓLOGOS ---------- */
 @media (min-width:900px){
   body:has(.doctors-page-header) #app,
   body:has(.comisiones-header) #app{
@@ -156,7 +110,6 @@ img{max-width:100%;}
   }
 }
 
-/* ---------- CRM BLACK / CLIENTES ---------- */
 @media (min-width:900px){
   body:has(.kanban-board) .content{
     width:100%!important;
@@ -186,10 +139,6 @@ img{max-width:100%;}
     padding-right:24px!important;
   }
 }
-
-/* =========================================================
-   RESPONSIVE GENERAL DE LOS CRM
-   ========================================================= */
 
 @media (max-width:899px){
   body:has(.doctors-page-header) #app,
@@ -297,5 +246,65 @@ img{max-width:100%;}
 
   body:has(.doctors-page-header) .hero-stat{
     padding:12px 10px!important;
+  }
+}
+
+/* =========================================================
+   PORTAL SHELL — IFRAME FULL VIEWPORT FIX
+   Solución directa al alto reducido del iframe.
+   ========================================================= */
+
+body:has(#view-crm-clientes) .content.module-mode,
+body:has(#view-crm-oftalmologos) .content.module-mode{
+  height:auto!important;
+  min-height:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+
+body:has(#view-crm-clientes) #view-crm-clientes.active,
+body:has(#view-crm-oftalmologos) #view-crm-oftalmologos.active{
+  position:fixed!important;
+  top:var(--topbar-h,64px)!important;
+  bottom:0!important;
+  left:var(--sidebar-w,236px)!important;
+  right:0!important;
+  width:auto!important;
+  height:auto!important;
+  z-index:20!important;
+  overflow:hidden!important;
+  background:#000!important;
+}
+
+body.sidebar-collapsed:has(#view-crm-clientes) #view-crm-clientes.active,
+body.sidebar-collapsed:has(#view-crm-oftalmologos) #view-crm-oftalmologos.active{
+  left:var(--sidebar-collapsed-w,76px)!important;
+}
+
+body:has(#view-crm-clientes) .module-frame-wrap,
+body:has(#view-crm-oftalmologos) .module-frame-wrap,
+body:has(#view-crm-clientes) .module-frame,
+body:has(#view-crm-oftalmologos) .module-frame{
+  width:100%!important;
+  height:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  display:block!important;
+}
+
+@media (max-width:900px){
+  body:has(#view-crm-clientes) #view-crm-clientes.active,
+  body:has(#view-crm-oftalmologos) #view-crm-oftalmologos.active,
+  body.sidebar-collapsed:has(#view-crm-clientes) #view-crm-clientes.active,
+  body.sidebar-collapsed:has(#view-crm-oftalmologos) #view-crm-oftalmologos.active{
+    left:0!important;
+    top:var(--topbar-h,64px)!important;
+  }
+}
+
+@media (max-width:640px){
+  body:has(#view-crm-clientes) #view-crm-clientes.active,
+  body:has(#view-crm-oftalmologos) #view-crm-oftalmologos.active{
+    top:var(--topbar-h,58px)!important;
   }
 }
