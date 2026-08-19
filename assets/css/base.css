@@ -26,3 +26,235 @@ html{scroll-behavior:smooth;}
 body{margin:0;font-family:var(--font-body);}
 button,input,select,textarea{font:inherit;}
 img{max-width:100%;}
+
+/* =========================================================
+   NORMALIZACIÓN DE MÓDULOS EMBEBIDOS
+   Evita que un CRM se comprima artificialmente dentro del
+   iframe del Portal Black. Las reglas están deliberadamente
+   acotadas a elementos propios de cada CRM.
+   ========================================================= */
+
+/* ---------- CRM OFTALMÓLOGOS ---------- */
+@media (min-width:900px){
+  body:has(.doctors-page-header) #app,
+  body:has(.comisiones-header) #app{
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    border-left:0!important;
+    border-right:0!important;
+    min-height:100vh!important;
+  }
+
+  body:has(.doctors-page-header) .hero-section,
+  body:has(.doctors-page-header) .doctors-page-header,
+  body:has(.doctors-page-header) .comisiones-header,
+  body:has(.comisiones-header) .hero-section,
+  body:has(.comisiones-header) .doctors-page-header,
+  body:has(.comisiones-header) .comisiones-header{
+    width:100%!important;
+    max-width:none!important;
+    padding-left:24px!important;
+    padding-right:24px!important;
+  }
+
+  body:has(.doctors-page-header) .schedule-wrap,
+  body:has(.doctors-page-header) .doctors-toolbar,
+  body:has(.doctors-page-header) .doctors-grid,
+  body:has(.doctors-page-header) .comisiones-toolbar,
+  body:has(.doctors-page-header) .stats-summary,
+  body:has(.doctors-page-header) .commission-list,
+  body:has(.comisiones-header) .schedule-wrap,
+  body:has(.comisiones-header) .doctors-toolbar,
+  body:has(.comisiones-header) .doctors-grid,
+  body:has(.comisiones-header) .comisiones-toolbar,
+  body:has(.comisiones-header) .stats-summary,
+  body:has(.comisiones-header) .commission-list{
+    width:100%!important;
+    max-width:none!important;
+    margin-left:0!important;
+    margin-right:0!important;
+    padding-left:24px!important;
+    padding-right:24px!important;
+  }
+
+  body:has(.doctors-page-header) .chart-section,
+  body:has(.doctors-page-header) .evol-section,
+  body:has(.comisiones-header) .chart-section,
+  body:has(.comisiones-header) .evol-section{
+    width:auto!important;
+    max-width:none!important;
+    margin-left:24px!important;
+    margin-right:24px!important;
+  }
+
+  body:has(.doctors-page-header) .day-selector,
+  body:has(.comisiones-header) .day-selector{
+    padding-left:24px!important;
+    padding-right:24px!important;
+  }
+
+  body:has(.doctors-page-header) .day-selector-label,
+  body:has(.comisiones-header) .day-selector-label,
+  body:has(.doctors-page-header) .bday-strip,
+  body:has(.comisiones-header) .bday-strip{
+    padding-left:24px!important;
+    padding-right:24px!important;
+  }
+}
+
+/* Más información visible en monitores grandes */
+@media (min-width:1350px){
+  body:has(.doctors-page-header) .doctors-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:14px!important;
+  }
+
+  body:has(.comisiones-header) .stats-summary{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+}
+
+/* ---------- CRM BLACK / CLIENTES ---------- */
+@media (min-width:900px){
+  body:has(.kanban-board) .content{
+    width:100%!important;
+    max-width:none!important;
+    margin-left:0!important;
+    margin-right:0!important;
+  }
+
+  body:has(.kanban-board) .day-summary,
+  body:has(.kanban-board) .work-list,
+  body:has(.kanban-board) .section-header,
+  body:has(.kanban-board) .resumen-wrap,
+  body:has(.kanban-board) .ajustes-wrap,
+  body:has(.kanban-board) .kanban-wrap{
+    width:100%!important;
+    max-width:none!important;
+    margin-left:0!important;
+    margin-right:0!important;
+  }
+
+  body:has(.kanban-board) .work-list,
+  body:has(.kanban-board) .section-header,
+  body:has(.kanban-board) .resumen-wrap,
+  body:has(.kanban-board) .ajustes-wrap,
+  body:has(.kanban-board) .kanban-wrap{
+    padding-left:24px!important;
+    padding-right:24px!important;
+  }
+}
+
+/* =========================================================
+   RESPONSIVE GENERAL DE LOS CRM
+   ========================================================= */
+
+@media (max-width:899px){
+  body:has(.doctors-page-header) #app,
+  body:has(.comisiones-header) #app,
+  body:has(.kanban-board) .content{
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+  }
+
+  body:has(.doctors-page-header) .doctors-toolbar,
+  body:has(.comisiones-header) .comisiones-toolbar{
+    flex-wrap:wrap!important;
+  }
+
+  body:has(.doctors-page-header) .search-input-wrap{
+    min-width:min(100%,260px)!important;
+  }
+}
+
+@media (max-width:640px){
+  body:has(.doctors-page-header) .hero-section,
+  body:has(.doctors-page-header) .doctors-page-header,
+  body:has(.doctors-page-header) .comisiones-header,
+  body:has(.comisiones-header) .hero-section,
+  body:has(.comisiones-header) .doctors-page-header,
+  body:has(.comisiones-header) .comisiones-header{
+    padding-left:16px!important;
+    padding-right:16px!important;
+  }
+
+  body:has(.doctors-page-header) .schedule-wrap,
+  body:has(.doctors-page-header) .doctors-toolbar,
+  body:has(.doctors-page-header) .doctors-grid,
+  body:has(.doctors-page-header) .comisiones-toolbar,
+  body:has(.doctors-page-header) .stats-summary,
+  body:has(.doctors-page-header) .commission-list,
+  body:has(.comisiones-header) .schedule-wrap,
+  body:has(.comisiones-header) .doctors-toolbar,
+  body:has(.comisiones-header) .doctors-grid,
+  body:has(.comisiones-header) .comisiones-toolbar,
+  body:has(.comisiones-header) .stats-summary,
+  body:has(.comisiones-header) .commission-list{
+    padding-left:14px!important;
+    padding-right:14px!important;
+  }
+
+  body:has(.doctors-page-header) .chart-section,
+  body:has(.doctors-page-header) .evol-section,
+  body:has(.comisiones-header) .chart-section,
+  body:has(.comisiones-header) .evol-section{
+    margin-left:14px!important;
+    margin-right:14px!important;
+  }
+
+  body:has(.doctors-page-header) .doctors-grid{
+    grid-template-columns:1fr!important;
+  }
+
+  body:has(.comisiones-header) .stats-summary{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+
+  body:has(.comisiones-header) .periodo-row{
+    flex-direction:column!important;
+    align-items:stretch!important;
+  }
+
+  body:has(.comisiones-header) .periodo-group{
+    width:100%!important;
+  }
+
+  body:has(.doctors-page-header) .turno-row{
+    align-items:flex-start!important;
+    flex-wrap:wrap!important;
+  }
+
+  body:has(.doctors-page-header) .turno-sep{
+    display:none!important;
+  }
+
+  body:has(.doctors-page-header) .turno-badges{
+    width:100%!important;
+    justify-content:flex-start!important;
+  }
+
+  body:has(.kanban-board) .work-list,
+  body:has(.kanban-board) .section-header,
+  body:has(.kanban-board) .resumen-wrap,
+  body:has(.kanban-board) .ajustes-wrap,
+  body:has(.kanban-board) .kanban-wrap{
+    padding-left:12px!important;
+    padding-right:12px!important;
+  }
+}
+
+@media (max-width:420px){
+  body:has(.comisiones-header) .stats-summary{
+    grid-template-columns:1fr!important;
+  }
+
+  body:has(.doctors-page-header) .hero-stats{
+    gap:8px!important;
+  }
+
+  body:has(.doctors-page-header) .hero-stat{
+    padding:12px 10px!important;
+  }
+}
