@@ -11,16 +11,31 @@
 <link rel="stylesheet" href="assets/css/portal.css">
 <style>
   #view-administracion{
-    width:100%;
-    height:100%;
-    min-height:100%;
-    overflow:hidden;
+    width:100%!important;
+    height:calc(100dvh - 64px)!important;
+    min-height:calc(100dvh - 64px)!important;
+    overflow:hidden!important;
   }
-  #view-administracion .module-frame-wrap,
+  #view-administracion .module-frame-wrap{
+    width:100%!important;
+    height:calc(100dvh - 64px)!important;
+    min-height:calc(100dvh - 64px)!important;
+    overflow:hidden!important;
+  }
   #administracion-frame{
-    width:100%;
-    height:100%;
-    min-height:100%;
+    display:block!important;
+    width:100%!important;
+    height:calc(100dvh - 64px)!important;
+    min-height:calc(100dvh - 64px)!important;
+    border:0!important;
+  }
+  @media(max-width:640px){
+    #view-administracion,
+    #view-administracion .module-frame-wrap,
+    #administracion-frame{
+      height:calc(100dvh - 58px)!important;
+      min-height:calc(100dvh - 58px)!important;
+    }
   }
 </style>
 </head>
@@ -177,7 +192,7 @@
 
     <section class="view" id="view-crm-clientes"><div class="module-frame-wrap"><iframe id="crm-clientes-frame" class="module-frame" src="crm-clientes.html" title="CRM Black" loading="eager"></iframe></div></section>
 
-    <section class="view" id="view-administracion"><div class="module-frame-wrap"><iframe id="administracion-frame" class="module-frame" src="administracion.html" title="Administración" loading="eager"></iframe></div></section>
+    <section class="view" id="view-administracion"><div class="module-frame-wrap"><iframe id="administracion-frame" class="module-frame" src="administracion.html" title="Administración" loading="eager" style="height:calc(100dvh - 64px)!important;min-height:calc(100dvh - 64px)!important;"></iframe></div></section>
 
     <section class="view" id="view-crm-oftalmologos"><div class="module-frame-wrap"><iframe id="crm-oftalmologos-frame" class="module-frame" src="crm-oftalmologos.html" title="CRM Oftalmólogos" loading="eager"></iframe></div></section>
 
