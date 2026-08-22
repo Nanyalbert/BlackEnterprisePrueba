@@ -11,17 +11,7 @@
 <link rel="stylesheet" href="assets/css/administracion.css">
 </head>
 <body class="admin-page">
-<header class="admin-topbar">
-  <a class="admin-brand" href="menu.html" aria-label="Volver a Black OS">
-    <img src="assets/img/Logo---Black.png" alt="Black Óptica">
-    <span>Black OS</span>
-  </a>
-  <div class="admin-topbar-actions">
-    <span class="admin-status" id="data-status">Sin datos cargados</span>
-    <a class="admin-back" href="menu.html">Volver al portal</a>
-  </div>
-</header>
-
+<header class="admin-topbar"></header>
 <main class="admin-shell">
   <section class="admin-hero">
     <div>
@@ -29,42 +19,13 @@
       <h1>Resultado del negocio, sin duplicar movimientos.</h1>
       <p class="hero-copy">Cargá los tres Excel del sistema. Black OS toma Ventas como fuente económica, Caja como cobranzas y Banco como control financiero.</p>
     </div>
-    <div class="hero-rule">
-      <span>Regla central</span>
-      <strong>Una transferencia cobrada no se vuelve a sumar cuando aparece en Banco.</strong>
-    </div>
+    <div class="hero-rule"><span>Regla central</span><strong>Una transferencia cobrada no se vuelve a sumar cuando aparece en Banco.</strong></div>
   </section>
 
   <section class="upload-grid" aria-label="Carga de archivos">
-    <label class="upload-card" id="upload-sales-card">
-      <input type="file" id="sales-file" accept=".xlsx,.xls" hidden>
-      <div class="upload-index">01</div>
-      <div>
-        <h2>Ventas</h2>
-        <p>Facturación, utilidad, costo, cantidad, vendedor y rubro.</p>
-        <span class="upload-state" id="sales-state">Seleccionar Excel</span>
-      </div>
-    </label>
-
-    <label class="upload-card" id="upload-cash-card">
-      <input type="file" id="cash-file" accept=".xlsx,.xls" hidden>
-      <div class="upload-index">02</div>
-      <div>
-        <h2>Caja</h2>
-        <p>Cobranzas, medios de pago y egresos reales de caja.</p>
-        <span class="upload-state" id="cash-state">Seleccionar Excel</span>
-      </div>
-    </label>
-
-    <label class="upload-card" id="upload-bank-card">
-      <input type="file" id="bank-file" accept=".xlsx,.xls" hidden>
-      <div class="upload-index">03</div>
-      <div>
-        <h2>Banco</h2>
-        <p>Ingresos informativos, gastos bancarios y egresos por clasificar.</p>
-        <span class="upload-state" id="bank-state">Seleccionar Excel</span>
-      </div>
-    </label>
+    <label class="upload-card" id="upload-sales-card"><input type="file" id="sales-file" accept=".xlsx,.xls" hidden><div class="upload-index">01</div><div><h2>Ventas</h2><p>Facturación, utilidad, costo, cantidad, vendedor y rubro.</p><span class="upload-state" id="sales-state">Seleccionar Excel</span></div></label>
+    <label class="upload-card" id="upload-cash-card"><input type="file" id="cash-file" accept=".xlsx,.xls" hidden><div class="upload-index">02</div><div><h2>Caja</h2><p>Cobranzas, medios de pago y egresos reales de caja.</p><span class="upload-state" id="cash-state">Seleccionar Excel</span></div></label>
+    <label class="upload-card" id="upload-bank-card"><input type="file" id="bank-file" accept=".xlsx,.xls" hidden><div class="upload-index">03</div><div><h2>Banco</h2><p>Ingresos informativos, gastos bancarios y egresos por clasificar.</p><span class="upload-state" id="bank-state">Seleccionar Excel</span></div></label>
   </section>
 
   <div class="period-warning" id="period-warning" hidden></div>
@@ -79,114 +40,55 @@
   </nav>
 
   <section class="tab-panel active" id="tab-resumen">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">RESUMEN</p>
-        <h2>Lo que realmente dejó el período</h2>
-      </div>
-      <span class="period-label" id="summary-period">Cargá los archivos para comenzar</span>
+    <div class="section-head"><div><p class="eyebrow">RESUMEN</p><h2>Lo que realmente dejó el período</h2></div><span class="period-label" id="summary-period">Cargá los archivos para comenzar</span></div>
+    <div class="kpi-grid kpi-grid-main">
+      <article class="kpi-card primary"><span>Resultado confirmado</span><strong id="kpi-result">$ --</strong><small>Utilidad − gastos confirmados. No resta transferencias sin clasificar.</small></article>
+      <article class="kpi-card"><span>Facturación</span><strong id="kpi-sales">$ --</strong><small>Fuente: Ventas</small></article>
+      <article class="kpi-card"><span>Utilidad bruta</span><strong id="kpi-profit">$ --</strong><small id="kpi-margin">Margen --</small></article>
+      <article class="kpi-card"><span>Gastos confirmados</span><strong id="kpi-expenses">$ --</strong><small>Caja + Banco, sin duplicados</small></article>
     </div>
 
-    <div class="kpi-grid kpi-grid-main">
-      <article class="kpi-card primary">
-        <span>Resultado confirmado</span>
-        <strong id="kpi-result">$ --</strong>
-        <small>Utilidad − gastos confirmados. No resta transferencias sin clasificar.</small>
-      </article>
-      <article class="kpi-card">
-        <span>Facturación</span>
-        <strong id="kpi-sales">$ --</strong>
-        <small>Fuente: Ventas</small>
-      </article>
-      <article class="kpi-card">
-        <span>Utilidad bruta</span>
-        <strong id="kpi-profit">$ --</strong>
-        <small id="kpi-margin">Margen --</small>
-      </article>
-      <article class="kpi-card">
-        <span>Gastos confirmados</span>
-        <strong id="kpi-expenses">$ --</strong>
-        <small>Caja + Banco, sin duplicados</small>
-      </article>
+    <div class="chart-grid chart-grid-summary">
+      <article class="panel-card chart-card"><div class="panel-title"><h3>Facturación vs costo vs utilidad</h3><span>Composición</span></div><div class="chart-wrap"><canvas id="summary-composition-chart"></canvas></div></article>
+      <article class="panel-card chart-card"><div class="panel-title"><h3>Resultado del período</h3><span>Utilidad y gastos</span></div><div class="chart-wrap"><canvas id="summary-result-chart"></canvas></div></article>
     </div>
 
     <div class="summary-grid">
-      <article class="panel-card">
-        <div class="panel-title"><h3>De dónde sale el resultado</h3><span>Esquema</span></div>
-        <div class="result-flow">
-          <div><span>Utilidad de ventas</span><strong id="flow-profit">$ --</strong></div>
-          <div class="minus"><span>Gastos de caja confirmados</span><strong id="flow-cash-expenses">$ --</strong></div>
-          <div class="minus"><span>Gastos bancarios confirmados</span><strong id="flow-bank-expenses">$ --</strong></div>
-          <div class="total"><span>Resultado confirmado</span><strong id="flow-result">$ --</strong></div>
-        </div>
-      </article>
-
-      <article class="panel-card warning-card">
-        <div class="panel-title"><h3>Requiere revisión</h3><span>No afecta el resultado</span></div>
-        <div class="review-number" id="pending-expenses">$ --</div>
-        <p>Transferencias y otros egresos bancarios que no podemos asumir como gasto sin saber su destino.</p>
-        <div class="mini-note">Se muestran separados para no subestimar ni inflar la ganancia.</div>
-      </article>
+      <article class="panel-card"><div class="panel-title"><h3>De dónde sale el resultado</h3><span>Esquema</span></div><div class="result-flow"><div><span>Utilidad de ventas</span><strong id="flow-profit">$ --</strong></div><div class="minus"><span>Gastos de caja confirmados</span><strong id="flow-cash-expenses">$ --</strong></div><div class="minus"><span>Gastos bancarios confirmados</span><strong id="flow-bank-expenses">$ --</strong></div><div class="total"><span>Resultado confirmado</span><strong id="flow-result">$ --</strong></div></div></article>
+      <article class="panel-card warning-card"><div class="panel-title"><h3>Requiere revisión</h3><span>No afecta el resultado</span></div><div class="review-number" id="pending-expenses">$ --</div><p>Transferencias y otros egresos bancarios que no podemos asumir como gasto sin saber su destino.</p><div class="mini-note">Se muestran separados para no subestimar ni inflar la ganancia.</div></article>
     </div>
   </section>
 
   <section class="tab-panel" id="tab-ventas">
-    <div class="section-head">
-      <div><p class="eyebrow">VENTAS</p><h2>Rentabilidad comercial</h2></div>
-      <span class="period-label" id="sales-period">Sin datos</span>
+    <div class="section-head"><div><p class="eyebrow">VENTAS</p><h2>Rentabilidad comercial</h2></div><span class="period-label" id="sales-period">Sin datos</span></div>
+    <div class="kpi-grid"><article class="kpi-card"><span>Facturación</span><strong id="sales-total">$ --</strong></article><article class="kpi-card"><span>Costo de venta</span><strong id="sales-cost">$ --</strong></article><article class="kpi-card"><span>Utilidad</span><strong id="sales-profit">$ --</strong></article><article class="kpi-card"><span>Unidades</span><strong id="sales-units">--</strong></article></div>
+    <div class="chart-grid">
+      <article class="panel-card chart-card"><div class="panel-title"><h3>Venta por vendedor</h3><span>Top 6</span></div><div class="chart-wrap chart-wrap-wide"><canvas id="seller-chart"></canvas></div></article>
+      <article class="panel-card chart-card"><div class="panel-title"><h3>Venta por rubro</h3><span>Participación</span></div><div class="chart-wrap"><canvas id="category-chart"></canvas></div></article>
     </div>
-    <div class="kpi-grid">
-      <article class="kpi-card"><span>Facturación</span><strong id="sales-total">$ --</strong></article>
-      <article class="kpi-card"><span>Costo de venta</span><strong id="sales-cost">$ --</strong></article>
-      <article class="kpi-card"><span>Utilidad</span><strong id="sales-profit">$ --</strong></article>
-      <article class="kpi-card"><span>Unidades</span><strong id="sales-units">--</strong></article>
-    </div>
-    <div class="table-grid">
-      <article class="panel-card"><div class="panel-title"><h3>Por vendedor</h3><span>Venta · utilidad · margen</span></div><div class="table-scroll"><table><thead><tr><th>Vendedor</th><th>Venta</th><th>Utilidad</th><th>Margen</th></tr></thead><tbody id="seller-table"><tr><td colspan="4" class="empty-cell">Sin datos</td></tr></tbody></table></div></article>
-      <article class="panel-card"><div class="panel-title"><h3>Por rubro</h3><span>Top 8</span></div><div class="table-scroll"><table><thead><tr><th>Rubro</th><th>Venta</th><th>Utilidad</th></tr></thead><tbody id="category-table"><tr><td colspan="3" class="empty-cell">Sin datos</td></tr></tbody></table></div></article>
-    </div>
+    <div class="table-grid"><article class="panel-card"><div class="panel-title"><h3>Por vendedor</h3><span>Venta · utilidad · margen</span></div><div class="table-scroll"><table><thead><tr><th>Vendedor</th><th>Venta</th><th>Utilidad</th><th>Margen</th></tr></thead><tbody id="seller-table"><tr><td colspan="4" class="empty-cell">Sin datos</td></tr></tbody></table></div></article><article class="panel-card"><div class="panel-title"><h3>Por rubro</h3><span>Top 8</span></div><div class="table-scroll"><table><thead><tr><th>Rubro</th><th>Venta</th><th>Utilidad</th></tr></thead><tbody id="category-table"><tr><td colspan="3" class="empty-cell">Sin datos</td></tr></tbody></table></div></article></div>
   </section>
 
   <section class="tab-panel" id="tab-cobranzas">
     <div class="section-head"><div><p class="eyebrow">CAJA</p><h2>Cómo se cobró</h2></div><span class="period-label" id="cash-period">Sin datos</span></div>
-    <div class="kpi-grid">
-      <article class="kpi-card"><span>Total cobrado</span><strong id="cash-total">$ --</strong></article>
-      <article class="kpi-card"><span>Efectivo</span><strong id="cash-cash">$ --</strong></article>
-      <article class="kpi-card"><span>Transferencia / depósito</span><strong id="cash-transfer">$ --</strong></article>
-      <article class="kpi-card"><span>Tarjetas</span><strong id="cash-cards">$ --</strong></article>
-    </div>
-    <article class="panel-card">
-      <div class="panel-title"><h3>Medios de pago</h3><span>Fuente: Caja</span></div>
-      <div class="payment-list" id="payment-list"><div class="empty-cell">Sin datos</div></div>
-    </article>
+    <div class="kpi-grid"><article class="kpi-card"><span>Total cobrado</span><strong id="cash-total">$ --</strong></article><article class="kpi-card"><span>Efectivo</span><strong id="cash-cash">$ --</strong></article><article class="kpi-card"><span>Transferencia / depósito</span><strong id="cash-transfer">$ --</strong></article><article class="kpi-card"><span>Tarjetas</span><strong id="cash-cards">$ --</strong></article></div>
+    <div class="chart-grid chart-grid-summary"><article class="panel-card chart-card"><div class="panel-title"><h3>Distribución de cobranzas</h3><span>Medios de pago</span></div><div class="chart-wrap"><canvas id="payments-chart"></canvas></div></article><article class="panel-card"><div class="panel-title"><h3>Medios de pago</h3><span>Fuente: Caja</span></div><div class="payment-list" id="payment-list"><div class="empty-cell">Sin datos</div></div></article></div>
   </section>
 
   <section class="tab-panel" id="tab-bancos">
     <div class="section-head"><div><p class="eyebrow">BANCO</p><h2>Movimiento financiero</h2></div><span class="period-label" id="bank-period">Sin datos</span></div>
-    <div class="kpi-grid">
-      <article class="kpi-card"><span>Ingresos bancarios</span><strong id="bank-income">$ --</strong><small>Informativo: no se suma a ventas</small></article>
-      <article class="kpi-card"><span>Gastos confirmados</span><strong id="bank-expense">$ --</strong></article>
-      <article class="kpi-card"><span>Egresos por clasificar</span><strong id="bank-pending">$ --</strong></article>
-      <article class="kpi-card"><span>Movimiento neto</span><strong id="bank-net">$ --</strong></article>
-    </div>
-    <article class="panel-card">
-      <div class="panel-title"><h3>Clasificación bancaria</h3><span>Automática y conservadora</span></div>
-      <div class="bank-rules" id="bank-rules"><div class="empty-cell">Sin datos</div></div>
-    </article>
+    <div class="kpi-grid"><article class="kpi-card"><span>Ingresos bancarios</span><strong id="bank-income">$ --</strong><small>Informativo: no se suma a ventas</small></article><article class="kpi-card"><span>Gastos confirmados</span><strong id="bank-expense">$ --</strong></article><article class="kpi-card"><span>Egresos por clasificar</span><strong id="bank-pending">$ --</strong></article><article class="kpi-card"><span>Movimiento neto</span><strong id="bank-net">$ --</strong></article></div>
+    <div class="chart-grid chart-grid-summary"><article class="panel-card chart-card"><div class="panel-title"><h3>Banco</h3><span>Ingresos y egresos</span></div><div class="chart-wrap"><canvas id="bank-chart"></canvas></div></article><article class="panel-card"><div class="panel-title"><h3>Clasificación bancaria</h3><span>Automática y conservadora</span></div><div class="bank-rules" id="bank-rules"><div class="empty-cell">Sin datos</div></div></article></div>
   </section>
 
   <section class="tab-panel" id="tab-obras-sociales">
     <div class="section-head"><div><p class="eyebrow">OBRA SOCIAL Y MUTUALES</p><h2>Informe separado</h2></div></div>
-    <article class="panel-card os-placeholder">
-      <div class="os-icon">+</div>
-      <h3>Este apartado queda preparado.</h3>
-      <p>Los tres modelos actuales no incluyen un campo que identifique la Obra Social o Mutual. Para calcular facturado, cobrado, pendiente y utilidad por entidad, el Excel de Ventas deberá sumar ese dato o tendremos que anexar un cuarto archivo específico.</p>
-      <strong>No voy a inferirlo con datos que no lo identifican de forma segura.</strong>
-    </article>
+    <article class="panel-card os-placeholder"><div class="os-icon">+</div><h3>Este apartado queda preparado.</h3><p>Los tres modelos actuales no incluyen un campo que identifique la Obra Social o Mutual. Para calcular facturado, cobrado, pendiente y utilidad por entidad, el Excel de Ventas deberá sumar ese dato o tendremos que anexar un cuarto archivo específico.</p><strong>No voy a inferirlo con datos que no lo identifican de forma segura.</strong></article>
   </section>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="assets/js/supabase-config.js"></script>
 <script src="assets/js/administracion.js"></script>
