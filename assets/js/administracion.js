@@ -1,6 +1,7 @@
 // Black Óptica — Administración
 
 const adminData = { sales: [], cash: [], bank: [] };
+const adminCharts = {};
 
 const fmtCurrency = value => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(Number(value)||0);
 const fmtNumber = value => new Intl.NumberFormat('es-AR',{maximumFractionDigits:1}).format(Number(value)||0);
@@ -136,7 +137,8 @@ function getBankMetrics(){
       else pending+=haber;
     }
     if(!concepts[concept]) concepts[concept]={debe:0,haber:0,type};
-    concepts[concept].debe+=debe; concepts[concept].haber+=haber;
+    concepts[concept].debe+=debe;
+    concepts[concept].haber+=haber;
   });
   const net=sum(rows,'Total Debe')-sum(rows,'Total Haber');
   return {rows,income,confirmedExpense,pendingExpense,pending,net,concepts};
@@ -151,6 +153,88 @@ function aggregate(rows,keyField){
     map[key].profit+=num(r['Total Utilidad']);
   });
   return Object.entries(map).map(([name,v])=>({name,...v,margin:v.sales?v.profit/v.sales*100:0})).sort((a,b)=>b.sales-a.sales);
+}
+
+function chartPalette(count){
+  const base=['#f5f5f3','#a7a7a1','#74746f','#565652','#3a3a37','#242422','#b68c4a','#7d9d88'];
+  return Array.from({length:count},(_,i)=>base[i%base.length]);
+}
+
+function destroyChart(id){
+  if(adminCharts[id]){
+    adminCharts[id].destroy();
+    delete adminCharts[id];
+  }
+}
+
+function makeChart(id, config){
+  if(!window.Chart) return;
+  const canvas=document.getElementById(id);
+  if(!canvas) return;
+  destroyChart(id);
+  adminCharts[id]=new Chart(canvas,config);
+}
+
+const commonChartOptions={
+  responsive:true,
+  maintainAspectRatio:false,
+  animation:{duration:350},
+  plugins:{
+    legend:{labels:{color:'#b8b8b3',boxWidth:10,boxHeight:10,font:{size:10,family:'Plus Jakarta Sans'}}},
+    tooltip:{
+      backgroundColor:'#0a0a0a',
+      borderColor:'#333',
+      borderWidth:1,
+      titleColor:'#f5f5f3',
+      bodyColor:'#cfcfca',
+      callbacks:{label:ctx=>`${ctx.dataset.label||ctx.label}: ${fmtCurrency(ctx.raw)}`}
+    }
+  },
+  scales:{
+    x:{ticks:{color:'#666',font:{size:9}},grid:{color:'#1d1d1d'}},
+    y:{ticks:{color:'#666',font:{size:9},callback:v=>new Intl.NumberFormat('es-AR',{notation:'compact',maximumFractionDigits:1}).format(v)},grid:{color:'#1d1d1d'}}
+  }
+};
+
+function renderCharts(s,c,b,seller,cats,expenses,result){
+  makeChart('summary-composition-chart',{
+    type:'bar',
+    data:{labels:['Facturación','Costo','Utilidad'],datasets:[{label:'ARS',data:[s.total,s.cost,s.profit],backgroundColor:['#f5f5f3','#5c5c58','#b68c4a'],borderRadius:7,borderSkipped:false}]},
+    options:{...commonChartOptions,plugins:{...commonChartOptions.plugins,legend:{display:false}}}
+  });
+
+  makeChart('summary-result-chart',{
+    type:'doughnut',
+    data:{labels:['Resultado confirmado','Gastos confirmados'],datasets:[{data:[Math.max(result,0),Math.max(expenses,0)],backgroundColor:['#f5f5f3','#565652'],borderColor:'#111',borderWidth:4,hoverOffset:3}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:commonChartOptions.plugins}
+  });
+
+  const sellerTop=seller.slice(0,6);
+  makeChart('seller-chart',{
+    type:'bar',
+    data:{labels:sellerTop.map(x=>x.name),datasets:[{label:'Venta',data:sellerTop.map(x=>x.sales),backgroundColor:'#f5f5f3',borderRadius:6,borderSkipped:false},{label:'Utilidad',data:sellerTop.map(x=>x.profit),backgroundColor:'#74746f',borderRadius:6,borderSkipped:false}]},
+    options:{...commonChartOptions,indexAxis:'y'}
+  });
+
+  const catTop=cats.slice(0,6);
+  makeChart('category-chart',{
+    type:'doughnut',
+    data:{labels:catTop.map(x=>x.name),datasets:[{data:catTop.map(x=>x.sales),backgroundColor:chartPalette(catTop.length),borderColor:'#111',borderWidth:4,hoverOffset:3}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:commonChartOptions.plugins}
+  });
+
+  const paymentEntries=Object.entries(c.payments).sort((a,b)=>b[1]-a[1]);
+  makeChart('payments-chart',{
+    type:'doughnut',
+    data:{labels:paymentEntries.map(([name])=>name),datasets:[{data:paymentEntries.map(([,value])=>value),backgroundColor:chartPalette(paymentEntries.length),borderColor:'#111',borderWidth:4,hoverOffset:3}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:commonChartOptions.plugins}
+  });
+
+  makeChart('bank-chart',{
+    type:'bar',
+    data:{labels:['Ingresos','Gastos confirmados','Por clasificar'],datasets:[{label:'ARS',data:[b.income,b.confirmedExpense,b.pendingExpense+b.pending],backgroundColor:['#f5f5f3','#74746f','#b68c4a'],borderRadius:7,borderSkipped:false}]},
+    options:{...commonChartOptions,plugins:{...commonChartOptions.plugins,legend:{display:false}}}
+  });
 }
 
 function render(){
@@ -198,6 +282,8 @@ function render(){
   };
   document.getElementById('bank-rules').innerHTML=Object.keys(b.concepts).length?Object.entries(b.concepts).map(([name,v])=>`<div class="bank-rule-row"><div class="rule-name">${name}</div><div class="rule-type">${ruleLabel[v.type]||ruleLabel.pending}</div><div class="rule-value">${v.debe?'+ '+fmtCurrency(v.debe):'− '+fmtCurrency(v.haber)}</div></div>`).join(''):'<div class="empty-cell">Sin datos</div>';
 
+  renderCharts(s,c,b,seller,cats,expenses,result);
+
   const ps=periodOf(s.rows,'Fecha Cpte'), pc=periodOf(c.rows,'Fecha'), pb=periodOf(b.rows,'Fecha');
   document.getElementById('sales-period').textContent=periodLabel(ps);
   document.getElementById('cash-period').textContent=periodLabel(pc);
@@ -244,6 +330,7 @@ document.querySelectorAll('.admin-tab').forEach(btn=>{
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(`tab-${btn.dataset.tab}`)?.classList.add('active');
+    setTimeout(()=>Object.values(adminCharts).forEach(chart=>chart.resize()),30);
   });
 });
 
