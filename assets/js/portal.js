@@ -93,7 +93,13 @@ function showView(viewName) {
   target.classList.add('active');
   viewLinks.forEach(link => link.classList.toggle('active', link.dataset.view === viewName));
   if (topbarTitle) topbarTitle.textContent = TITLES[viewName] || 'Inicio';
-  if (mainContent) mainContent.classList.toggle('module-mode', MODULE_VIEWS.includes(viewName));
+  const isModule = MODULE_VIEWS.includes(viewName);
+  if (mainContent) mainContent.classList.toggle('module-mode', isModule);
+  if (isModule) {
+    target.style.width = '100%';
+    target.style.height = '100%';
+    target.style.overflow = 'hidden';
+  }
   try { sessionStorage.setItem(VIEW_STORAGE_KEY, viewName); } catch (error) {}
   if (isMobileLayout()) closeMobileSidebar();
 }
