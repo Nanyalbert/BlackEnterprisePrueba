@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#000000">
+<title>Black Óptica — Automatizaciones y postventa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="assets/js/supabase-config.js"></script>
+<style>
+:root{--bg:#0e0e10;--surface:#18181b;--surface2:#222226;--surface3:#2a2a30;--border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.14);--text:#f0f0f2;--text2:#9b9ba7;--text3:#63636d;--accent:#6c8fff;--accent-bg:rgba(108,143,255,.12);--green:#2dd4a0;--green-bg:rgba(45,212,160,.1);--amber:#f0a030;--amber-bg:rgba(240,160,48,.1);--red:#f05060;--red-bg:rgba(240,80,96,.1);--r:14px;--rsm:9px}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif}.topbar{position:sticky;top:0;z-index:20;height:58px;padding:0 16px;background:rgba(14,14,16,.96);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}.brand{font-family:'Fraunces',serif;font-size:19px;letter-spacing:-.3px;flex:1}.back{color:var(--text2);text-decoration:none;border:1px solid var(--border2);border-radius:9px;padding:8px 11px;font-size:13px}.wrap{max-width:1180px;margin:0 auto;padding:22px 16px 42px}.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);font-weight:700}.title{font-family:'Fraunces',serif;font-size:30px;font-weight:500;margin:5px 0 4px}.subtitle{color:var(--text2);font-size:13px;line-height:1.55;margin:0}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0}.metric,.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r)}.metric{padding:15px}.metric-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}.metric-value{font-size:27px;font-weight:700;margin-top:6px}.metric-sub{font-size:11px;color:var(--text2);margin-top:4px}.tabs{display:flex;gap:7px;overflow-x:auto;padding:2px 0 12px}.tab{border:1px solid var(--border2);background:var(--surface);color:var(--text2);border-radius:999px;padding:9px 13px;font:600 12px 'Plus Jakarta Sans';white-space:nowrap;cursor:pointer}.tab.active{background:var(--accent);border-color:var(--accent);color:white}.panel{display:none}.panel.active{display:block}.card{padding:17px;margin-bottom:12px}.card h2{font-size:15px;margin:0 0 5px}.muted{color:var(--text2);font-size:12px;line-height:1.55}.drop{margin-top:14px;border:1.5px dashed var(--border2);border-radius:var(--r);padding:28px 16px;text-align:center;cursor:pointer;background:var(--surface2)}.drop:hover{border-color:var(--accent);background:var(--accent-bg)}.drop strong{display:block;font-size:14px;margin-bottom:4px}.btn{border:1px solid var(--border2);background:var(--surface2);color:var(--text);padding:9px 12px;border-radius:var(--rsm);font:600 12px 'Plus Jakarta Sans';cursor:pointer}.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn.green{background:var(--green-bg);border-color:rgba(45,212,160,.3);color:var(--green)}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.import-summary{display:none;margin-top:14px}.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.mini{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px}.mini strong{display:block;font-size:18px}.mini span{font-size:10px;color:var(--text3)}.table-wrap{overflow:auto;margin-top:12px;border:1px solid var(--border);border-radius:10px}table{width:100%;border-collapse:collapse;min-width:760px}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--border);font-size:11px}th{color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.5px;background:var(--surface2)}.rule{display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}.rule:last-child{border-bottom:0}.rule-day{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--accent-bg);color:var(--accent);font-weight:700;font-size:12px}.rule-title{font-size:13px;font-weight:600}.rule-sub{font-size:11px;color:var(--text2);margin-top:3px}.switch{width:42px;height:24px;border-radius:999px;background:var(--green);position:relative}.switch:after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:white;top:3px;right:3px}.task{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)}.task:last-child{border-bottom:0}.avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--surface3);font-size:11px;font-weight:700}.task-info{flex:1}.task-name{font-size:13px;font-weight:600}.task-sub{font-size:11px;color:var(--text2);margin-top:3px}.badge{font-size:10px;padding:4px 8px;border-radius:999px;background:var(--amber-bg);color:var(--amber)}.empty{padding:28px;text-align:center;color:var(--text2);font-size:12px}
+@media(max-width:720px){.metrics{grid-template-columns:1fr 1fr}.summary-grid{grid-template-columns:1fr 1fr}.title{font-size:25px}.rule{grid-template-columns:46px 1fr auto}.topbar{padding:0 12px}.wrap{padding:18px 12px 34px}}
+</style>
+</head>
+<body>
+<div class="topbar"><a class="back" href="crm-clientes.html">← CRM Black</a><div class="brand">Automatizaciones & Postventa</div></div>
+<main class="wrap">
+  <div class="eyebrow">CRM Black</div>
+  <h1 class="title">Automatizaciones y postventa</h1>
+  <p class="subtitle">Importá entregas desde Excel, detectá clientes y convertí cada venta en acciones de seguimiento.</p>
+
+  <section class="metrics">
+    <div class="metric"><div class="metric-label">Para hoy</div><div class="metric-value" id="mHoy">0</div><div class="metric-sub">acciones pendientes</div></div>
+    <div class="metric"><div class="metric-label">Entregas importadas</div><div class="metric-value" id="mEntregas">0</div><div class="metric-sub">archivo actual</div></div>
+    <div class="metric"><div class="metric-label">Con celular</div><div class="metric-value" id="mCelular">0</div><div class="metric-sub">contactables</div></div>
+    <div class="metric"><div class="metric-label">Sin teléfono</div><div class="metric-value" id="mSinTel">0</div><div class="metric-sub">para revisar</div></div>
+  </section>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="hoy">Para hoy</button>
+    <button class="tab" data-tab="importar">Importar ventas</button>
+    <button class="tab" data-tab="reglas">Reglas</button>
+    <button class="tab" data-tab="historial">Historial</button>
+  </nav>
+
+  <section class="panel active" id="panel-hoy">
+    <div class="card"><h2>Acciones de postventa</h2><div class="muted">Cuando importemos entregas reales, acá aparecerán los clientes cuyo seguimiento corresponda hoy.</div><div class="empty" id="todayEmpty">Todavía no hay acciones calculadas.</div><div id="todayList"></div></div>
+  </section>
+
+  <section class="panel" id="panel-importar">
+    <div class="card">
+      <h2>Importar Excel de ventas / entregas</h2>
+      <div class="muted">El importador busca automáticamente columnas equivalentes a Fecha Registro, Fecha Entregado, Cliente, Celular, cantidad, total y saldo.</div>
+      <div class="drop" id="dropZone"><strong>Seleccionar Excel</strong><span class="muted">.xlsx, .xls o .csv</span><input id="fileInput" type="file" accept=".xlsx,.xls,.csv" hidden></div>
+      <div class="import-summary" id="importSummary">
+        <div class="summary-grid"><div class="mini"><strong id="sRows">0</strong><span>filas detectadas</span></div><div class="mini"><strong id="sDelivered">0</strong><span>con fecha entregado</span></div><div class="mini"><strong id="sPhone">0</strong><span>con celular</span></div><div class="mini"><strong id="sMissing">0</strong><span>sin celular</span></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Celular</th><th>Registro</th><th>Entregado</th><th>Total</th><th>Saldo</th></tr></thead><tbody id="previewBody"></tbody></table></div>
+        <div class="row" style="margin-top:12px"><button class="btn primary" id="prepareBtn">Preparar postventa</button><button class="btn" id="clearBtn">Limpiar</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-reglas">
+    <div class="card"><h2>Reglas desde fecha de entrega</h2><div class="muted">Primera propuesta. Después podremos editar tiempos y plantillas desde el CRM.</div>
+      <div class="rule"><div class="rule-day">+2d</div><div><div class="rule-title">Adaptación inicial</div><div class="rule-sub">Consultar cómo viene usando sus lentes.</div></div><div class="switch"></div></div>
+      <div class="rule"><div class="rule-day">+10d</div><div><div class="rule-title">Seguimiento</div><div class="rule-sub">Detectar molestias, ajustes o consultas.</div></div><div class="switch"></div></div>
+      <div class="rule"><div class="rule-day">+30d</div><div><div class="rule-title">Reseña</div><div class="rule-sub">Solicitar reseña si la experiencia fue positiva.</div></div><div class="switch"></div></div>
+      <div class="rule"><div class="rule-day">+10m</div><div><div class="rule-title">Black Protect</div><div class="rule-sub">Aviso preventivo de cobertura próxima a vencer.</div></div><div class="switch"></div></div>
+      <div class="rule"><div class="rule-day">+12m</div><div><div class="rule-title">Renovación</div><div class="rule-sub">Aniversario de compra y nuevo control.</div></div><div class="switch"></div></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-historial"><div class="card"><h2>Historial de importaciones y contactos</h2><div class="empty">Todavía no hay actividad registrada en esta versión.</div></div></section>
+</main>
+<script>
+const $=s=>document.querySelector(s);let rows=[];
+function pick(obj,names){const keys=Object.keys(obj);for(const n of names){const key=keys.find(k=>String(k).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(n));if(key!=null)return obj[key]}return''}
+function fmtDate(v){if(!v)return'';if(typeof v==='number'){const d=XLSX.SSF.parse_date_code(v);return d?`${String(d.d).padStart(2,'0')}/${String(d.m).padStart(2,'0')}/${d.y}`:''}return String(v)}
+function norm(raw){return raw.map(r=>({cliente:pick(r,['cliente','nombre']),celular:pick(r,['celular','telefono','whatsapp']),registro:pick(r,['fecha registro','registro','fecha venta']),entregado:pick(r,['fecha entregado','entregado','fecha entrega']),total:pick(r,['total de receta','total','importe']),saldo:pick(r,['saldo de receta','saldo']),articulos:pick(r,['cantidad de articulos','articulos'])})).filter(r=>String(r.cliente||'').trim())}
+function renderPreview(){const body=$('#previewBody');body.innerHTML='';rows.slice(0,12).forEach(r=>{const tr=document.createElement('tr');[r.cliente,r.celular,fmtDate(r.registro),fmtDate(r.entregado),r.total,r.saldo].forEach(v=>{const td=document.createElement('td');td.textContent=v??'';tr.appendChild(td)});body.appendChild(tr)});const delivered=rows.filter(r=>r.entregado).length,phone=rows.filter(r=>String(r.celular||'').replace(/\D/g,'').length>=7).length;$('#sRows').textContent=rows.length;$('#sDelivered').textContent=delivered;$('#sPhone').textContent=phone;$('#sMissing').textContent=rows.length-phone;$('#mEntregas').textContent=delivered;$('#mCelular').textContent=phone;$('#mSinTel').textContent=rows.length-phone;$('#importSummary').style.display='block'}
+async function readFile(file){const buf=await file.arrayBuffer();const wb=XLSX.read(buf,{type:'array',cellDates:false});const ws=wb.Sheets[wb.SheetNames[0]];rows=norm(XLSX.utils.sheet_to_json(ws,{defval:''}));renderPreview()}
+$('#dropZone').addEventListener('click',()=>$('#fileInput').click());$('#fileInput').addEventListener('change',e=>{if(e.target.files[0])readFile(e.target.files[0])});$('#clearBtn').addEventListener('click',()=>{rows=[];$('#fileInput').value='';$('#importSummary').style.display='none';['mEntregas','mCelular','mSinTel','mHoy'].forEach(id=>$('#'+id).textContent='0');$('#todayList').innerHTML='';$('#todayEmpty').style.display='block'});
+$('#prepareBtn').addEventListener('click',()=>{const list=$('#todayList');list.innerHTML='';const eligible=rows.filter(r=>r.entregado&&String(r.celular||'').replace(/\D/g,'').length>=7).slice(0,20);eligible.forEach(r=>{const el=document.createElement('div');el.className='task';const initials=String(r.cliente).split(/\s+/).slice(0,2).map(x=>x[0]||'').join('');el.innerHTML=`<div class="avatar"></div><div class="task-info"><div class="task-name"></div><div class="task-sub"></div></div><span class="badge">Importado</span><button class="btn green">WhatsApp</button>`;el.querySelector('.avatar').textContent=initials;el.querySelector('.task-name').textContent=r.cliente;el.querySelector('.task-sub').textContent=`Entregado ${fmtDate(r.entregado)} · ${r.celular}`;list.appendChild(el)});$('#todayEmpty').style.display=eligible.length?'none':'block';$('#mHoy').textContent=eligible.length;document.querySelector('[data-tab="hoy"]').click()});
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#panel-'+b.dataset.tab).classList.add('active')}));
+</script>
+</body>
+</html>
