@@ -62,12 +62,15 @@ function validateColumns(rows, required){
 
 function setFileState(kind,file){
   const id = kind==='sales'?'sales':kind==='cash'?'cash':'bank';
-  document.getElementById(`${id}-state`).textContent = `${file.name} · ${adminData[kind].length} filas`;
-  document.getElementById(`upload-${id}-card`).classList.add('loaded');
+  const state = document.getElementById(`${id}-state`);
+  const card = document.getElementById(`upload-${id}-card`);
+  if(state) state.textContent = `${file.name} · ${adminData[kind].length} filas`;
+  if(card) card.classList.add('loaded');
 }
 
 function showError(message){
   const box=document.getElementById('error-box');
+  if(!box) return;
   box.hidden=!message;
   box.textContent=message||'';
 }
@@ -137,8 +140,7 @@ function getBankMetrics(){
       else pending+=haber;
     }
     if(!concepts[concept]) concepts[concept]={debe:0,haber:0,type};
-    concepts[concept].debe+=debe;
-    concepts[concept].haber+=haber;
+    concepts[concept].debe+=debe; concepts[concept].haber+=haber;
   });
   const net=sum(rows,'Total Debe')-sum(rows,'Total Haber');
   return {rows,income,confirmedExpense,pendingExpense,pending,net,concepts};
@@ -156,7 +158,7 @@ function aggregate(rows,keyField){
 }
 
 function chartPalette(count){
-  const base=['#f5f5f3','#a7a7a1','#74746f','#565652','#3a3a37','#242422','#b68c4a','#7d9d88'];
+  const base=['#2DD4BF','#60A5FA','#A78BFA','#F59E0B','#F472B6','#34D399','#FB7185','#22D3EE'];
   return Array.from({length:count},(_,i)=>base[i%base.length]);
 }
 
@@ -180,39 +182,39 @@ const commonChartOptions={
   maintainAspectRatio:false,
   animation:{duration:350},
   plugins:{
-    legend:{labels:{color:'#b8b8b3',boxWidth:10,boxHeight:10,font:{size:10,family:'Plus Jakarta Sans'}}},
+    legend:{labels:{color:'#c8c8c3',boxWidth:10,boxHeight:10,font:{size:10,family:'Plus Jakarta Sans'}}},
     tooltip:{
       backgroundColor:'#0a0a0a',
-      borderColor:'#333',
+      borderColor:'#3b3b3b',
       borderWidth:1,
       titleColor:'#f5f5f3',
-      bodyColor:'#cfcfca',
+      bodyColor:'#d5d5d0',
       callbacks:{label:ctx=>`${ctx.dataset.label||ctx.label}: ${fmtCurrency(ctx.raw)}`}
     }
   },
   scales:{
-    x:{ticks:{color:'#666',font:{size:9}},grid:{color:'#1d1d1d'}},
-    y:{ticks:{color:'#666',font:{size:9},callback:v=>new Intl.NumberFormat('es-AR',{notation:'compact',maximumFractionDigits:1}).format(v)},grid:{color:'#1d1d1d'}}
+    x:{ticks:{color:'#777',font:{size:9}},grid:{color:'#1d1d1d'}},
+    y:{ticks:{color:'#777',font:{size:9},callback:v=>new Intl.NumberFormat('es-AR',{notation:'compact',maximumFractionDigits:1}).format(v)},grid:{color:'#1d1d1d'}}
   }
 };
 
 function renderCharts(s,c,b,seller,cats,expenses,result){
   makeChart('summary-composition-chart',{
     type:'bar',
-    data:{labels:['Facturación','Costo','Utilidad'],datasets:[{label:'ARS',data:[s.total,s.cost,s.profit],backgroundColor:['#f5f5f3','#5c5c58','#b68c4a'],borderRadius:7,borderSkipped:false}]},
+    data:{labels:['Facturación','Costo','Utilidad'],datasets:[{label:'ARS',data:[s.total,s.cost,s.profit],backgroundColor:['#60A5FA','#FB7185','#34D399'],borderRadius:7,borderSkipped:false}]},
     options:{...commonChartOptions,plugins:{...commonChartOptions.plugins,legend:{display:false}}}
   });
 
   makeChart('summary-result-chart',{
     type:'doughnut',
-    data:{labels:['Resultado confirmado','Gastos confirmados'],datasets:[{data:[Math.max(result,0),Math.max(expenses,0)],backgroundColor:['#f5f5f3','#565652'],borderColor:'#111',borderWidth:4,hoverOffset:3}]},
+    data:{labels:['Resultado confirmado','Gastos confirmados'],datasets:[{data:[Math.max(result,0),Math.max(expenses,0)],backgroundColor:['#34D399','#FB7185'],borderColor:'#111',borderWidth:4,hoverOffset:3}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:commonChartOptions.plugins}
   });
 
   const sellerTop=seller.slice(0,6);
   makeChart('seller-chart',{
     type:'bar',
-    data:{labels:sellerTop.map(x=>x.name),datasets:[{label:'Venta',data:sellerTop.map(x=>x.sales),backgroundColor:'#f5f5f3',borderRadius:6,borderSkipped:false},{label:'Utilidad',data:sellerTop.map(x=>x.profit),backgroundColor:'#74746f',borderRadius:6,borderSkipped:false}]},
+    data:{labels:sellerTop.map(x=>x.name),datasets:[{label:'Venta',data:sellerTop.map(x=>x.sales),backgroundColor:'#60A5FA',borderRadius:6,borderSkipped:false},{label:'Utilidad',data:sellerTop.map(x=>x.profit),backgroundColor:'#34D399',borderRadius:6,borderSkipped:false}]},
     options:{...commonChartOptions,indexAxis:'y'}
   });
 
@@ -232,7 +234,7 @@ function renderCharts(s,c,b,seller,cats,expenses,result){
 
   makeChart('bank-chart',{
     type:'bar',
-    data:{labels:['Ingresos','Gastos confirmados','Por clasificar'],datasets:[{label:'ARS',data:[b.income,b.confirmedExpense,b.pendingExpense+b.pending],backgroundColor:['#f5f5f3','#74746f','#b68c4a'],borderRadius:7,borderSkipped:false}]},
+    data:{labels:['Ingresos','Gastos confirmados','Por clasificar'],datasets:[{label:'ARS',data:[b.income,b.confirmedExpense,b.pendingExpense+b.pending],backgroundColor:['#2DD4BF','#FB7185','#F59E0B'],borderRadius:7,borderSkipped:false}]},
     options:{...commonChartOptions,plugins:{...commonChartOptions.plugins,legend:{display:false}}}
   });
 }
@@ -242,60 +244,68 @@ function render(){
   const expenses=c.confirmedExpenses+b.confirmedExpense;
   const result=s.profit-expenses;
 
-  document.getElementById('kpi-result').textContent=adminData.sales.length?fmtCurrency(result):'$ --';
-  document.getElementById('kpi-sales').textContent=adminData.sales.length?fmtCurrency(s.total):'$ --';
-  document.getElementById('kpi-profit').textContent=adminData.sales.length?fmtCurrency(s.profit):'$ --';
-  document.getElementById('kpi-margin').textContent=adminData.sales.length?`Margen ${fmtNumber(s.margin)}%`:'Margen --';
-  document.getElementById('kpi-expenses').textContent=(adminData.cash.length||adminData.bank.length)?fmtCurrency(expenses):'$ --';
-  document.getElementById('flow-profit').textContent=adminData.sales.length?fmtCurrency(s.profit):'$ --';
-  document.getElementById('flow-cash-expenses').textContent=adminData.cash.length?fmtCurrency(c.confirmedExpenses):'$ --';
-  document.getElementById('flow-bank-expenses').textContent=adminData.bank.length?fmtCurrency(b.confirmedExpense):'$ --';
-  document.getElementById('flow-result').textContent=adminData.sales.length?fmtCurrency(result):'$ --';
-  document.getElementById('pending-expenses').textContent=adminData.bank.length?fmtCurrency(b.pendingExpense+b.pending):'$ --';
+  const setText=(id,value)=>{const el=document.getElementById(id); if(el) el.textContent=value;};
 
-  document.getElementById('sales-total').textContent=adminData.sales.length?fmtCurrency(s.total):'$ --';
-  document.getElementById('sales-cost').textContent=adminData.sales.length?fmtCurrency(s.cost):'$ --';
-  document.getElementById('sales-profit').textContent=adminData.sales.length?fmtCurrency(s.profit):'$ --';
-  document.getElementById('sales-units').textContent=adminData.sales.length?fmtNumber(s.units):'--';
+  setText('kpi-result',adminData.sales.length?fmtCurrency(result):'$ --');
+  setText('kpi-sales',adminData.sales.length?fmtCurrency(s.total):'$ --');
+  setText('kpi-profit',adminData.sales.length?fmtCurrency(s.profit):'$ --');
+  setText('kpi-margin',adminData.sales.length?`Margen ${fmtNumber(s.margin)}%`:'Margen --');
+  setText('kpi-expenses',(adminData.cash.length||adminData.bank.length)?fmtCurrency(expenses):'$ --');
+  setText('flow-profit',adminData.sales.length?fmtCurrency(s.profit):'$ --');
+  setText('flow-cash-expenses',adminData.cash.length?fmtCurrency(c.confirmedExpenses):'$ --');
+  setText('flow-bank-expenses',adminData.bank.length?fmtCurrency(b.confirmedExpense):'$ --');
+  setText('flow-result',adminData.sales.length?fmtCurrency(result):'$ --');
+  setText('pending-expenses',adminData.bank.length?fmtCurrency(b.pendingExpense+b.pending):'$ --');
+
+  setText('sales-total',adminData.sales.length?fmtCurrency(s.total):'$ --');
+  setText('sales-cost',adminData.sales.length?fmtCurrency(s.cost):'$ --');
+  setText('sales-profit',adminData.sales.length?fmtCurrency(s.profit):'$ --');
+  setText('sales-units',adminData.sales.length?fmtNumber(s.units):'--');
 
   const seller=aggregate(s.rows,'Vendedor');
-  document.getElementById('seller-table').innerHTML=seller.length?seller.map(x=>`<tr><td>${x.name}</td><td>${fmtCurrency(x.sales)}</td><td>${fmtCurrency(x.profit)}</td><td>${fmtNumber(x.margin)}%</td></tr>`).join(''):'<tr><td colspan="4" class="empty-cell">Sin datos</td></tr>';
+  const sellerTable=document.getElementById('seller-table');
+  if(sellerTable) sellerTable.innerHTML=seller.length?seller.map(x=>`<tr><td>${x.name}</td><td>${fmtCurrency(x.sales)}</td><td>${fmtCurrency(x.profit)}</td><td>${fmtNumber(x.margin)}%</td></tr>`).join(''):'<tr><td colspan="4" class="empty-cell">Sin datos</td></tr>';
   const cats=aggregate(s.rows,'Rubro').slice(0,8);
-  document.getElementById('category-table').innerHTML=cats.length?cats.map(x=>`<tr><td>${x.name}</td><td>${fmtCurrency(x.sales)}</td><td>${fmtCurrency(x.profit)}</td></tr>`).join(''):'<tr><td colspan="3" class="empty-cell">Sin datos</td></tr>';
+  const categoryTable=document.getElementById('category-table');
+  if(categoryTable) categoryTable.innerHTML=cats.length?cats.map(x=>`<tr><td>${x.name}</td><td>${fmtCurrency(x.sales)}</td><td>${fmtCurrency(x.profit)}</td></tr>`).join(''):'<tr><td colspan="3" class="empty-cell">Sin datos</td></tr>';
 
-  document.getElementById('cash-total').textContent=adminData.cash.length?fmtCurrency(c.total):'$ --';
-  document.getElementById('cash-cash').textContent=adminData.cash.length?fmtCurrency(c.cash):'$ --';
-  document.getElementById('cash-transfer').textContent=adminData.cash.length?fmtCurrency(c.transfer):'$ --';
-  document.getElementById('cash-cards').textContent=adminData.cash.length?fmtCurrency(c.cards):'$ --';
+  setText('cash-total',adminData.cash.length?fmtCurrency(c.total):'$ --');
+  setText('cash-cash',adminData.cash.length?fmtCurrency(c.cash):'$ --');
+  setText('cash-transfer',adminData.cash.length?fmtCurrency(c.transfer):'$ --');
+  setText('cash-cards',adminData.cash.length?fmtCurrency(c.cards):'$ --');
   const maxPayment=Math.max(1,...Object.values(c.payments));
-  document.getElementById('payment-list').innerHTML=Object.keys(c.payments).length?Object.entries(c.payments).sort((a,b)=>b[1]-a[1]).map(([name,value])=>`<div class="payment-row"><div class="payment-name">${name}</div><div class="payment-bar"><span style="width:${Math.max(2,value/maxPayment*100)}%"></span></div><div class="payment-value">${fmtCurrency(value)}</div></div>`).join(''):'<div class="empty-cell">Sin datos</div>';
+  const paymentList=document.getElementById('payment-list');
+  if(paymentList) paymentList.innerHTML=Object.keys(c.payments).length?Object.entries(c.payments).sort((a,b)=>b[1]-a[1]).map(([name,value])=>`<div class="payment-row"><div class="payment-name">${name}</div><div class="payment-bar"><span style="width:${Math.max(2,value/maxPayment*100)}%"></span></div><div class="payment-value">${fmtCurrency(value)}</div></div>`).join(''):'<div class="empty-cell">Sin datos</div>';
 
-  document.getElementById('bank-income').textContent=adminData.bank.length?fmtCurrency(b.income):'$ --';
-  document.getElementById('bank-expense').textContent=adminData.bank.length?fmtCurrency(b.confirmedExpense):'$ --';
-  document.getElementById('bank-pending').textContent=adminData.bank.length?fmtCurrency(b.pendingExpense+b.pending):'$ --';
-  document.getElementById('bank-net').textContent=adminData.bank.length?fmtCurrency(b.net):'$ --';
+  setText('bank-income',adminData.bank.length?fmtCurrency(b.income):'$ --');
+  setText('bank-expense',adminData.bank.length?fmtCurrency(b.confirmedExpense):'$ --');
+  setText('bank-pending',adminData.bank.length?fmtCurrency(b.pendingExpense+b.pending):'$ --');
+  setText('bank-net',adminData.bank.length?fmtCurrency(b.net):'$ --');
   const ruleLabel={
     'confirmed-expense':'Gasto confirmado · resta',
     'informative-income':'Ingreso informativo · no suma',
     'pending-expense':'Egreso pendiente · no resta todavía',
     pending:'Requiere clasificación'
   };
-  document.getElementById('bank-rules').innerHTML=Object.keys(b.concepts).length?Object.entries(b.concepts).map(([name,v])=>`<div class="bank-rule-row"><div class="rule-name">${name}</div><div class="rule-type">${ruleLabel[v.type]||ruleLabel.pending}</div><div class="rule-value">${v.debe?'+ '+fmtCurrency(v.debe):'− '+fmtCurrency(v.haber)}</div></div>`).join(''):'<div class="empty-cell">Sin datos</div>';
+  const bankRules=document.getElementById('bank-rules');
+  if(bankRules) bankRules.innerHTML=Object.keys(b.concepts).length?Object.entries(b.concepts).map(([name,v])=>`<div class="bank-rule-row"><div class="rule-name">${name}</div><div class="rule-type">${ruleLabel[v.type]||ruleLabel.pending}</div><div class="rule-value">${v.debe?'+ '+fmtCurrency(v.debe):'− '+fmtCurrency(v.haber)}</div></div>`).join(''):'<div class="empty-cell">Sin datos</div>';
 
   renderCharts(s,c,b,seller,cats,expenses,result);
 
   const ps=periodOf(s.rows,'Fecha Cpte'), pc=periodOf(c.rows,'Fecha'), pb=periodOf(b.rows,'Fecha');
-  document.getElementById('sales-period').textContent=periodLabel(ps);
-  document.getElementById('cash-period').textContent=periodLabel(pc);
-  document.getElementById('bank-period').textContent=periodLabel(pb);
-  document.getElementById('summary-period').textContent=ps?periodLabel(ps):'Cargá los archivos para comenzar';
+  setText('sales-period',periodLabel(ps));
+  setText('cash-period',periodLabel(pc));
+  setText('bank-period',periodLabel(pb));
+  setText('summary-period',ps?periodLabel(ps):'Cargá los archivos para comenzar');
   const periods=[ps,pc,pb].filter(Boolean);
   const keys=[...new Set(periods.map(monthKey))];
   const warn=document.getElementById('period-warning');
-  if(keys.length>1){warn.hidden=false;warn.textContent='Atención: los archivos cargados pertenecen a períodos distintos. Black OS los muestra, pero no los cruza como si fueran el mismo mes.';}else{warn.hidden=true;warn.textContent='';}
+  if(warn){
+    if(keys.length>1){warn.hidden=false;warn.textContent='Atención: los archivos cargados pertenecen a períodos distintos. Black OS los muestra, pero no los cruza como si fueran el mismo mes.';}else{warn.hidden=true;warn.textContent='';}
+  }
 
   const loaded=[adminData.sales.length,adminData.cash.length,adminData.bank.length].filter(Boolean).length;
-  document.getElementById('data-status').textContent=loaded===3?'3/3 archivos cargados':loaded?`${loaded}/3 archivos cargados`:'Sin datos cargados';
+  setText('data-status',loaded===3?'3/3 archivos cargados':loaded?`${loaded}/3 archivos cargados`:'Sin datos cargados');
 }
 
 async function attachFile(kind,file){
