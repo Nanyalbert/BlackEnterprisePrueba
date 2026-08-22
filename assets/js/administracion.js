@@ -10,7 +10,6 @@ const num = value => {
   if (value == null || value === '') return 0;
   const raw = String(value).trim().replace(/\$/g,'').replace(/\s/g,'');
   if (!raw) return 0;
-  // SheetJS ya entrega números correctamente en la mayoría de los casos.
   const parsed = Number(raw.replace(/\.(?=\d{3}(?:\D|$))/g,'').replace(',','.'));
   return Number.isFinite(parsed) ? parsed : 0;
 };
@@ -75,12 +74,16 @@ function showError(message){
 function sum(rows, field){ return rows.reduce((acc,row)=>acc+num(row[field]),0); }
 
 function isTotalRow(row){
-  // Los exportes modelo incluyen una fila final de totales; evitamos computarla dos veces.
   const values=Object.values(row).map(safe).filter(Boolean);
   return values.some(v=>/^total(es)?$/i.test(v));
 }
 
-function cleanRows(rows){ return rows.filter(r=>!isTotalRow(r)); }
+function cleanRows(rows){
+  return rows.filter(r=>{
+    const hasDate = safe(r['Fecha Cpte']) || safe(r['Fecha']);
+    return !isTotalRow(r) && Boolean(hasDate);
+  });
+}
 
 function getSalesMetrics(){
   const rows=cleanRows(adminData.sales);
