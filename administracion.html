@@ -9,7 +9,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/base.css">
 <link rel="stylesheet" href="assets/css/administracion.css">
-<link rel="stylesheet" href="assets/css/administracion-proveedores.css">
 </head>
 <body class="admin-page">
 <header class="admin-topbar"><span id="data-status" hidden>Sin datos cargados</span></header>
@@ -18,13 +17,13 @@
     <div>
       <p class="eyebrow">ADMINISTRACIÓN</p>
       <h1>Panel de gestión y resultados.</h1>
-      <p class="hero-copy">Una vista ejecutiva para analizar ventas, rentabilidad, cobranzas, movimientos financieros y consumo por proveedor del período.</p>
+      <p class="hero-copy">Una vista ejecutiva para analizar ventas, rentabilidad, cobranzas y movimientos financieros del período.</p>
     </div>
-    <div class="hero-rule"><span>LECTURA EJECUTIVA</span><strong>Ventas, utilidad, cobranzas, bancos y proveedores reunidos en un mismo tablero para detectar rápido qué está pasando en el negocio.</strong></div>
+    <div class="hero-rule"><span>LECTURA EJECUTIVA</span><strong>Ventas, utilidad, cobranzas y bancos reunidos en un mismo tablero. Proveedores funciona como una subfunción independiente usando los mismos datos de Ventas.</strong></div>
   </section>
 
   <section class="upload-grid" aria-label="Carga de archivos">
-    <label class="upload-card" id="upload-sales-card"><input type="file" id="sales-file" accept=".xlsx,.xls" hidden><div class="upload-index">01</div><div><h2>Ventas</h2><p>Facturación, utilidad, costo, cantidad, vendedor, rubro y proveedores cuando estén incluidos.</p><span class="upload-state" id="sales-state">Seleccionar Excel</span></div></label>
+    <label class="upload-card" id="upload-sales-card"><input type="file" id="sales-file" accept=".xlsx,.xls" hidden><div class="upload-index">01</div><div><h2>Ventas</h2><p>Facturación, utilidad, costo, cantidad, vendedor, rubro y proveedor cuando esté incluido.</p><span class="upload-state" id="sales-state">Seleccionar Excel</span></div></label>
     <label class="upload-card" id="upload-cash-card"><input type="file" id="cash-file" accept=".xlsx,.xls" hidden><div class="upload-index">02</div><div><h2>Caja</h2><p>Cobranzas, medios de pago y egresos reales de caja.</p><span class="upload-state" id="cash-state">Seleccionar Excel</span></div></label>
     <label class="upload-card" id="upload-bank-card"><input type="file" id="bank-file" accept=".xlsx,.xls" hidden><div class="upload-index">03</div><div><h2>Banco</h2><p>Ingresos informativos, gastos bancarios y egresos por clasificar.</p><span class="upload-state" id="bank-state">Seleccionar Excel</span></div></label>
   </section>
@@ -32,12 +31,19 @@
   <div class="period-warning" id="period-warning" hidden></div>
   <div class="error-box" id="error-box" hidden></div>
 
+  <section class="admin-subfunctions" aria-label="Subfunciones de Administración">
+    <a href="proveedores.html" class="admin-subfunction-card">
+      <div class="admin-subfunction-icon">P</div>
+      <div class="admin-subfunction-copy"><span>SUBFUNCIÓN</span><h2>Proveedores</h2><p>Consumo por proveedor, marcas, artículos, pagos registrados y reposición. Usa automáticamente el Excel de Ventas del período.</p></div>
+      <div class="admin-subfunction-arrow">Ingresar →</div>
+    </a>
+  </section>
+
   <nav class="admin-tabs" aria-label="Secciones de Administración">
     <button class="admin-tab active" data-tab="resumen">Resumen</button>
     <button class="admin-tab" data-tab="ventas">Ventas</button>
     <button class="admin-tab" data-tab="cobranzas">Cobranzas</button>
     <button class="admin-tab" data-tab="bancos">Bancos</button>
-    <button class="admin-tab" data-tab="proveedores">Proveedores</button>
   </nav>
 
   <section class="tab-panel active" id="tab-resumen">
@@ -81,30 +87,6 @@
     <div class="kpi-grid"><article class="kpi-card"><span>Ingresos bancarios</span><strong id="bank-income">$ --</strong><small>Informativo: no se suma a ventas</small></article><article class="kpi-card"><span>Gastos confirmados</span><strong id="bank-expense">$ --</strong></article><article class="kpi-card"><span>Egresos por clasificar</span><strong id="bank-pending">$ --</strong></article><article class="kpi-card"><span>Movimiento neto</span><strong id="bank-net">$ --</strong></article></div>
     <div class="chart-grid chart-grid-summary"><article class="panel-card chart-card"><div class="panel-title"><h3>Banco</h3><span>Ingresos y egresos</span></div><div class="chart-wrap"><canvas id="bank-chart"></canvas></div></article><article class="panel-card"><div class="panel-title"><h3>Clasificación bancaria</h3><span>Automática y conservadora</span></div><div class="bank-rules" id="bank-rules"><div class="empty-cell">Sin datos</div></div></article></div>
   </section>
-
-  <section class="tab-panel" id="tab-proveedores">
-    <div id="suppliers-root">
-      <div class="section-head"><div><p class="eyebrow">PROVEEDORES</p><h2>Consumo y reposición</h2></div><span class="period-label" id="suppliers-period">Sin datos</span></div>
-
-      <div class="supplier-overview">
-        <article class="kpi-card primary"><span>Consumo del período</span><strong id="supplier-total-cost">$ --</strong><small>Costo de mercadería vendida con proveedor identificado.</small></article>
-        <article class="kpi-card"><span>Unidades consumidas</span><strong id="supplier-total-units">--</strong><small>Unidades asociadas a proveedores.</small></article>
-        <article class="kpi-card"><span>Proveedores activos</span><strong id="supplier-count">--</strong><small>Con movimiento en el período seleccionado.</small></article>
-        <article class="kpi-card"><span>Referencia pendiente</span><strong id="supplier-pending-ref">$ --</strong><small>Consumo menos pagos registrados manualmente.</small></article>
-      </div>
-
-      <div class="supplier-callout">
-        <article class="panel-card"><div class="panel-title"><h3>Lectura operativa</h3><span>Para decidir</span></div><p>El consumo muestra cuánto costo de mercadería salió de cada proveedor. Sirve como referencia para decidir pagos, reposición y negociación comercial. No se interpreta automáticamente como deuda contable.</p></article>
-        <article class="panel-card"><div class="panel-title"><h3>Pagos registrados</h3><span>Referencia interna</span></div><div class="supplier-callout-value" id="supplier-paid-total">$ --</div><div class="supplier-help">Los pagos se registran manualmente por proveedor y período. No modifican Caja ni Banco.</div></article>
-      </div>
-
-      <article class="panel-card chart-card supplier-chart-card"><div class="panel-title"><h3>Consumo por proveedor</h3><span>Top 8 · costo asociado</span></div><div class="chart-wrap chart-wrap-wide"><canvas id="supplier-consumption-chart"></canvas></div></article>
-
-      <article class="panel-card supplier-ranking-wrap"><div class="panel-title"><h3>Ranking de consumo</h3><span>Mayor consumo primero · proveedor principal <strong id="supplier-top-share">--</strong></span></div><div class="table-scroll"><table><thead><tr><th>Proveedor</th><th>Consumo</th><th>Unidades</th><th>Venta</th><th>Utilidad</th><th>Participación</th></tr></thead><tbody id="supplier-ranking"><tr><td colspan="6" class="empty-cell">Sin datos</td></tr></tbody></table></div></article>
-
-      <div id="supplier-list"><div class="supplier-empty">Cargá el Excel de Ventas para analizar el consumo por proveedor.</div></div>
-    </div>
-  </section>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -112,7 +94,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="assets/js/supabase-config.js"></script>
 <script src="assets/js/administracion.js"></script>
-<script src="assets/js/administracion-proveedores.js"></script>
 <script src="assets/js/administracion-periodos.js"></script>
 </body>
 </html>
