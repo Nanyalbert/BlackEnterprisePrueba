@@ -180,6 +180,76 @@ appCards.forEach(card => card.addEventListener('click', event => {
   if (card.dataset.view) showView(card.dataset.view);
 }));
 
+// Submenú de Administración
+function initAdministrationSubmenu(){
+  const adminNav = document.getElementById('administracion-nav');
+  const adminFrame = document.getElementById('administracion-frame');
+  if(!adminNav || !adminFrame || document.getElementById('administracion-submenu')) return;
+
+  const style = document.createElement('style');
+  style.textContent = `
+    .admin-nav-wrap{display:block}
+    .admin-nav-parent{position:relative;padding-right:38px!important}
+    .admin-nav-chevron{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:16px;height:16px;display:grid;place-items:center;color:#73736f;transition:transform .18s ease;font-size:14px;pointer-events:none}
+    .admin-nav-wrap.open .admin-nav-chevron{transform:translateY(-50%) rotate(90deg)}
+    .admin-submenu{display:grid;grid-template-rows:0fr;transition:grid-template-rows .2s ease,opacity .18s ease;opacity:0}
+    .admin-nav-wrap.open .admin-submenu{grid-template-rows:1fr;opacity:1}
+    .admin-submenu-inner{overflow:hidden;padding-left:35px}
+    .admin-subitem{display:flex;align-items:center;gap:9px;min-height:38px;padding:7px 12px;margin:3px 8px 3px 0;border-radius:10px;color:#777;text-decoration:none;font-size:12px;font-weight:500;transition:.15s}
+    .admin-subitem:hover{background:#151515;color:#d7d7d2}
+    .admin-subitem.active{background:#1a1a1a;color:#f5f5f3}
+    .admin-subitem-dot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.75;flex:0 0 auto}
+    body.sidebar-collapsed .admin-submenu{display:none!important}
+    body.sidebar-collapsed .admin-nav-chevron{display:none}
+    @media(max-width:900px){.admin-submenu-inner{padding-left:35px}}
+  `;
+  document.head.appendChild(style);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'admin-nav-wrap';
+  adminNav.parentNode.insertBefore(wrap, adminNav);
+  wrap.appendChild(adminNav);
+  adminNav.classList.add('admin-nav-parent');
+  adminNav.insertAdjacentHTML('beforeend','<span class="admin-nav-chevron">›</span>');
+
+  const submenu = document.createElement('div');
+  submenu.id = 'administracion-submenu';
+  submenu.className = 'admin-submenu';
+  submenu.innerHTML = `<div class="admin-submenu-inner"><a href="#" class="admin-subitem" id="proveedores-nav"><span class="admin-subitem-dot"></span><span>Proveedores</span></a></div>`;
+  wrap.appendChild(submenu);
+
+  const proveedoresNav = document.getElementById('proveedores-nav');
+
+  const setAdminSource = (source, title) => {
+    if(!adminFrame.src.endsWith(source)) adminFrame.src = source;
+    showView('administracion');
+    wrap.classList.add('open');
+    proveedoresNav?.classList.toggle('active', source === 'proveedores.html');
+    if(topbarTitle) topbarTitle.textContent = title;
+  };
+
+  adminNav.addEventListener('click', () => {
+    const wasOpen = wrap.classList.contains('open');
+    setAdminSource('administracion.html','Administración');
+    wrap.classList.toggle('open', !wasOpen);
+  });
+
+  proveedoresNav?.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    setAdminSource('proveedores.html','Administración / Proveedores');
+  });
+
+  const adminCard = document.getElementById('administracion-card');
+  adminCard?.addEventListener('click', () => {
+    adminFrame.src = 'administracion.html';
+    proveedoresNav?.classList.remove('active');
+    wrap.classList.add('open');
+  });
+}
+
+initAdministrationSubmenu();
+
 const APP_LABELS = {'crm-black':'CRM Black', administracion:'Administración', 'crm-oftalmologos':'CRM Oftalmólogos'};
 let usersData = [
   {id:1,nombre:'Leandro',email:'leandro@blackoptica.ar',apps:['crm-black','administracion','crm-oftalmologos'],superAdmin:true,activo:true},
