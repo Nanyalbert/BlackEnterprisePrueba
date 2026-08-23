@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proveedores | Administración | Black Óptica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/administracion.css">
+<link rel="stylesheet" href="assets/css/administracion-proveedores.css">
+</head>
+<body class="admin-page">
+<main class="admin-shell">
+  <div class="supplier-breadcrumb">
+    <a href="administracion.html" class="supplier-back">← Administración</a>
+    <span>Proveedores</span>
+  </div>
+
+  <section class="admin-hero supplier-hero">
+    <div>
+      <p class="eyebrow">ADMINISTRACIÓN / PROVEEDORES</p>
+      <h1>Consumo, pagos y reposición.</h1>
+      <p class="hero-copy">Esta vista usa automáticamente el mismo Excel de Ventas guardado en Administración. No requiere una segunda carga.</p>
+    </div>
+    <div class="hero-rule"><span>CRITERIO</span><strong>Consumo es el costo de mercadería vendida con proveedor identificado. Es una referencia operativa para decidir pagos o reposición, no una deuda contable automática.</strong></div>
+  </section>
+
+  <section class="supplier-period-manager">
+    <div>
+      <span>Período</span>
+      <select id="supplier-period-select"><option value="">Sin períodos guardados</option></select>
+    </div>
+    <p id="supplier-source-state">Lee los datos de Ventas guardados en Administración.</p>
+  </section>
+
+  <div id="supplier-error" class="error-box" hidden></div>
+
+  <section id="suppliers-root">
+    <div class="section-head"><div><p class="eyebrow">PROVEEDORES</p><h2>Resumen del período</h2></div><span class="period-label" id="suppliers-period">Sin datos</span></div>
+
+    <div class="supplier-overview">
+      <article class="kpi-card primary"><span>Consumo del período</span><strong id="supplier-total-cost">$ --</strong><small>Costo de mercadería vendida con proveedor identificado.</small></article>
+      <article class="kpi-card"><span>Unidades consumidas</span><strong id="supplier-total-units">--</strong><small>Unidades asociadas a proveedores.</small></article>
+      <article class="kpi-card"><span>Proveedores activos</span><strong id="supplier-count">--</strong><small>Con movimiento en el período seleccionado.</small></article>
+      <article class="kpi-card"><span>Referencia pendiente</span><strong id="supplier-pending-ref">$ --</strong><small>Consumo menos pagos registrados manualmente.</small></article>
+    </div>
+
+    <div class="supplier-callout">
+      <article class="panel-card"><div class="panel-title"><h3>Lectura operativa</h3><span>Para decidir</span></div><p>El consumo muestra cuánto costo de mercadería salió de cada proveedor. Sirve como referencia para decidir pagos, reposición y negociación comercial. No se interpreta automáticamente como deuda contable.</p></article>
+      <article class="panel-card"><div class="panel-title"><h3>Pagos registrados</h3><span>Referencia interna</span></div><div class="supplier-callout-value" id="supplier-paid-total">$ --</div><div class="supplier-help">Los pagos se registran manualmente por proveedor y período. No modifican Caja ni Banco.</div></article>
+    </div>
+
+    <article class="panel-card chart-card supplier-chart-card"><div class="panel-title"><h3>Consumo por proveedor</h3><span>Top 8 · costo asociado</span></div><div class="chart-wrap chart-wrap-wide"><canvas id="supplier-consumption-chart"></canvas></div></article>
+
+    <article class="panel-card supplier-ranking-wrap"><div class="panel-title"><h3>Ranking de consumo</h3><span>Mayor consumo primero · proveedor principal <strong id="supplier-top-share">--</strong></span></div><div class="table-scroll"><table><thead><tr><th>Proveedor</th><th>Consumo</th><th>Unidades</th><th>Venta</th><th>Utilidad</th><th>Participación</th></tr></thead><tbody id="supplier-ranking"><tr><td colspan="6" class="empty-cell">Sin datos</td></tr></tbody></table></div></article>
+
+    <div id="supplier-list"><div class="supplier-empty">Todavía no hay datos de Ventas disponibles para este período.</div></div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="assets/js/supabase-config.js"></script>
+<script src="assets/js/proveedores.js"></script>
+</body>
+</html>
