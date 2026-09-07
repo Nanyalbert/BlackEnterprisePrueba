@@ -44,14 +44,52 @@
 </header>
 <main class="content">
   <div class="view active" id="view-inicio">
-    <div class="content-header"><h1 id="greeting">Bienvenido</h1><p>Este es el resumen de hoy</p></div>
-    <div class="metrics-grid"><div class="metric-card"><div class="metric-value">$ --</div><div class="metric-label">Ventas de hoy</div></div><div class="metric-card"><div class="metric-value">--</div><div class="metric-label">Leads nuevos</div></div><div class="metric-card"><div class="metric-value">--</div><div class="metric-label">Turnos de hoy</div></div><div class="metric-card"><div class="metric-value">--</div><div class="metric-label">Consultas oftalmólogos</div></div></div>
-    <div class="section-heading"><h2>Herramientas</h2></div>
-    <div class="apps-grid">
-      <a href="#" class="app-card" data-view="crm-clientes" id="crm-clientes-card"><div class="app-card-body"><h3>CRM Black</h3><p>Gestión de leads, seguimiento de clientes y automatización por WhatsApp.</p></div><div class="app-card-arrow">Ingresar</div></a>
-      <a href="#" class="app-card" data-view="administracion" id="administracion-card"><div class="app-card-body"><h3>Administración</h3><p>Ventas, utilidad, cobranzas, bancos y resultado del período.</p></div><div class="app-card-arrow">Ingresar</div></a>
-      <a href="#" class="app-card" data-view="crm-oftalmologos" id="crm-oftalmologos-card"><div class="app-card-body"><h3>CRM Oftalmólogos</h3><p>Estadísticas y seguimiento de derivaciones para profesionales asociados.</p></div><div class="app-card-arrow">Ingresar</div></a>
+    <div class="dashboard-head">
+      <div class="content-header dashboard-heading">
+        <span class="dashboard-eyebrow">Black OS</span>
+        <h1 id="greeting">Bienvenido</h1>
+        <p>Resumen operativo y accesos principales.</p>
+      </div>
+      <div class="dashboard-status"><span class="dashboard-status-dot"></span><span>Sistema operativo</span></div>
     </div>
+
+    <section class="dashboard-section" aria-labelledby="dashboard-resumen-title">
+      <div class="dashboard-section-head"><div><span class="dashboard-section-kicker">Hoy</span><h2 id="dashboard-resumen-title">Resumen</h2></div><span class="dashboard-muted">Los indicadores se conectarán a las fuentes reales en una etapa posterior.</span></div>
+      <div class="dashboard-kpi-grid">
+        <article class="dashboard-kpi"><div class="dashboard-kpi-top"><span>Ventas</span><span class="dashboard-kpi-tag">Hoy</span></div><strong>$ --</strong><small>Facturación del día</small></article>
+        <article class="dashboard-kpi"><div class="dashboard-kpi-top"><span>Leads</span><span class="dashboard-kpi-tag">CRM</span></div><strong>--</strong><small>Nuevos contactos</small></article>
+        <article class="dashboard-kpi"><div class="dashboard-kpi-top"><span>Turnos</span><span class="dashboard-kpi-tag">Agenda</span></div><strong>--</strong><small>Programados para hoy</small></article>
+        <article class="dashboard-kpi"><div class="dashboard-kpi-top"><span>Derivaciones</span><span class="dashboard-kpi-tag">Médicos</span></div><strong>--</strong><small>Actividad registrada</small></article>
+      </div>
+    </section>
+
+    <div class="dashboard-main-grid">
+      <section class="dashboard-panel" aria-labelledby="dashboard-pendientes-title">
+        <div class="dashboard-panel-head"><div><span class="dashboard-section-kicker">Control</span><h2 id="dashboard-pendientes-title">Pendientes</h2></div><span class="dashboard-count">0 activos</span></div>
+        <div class="dashboard-empty">
+          <div class="dashboard-empty-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+          <div><strong>Sin pendientes conectados</strong><p>Más adelante este espacio concentrará seguimientos, conciliaciones y alertas operativas.</p></div>
+        </div>
+      </section>
+
+      <section class="dashboard-panel" aria-labelledby="dashboard-estado-title">
+        <div class="dashboard-panel-head"><div><span class="dashboard-section-kicker">Sistema</span><h2 id="dashboard-estado-title">Estado de módulos</h2></div></div>
+        <div class="dashboard-module-list">
+          <div class="dashboard-module-row"><span class="dashboard-module-dot ready"></span><div><strong>CRM Black</strong><small>Disponible</small></div></div>
+          <div class="dashboard-module-row"><span class="dashboard-module-dot ready"></span><div><strong>Administración</strong><small>Disponible</small></div></div>
+          <div class="dashboard-module-row"><span class="dashboard-module-dot ready"></span><div><strong>CRM Oftalmólogos</strong><small>Disponible</small></div></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="dashboard-section dashboard-tools" aria-labelledby="dashboard-tools-title">
+      <div class="dashboard-section-head"><div><span class="dashboard-section-kicker">Navegación</span><h2 id="dashboard-tools-title">Accesos rápidos</h2></div></div>
+      <div class="apps-grid dashboard-apps">
+        <a href="#" class="app-card" data-view="crm-clientes" id="crm-clientes-card"><div class="app-card-body"><span class="dashboard-app-label">Comercial</span><h3>CRM Black</h3><p>Clientes, leads, seguimiento y automatizaciones.</p></div><div class="app-card-arrow">Abrir →</div></a>
+        <a href="#" class="app-card" data-view="administracion" id="administracion-card"><div class="app-card-body"><span class="dashboard-app-label">Gestión</span><h3>Administración</h3><p>Ventas, utilidad, caja, bancos y proveedores.</p></div><div class="app-card-arrow">Abrir →</div></a>
+        <a href="#" class="app-card" data-view="crm-oftalmologos" id="crm-oftalmologos-card"><div class="app-card-body"><span class="dashboard-app-label">Comercial</span><h3>CRM Oftalmólogos</h3><p>Profesionales, derivaciones, recetas y seguimiento.</p></div><div class="app-card-arrow">Abrir →</div></a>
+      </div>
+    </section>
   </div>
   <div class="view" id="view-usuarios"><div class="content-header"><h1>Usuarios</h1><p>Definí qué puede ver y qué puede hacer cada persona dentro de Black OS.</p></div><div class="section-heading"><h2 id="users-count">3 usuarios</h2><button class="btn btn-primary" id="btn-new-user">Nuevo usuario</button></div><div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Accesos</th><th>Estado</th><th></th></tr></thead><tbody id="users-tbody"></tbody></table></div></div>
   <section class="view" id="view-crm-clientes"><div class="module-frame-wrap"><iframe id="crm-clientes-frame" class="module-frame" src="crm-clientes.html" title="CRM Black" loading="eager"></iframe></div></section>
