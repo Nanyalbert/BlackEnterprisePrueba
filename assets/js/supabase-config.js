@@ -16,15 +16,23 @@
   };
 
   const path = window.location.pathname;
+
   const loadCss = (id, href) => {
     if (document.getElementById(id)) return;
     const link = document.createElement('link');
-    link.id = id; link.rel = 'stylesheet'; link.href = href; document.head.appendChild(link);
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = href;
+    document.head.appendChild(link);
   };
+
   const loadJs = (id, src, onload) => {
     if (document.getElementById(id)) return;
     const script = document.createElement('script');
-    script.id = id; script.src = src; if (onload) script.onload = onload; document.body.appendChild(script);
+    script.id = id;
+    script.src = src;
+    if (onload) script.onload = onload;
+    (document.body || document.head || document.documentElement).appendChild(script);
   };
 
   const isOphthalmologyModule = /(?:^|\/)crm-oftalmologos\.html$/i.test(path);
@@ -40,9 +48,10 @@
 
   const isClientsModule = /(?:^|\/)crm-clientes\.html$/i.test(path);
   if (isClientsModule) {
-    loadCss('blackos-crm-clientes-polish-css', 'assets/css/crm-clientes-polish.css?v=20260907a');
-    window.addEventListener('load', () => {
-      loadJs('blackos-crm-clientes-polish-js', 'assets/js/crm-clientes-polish.js?v=20260907a');
-    }, { once:true });
+    // CSS se inyecta inmediatamente para evitar flash de estilos antiguos.
+    loadCss('blackos-crm-clientes-polish-css', 'assets/css/crm-clientes-polish.css?v=20260907b');
+
+    // El script puede cargarse en <head>; internamente espera DOMContentLoaded si hace falta.
+    loadJs('blackos-crm-clientes-polish-js', 'assets/js/crm-clientes-polish.js?v=20260907b');
   }
 })();
