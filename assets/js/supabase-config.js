@@ -23,8 +23,8 @@
   const isOphthalmologyModule = /(?:^|\/)crm-oftalmologos\.html$/i.test(window.location.pathname);
   if (isOphthalmologyModule) {
     [
-      ["blackos-oft-branches-css", "assets/css/crm-oftalmologos-sucursales.css"],
-      ["blackos-oft-polish-css", "assets/css/crm-oftalmologos-polish.css"]
+      ["blackos-oft-branches-css", "assets/css/crm-oftalmologos-sucursales.css?v=20260907c"],
+      ["blackos-oft-polish-css", "assets/css/crm-oftalmologos-polish.css?v=20260907c"]
     ].forEach(([id, href]) => {
       if (document.getElementById(id)) return;
       const link = document.createElement("link");
@@ -39,22 +39,13 @@
 
       const branchesScript = document.createElement("script");
       branchesScript.id = "blackos-oft-branches-js";
-      branchesScript.src = "assets/js/crm-oftalmologos-sucursales.js";
+      branchesScript.src = "assets/js/crm-oftalmologos-sucursales.js?v=20260907c";
 
       branchesScript.onload = () => {
         if (document.getElementById("blackos-oft-supabase-sync-js")) return;
         const syncScript = document.createElement("script");
         syncScript.id = "blackos-oft-supabase-sync-js";
-        syncScript.src = "assets/js/crm-oftalmologos-supabase-sync.js";
-
-        syncScript.onload = () => {
-          if (document.getElementById("blackos-oft-polish-js")) return;
-          const polishScript = document.createElement("script");
-          polishScript.id = "blackos-oft-polish-js";
-          polishScript.src = "assets/js/crm-oftalmologos-polish.js";
-          document.body.appendChild(polishScript);
-        };
-
+        syncScript.src = "assets/js/crm-oftalmologos-supabase-sync.js?v=20260907c";
         document.body.appendChild(syncScript);
       };
 
