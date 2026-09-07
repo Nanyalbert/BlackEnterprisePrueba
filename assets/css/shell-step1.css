@@ -136,6 +136,24 @@ body.sidebar-collapsed .sidebar-footer{
   letter-spacing:.01em;
 }
 
+.portal-empty-notifications{
+  display:grid;
+  gap:5px;
+  padding:22px 18px;
+}
+
+.portal-empty-notifications strong{
+  color:#bdbdb7;
+  font-size:12px;
+  font-weight:600;
+}
+
+.portal-empty-notifications span{
+  color:#595954;
+  font-size:10px;
+  line-height:1.5;
+}
+
 /* =========================================================
    DASHBOARD — PASO 1.3
 ========================================================= */
