@@ -1,29 +1,40 @@
-/* Black OS — CRM Oftalmólogos — UX/UI polish Black Óptica */
+/* Black OS — CRM Oftalmólogos — UX/UI Black Óptica */
 #page-comisiones{font-family:var(--font-body);color:var(--black)}
 #page-comisiones button,#page-comisiones input,#page-comisiones select{font-family:var(--font-body)}
-#page-comisiones .comisiones-header h2,#page-comisiones .commission-name,#page-comisiones .commission-total-box strong,#page-comisiones .branch-summary-commission strong{font-family:var(--font-display);letter-spacing:-.015em}
+
+/* Títulos: identidad Black. Datos y dinero: sans-serif para lectura administrativa. */
+#page-comisiones .comisiones-header h2,#page-comisiones .commission-name{font-family:var(--font-display);letter-spacing:-.015em}
 #page-comisiones .comisiones-header h2{font-weight:500;line-height:1.05}
 #page-comisiones .comisiones-header-sub{max-width:720px;line-height:1.5;color:var(--roble)}
-#page-comisiones .stat-card-value,#page-comisiones .commission-total-box strong,#page-comisiones .branch-summary-amount,#page-comisiones .branch-summary-commission strong,#page-comisiones .detalle-monto,#page-comisiones .import-history-total{font-variant-numeric:tabular-nums lining-nums}
-#page-comisiones .stat-card-value{letter-spacing:-.025em}
-#page-comisiones .commission-card{border-color:rgba(88,70,52,.13);box-shadow:0 10px 28px rgba(33,25,19,.045);transition:box-shadow .2s ease,border-color .2s ease,transform .2s ease}
+#page-comisiones .stat-card-value,#page-comisiones .commission-total-box strong,#page-comisiones .branch-summary-amount,#page-comisiones .branch-summary-commission strong,#page-comisiones .detalle-monto,#page-comisiones .import-history-total,#page-comisiones .commission-pct-input{font-family:var(--font-body);font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1}
+#page-comisiones .stat-card-value{font-weight:700;letter-spacing:-.025em}
+
+/* Tarjeta principal */
+#page-comisiones .commission-card{border-color:rgba(88,70,52,.14);box-shadow:0 10px 28px rgba(33,25,19,.045);transition:box-shadow .2s ease,border-color .2s ease,transform .2s ease}
 @media(hover:hover){#page-comisiones .commission-card:hover{border-color:rgba(168,135,78,.25);box-shadow:0 15px 36px rgba(33,25,19,.075);transform:translateY(-1px)}}
-#page-comisiones .branch-summary{box-shadow:inset 0 1px rgba(255,255,255,.75)}
+#page-comisiones .commission-card-sub{color:var(--roble)}
+#page-comisiones .commission-total-box strong{font-size:1.22rem;font-weight:750;letter-spacing:-.035em;color:var(--black)}
+#page-comisiones .payment-state{letter-spacing:.01em;font-weight:700}
+
+/* Resumen por sucursal: más liviano y coherente con Black Óptica */
+#page-comisiones .branch-summary{background:rgba(255,255,255,.035);border:1px solid rgba(201,169,110,.18);box-shadow:none;border-radius:13px;padding:14px}
+#page-comisiones .branch-summary.is-paid{background:rgba(61,169,111,.045);border-color:rgba(61,169,111,.24)}
 #page-comisiones .branch-summary-main{align-items:center}
-#page-comisiones .branch-summary-amount{font-weight:650;letter-spacing:-.01em}
-#page-comisiones .branch-summary-commission strong{font-size:1.08rem;font-weight:500}
-#page-comisiones .commission-pct-input{width:54px;min-height:34px;text-align:right;border:1px solid var(--arena);border-radius:8px;background:#fff;padding:5px 7px;color:var(--black);font-variant-numeric:tabular-nums}
+#page-comisiones .branch-summary-amount{font-size:.9rem;font-weight:750;letter-spacing:-.02em;color:var(--black)}
+#page-comisiones .branch-summary-commission{border-top-color:rgba(201,169,110,.16);padding-top:11px}
+#page-comisiones .branch-summary-commission strong{font-size:1rem;font-weight:750;letter-spacing:-.025em;color:var(--cobre)}
+#page-comisiones .branch-pct-wrap{font-size:.72rem}
+#page-comisiones .commission-pct-input{width:58px;min-height:38px;text-align:center;border:1px solid rgba(201,169,110,.3);border-radius:9px;background:rgba(255,255,255,.9);padding:5px 7px;color:#16120f;font-size:.95rem;font-weight:700}
 #page-comisiones .commission-pct-input:focus{outline:none;border-color:var(--dorado);box-shadow:0 0 0 3px rgba(201,169,110,.11)}
-#page-comisiones .branch-summary-actions{align-items:stretch}
-#page-comisiones .branch-extra-btn{min-height:42px;padding:8px 12px;border-radius:10px;transition:.18s ease}
-#page-comisiones .delivery-check-btn{min-height:42px;display:inline-flex;align-items:center;gap:9px;padding:7px 11px;border-radius:10px;text-align:left;transition:.18s ease}
-#page-comisiones .delivery-check-box{width:21px;height:21px;flex:0 0 21px;border-radius:6px;display:grid;place-items:center;border:1.5px solid currentColor;background:rgba(255,255,255,.72)}
-#page-comisiones .delivery-check-copy{display:grid;line-height:1.05;gap:2px}
-#page-comisiones .delivery-check-copy strong{font-size:.69rem;font-weight:700}
-#page-comisiones .delivery-check-copy small{font-size:.56rem;font-weight:500;opacity:.75}
-#page-comisiones .delivery-check-btn.is-paid .delivery-check-box{background:var(--green);border-color:var(--green);color:#fff}
-#page-comisiones .delivery-check-btn:focus-visible,#page-comisiones .branch-extra-btn:focus-visible,#page-comisiones .branch-switch-btn:focus-visible,#page-comisiones .btn-detalle:focus-visible{outline:2px solid var(--dorado);outline-offset:2px}
-#page-comisiones .payment-state{letter-spacing:.015em}
+
+/* Acciones */
+#page-comisiones .branch-summary-actions{align-items:stretch;gap:8px}
+#page-comisiones .branch-extra-btn,#page-comisiones .branch-paid-btn{min-height:42px;padding:9px 12px;border-radius:10px;font-weight:650}
+#page-comisiones .branch-extra-btn{background:transparent;border:1px solid rgba(201,169,110,.3);color:var(--cobre)}
+#page-comisiones .branch-paid-btn{background:rgba(192,86,78,.045);border:1px solid rgba(192,86,78,.22);color:var(--red)}
+#page-comisiones .branch-paid-btn.is-paid{background:rgba(61,169,111,.075);border-color:rgba(61,169,111,.3);color:var(--green)}
+#page-comisiones .branch-paid-btn:focus-visible,#page-comisiones .branch-extra-btn:focus-visible,#page-comisiones .branch-switch-btn:focus-visible,#page-comisiones .btn-detalle:focus-visible{outline:2px solid var(--dorado);outline-offset:2px}
+
 #page-comisiones .branch-card-footer{display:flex;justify-content:flex-end}
 #page-comisiones .btn-detalle{min-height:40px;border-radius:10px}
 #page-comisiones .detalle-recetas{border-top-color:rgba(88,70,52,.12)}
@@ -33,5 +44,33 @@
 #page-comisiones .branch-switch-btn.active{box-shadow:0 7px 20px rgba(15,11,8,.13)}
 #page-comisiones .commission-import-history-wrap{margin-top:2px}
 #page-comisiones #supabase-sync-badge{font-family:var(--font-body)!important;letter-spacing:0!important}
-@media(max-width:760px){#page-comisiones .commission-card{border-radius:16px}#page-comisiones .commission-card-top{gap:10px}#page-comisiones .branch-summary{padding:13px}#page-comisiones .branch-summary-actions{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)}#page-comisiones .delivery-check-btn,#page-comisiones .branch-extra-btn{min-height:46px}#page-comisiones .commission-pct-input{min-height:40px;width:60px;font-size:16px}}
-@media(max-width:430px){#page-comisiones .branch-summary-main{align-items:flex-start}#page-comisiones .branch-summary-amount{font-size:.8rem}#page-comisiones .branch-summary-actions{grid-template-columns:1fr}#page-comisiones .delivery-check-btn,#page-comisiones .branch-extra-btn{width:100%;justify-content:flex-start}#page-comisiones .commission-total-box strong{font-size:1.15rem}}
+
+@media(max-width:760px){
+  #page-comisiones .commission-card{border-radius:18px;padding:16px}
+  #page-comisiones .commission-card-top{gap:10px}
+  #page-comisiones .commission-name{font-size:1.02rem;line-height:1.15}
+  #page-comisiones .commission-card-sub{font-size:.7rem;line-height:1.35}
+  #page-comisiones .commission-total-box{padding-top:12px;margin-top:3px}
+  #page-comisiones .commission-total-box strong{font-size:1.15rem}
+  #page-comisiones .branch-summaries{gap:10px;margin-top:12px}
+  #page-comisiones .branch-summary{padding:13px}
+  #page-comisiones .branch-summary-actions{grid-template-columns:1fr 1fr}
+  #page-comisiones .branch-extra-btn,#page-comisiones .branch-paid-btn{min-height:46px}
+  #page-comisiones .commission-pct-input{min-height:40px;width:58px;font-size:16px}
+}
+
+@media(max-width:430px){
+  #page-comisiones .commission-card{padding:14px;border-radius:16px}
+  #page-comisiones .commission-avatar{width:44px;height:44px;min-width:44px;font-size:.82rem}
+  #page-comisiones .commission-name{font-size:.98rem}
+  #page-comisiones .commission-total-box{grid-template-columns:minmax(0,1fr) auto;gap:8px}
+  #page-comisiones .commission-total-box strong{font-size:1.08rem}
+  #page-comisiones .branch-summary-main{align-items:center}
+  #page-comisiones .branch-summary-title{gap:4px}
+  #page-comisiones .branch-summary-amount{font-size:.86rem}
+  #page-comisiones .branch-summary-commission{align-items:center}
+  #page-comisiones .branch-summary-commission strong{font-size:.94rem}
+  #page-comisiones .branch-summary-actions{grid-template-columns:1fr 1fr}
+  #page-comisiones .branch-extra-btn,#page-comisiones .branch-paid-btn{width:100%;justify-content:center}
+  #page-comisiones .btn-detalle{width:100%}
+}
