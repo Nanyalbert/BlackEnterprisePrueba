@@ -13,9 +13,15 @@
     };
   }
 
-  function enhanceDeliveryChecks() {
-    document.querySelectorAll('.branch-paid-btn').forEach(btn => {
+  function enhanceDeliveryChecks(root = document) {
+    root.querySelectorAll?.('.branch-paid-btn').forEach(btn => {
       const isPaid = btn.classList.contains('is-paid');
+      const state = isPaid ? 'paid' : 'pending';
+
+      // No volver a escribir el DOM si el botón ya fue pulido para este estado.
+      if (btn.dataset.deliveryUiState === state) return;
+      btn.dataset.deliveryUiState = state;
+
       btn.classList.add('delivery-check-btn');
       btn.setAttribute('aria-pressed', isPaid ? 'true' : 'false');
       btn.setAttribute('title', isPaid ? 'Comisión entregada. Tocá para desmarcar.' : 'Marcar comisión como entregada');
@@ -32,7 +38,8 @@
 
   function refineLabels() {
     const subtitle = document.querySelector('#page-comisiones .comisiones-header-sub');
-    if (subtitle) subtitle.textContent = 'Facturación, liquidaciones y estado de entrega por oftalmólogo';
+    const desiredSubtitle = 'Facturación, liquidaciones y estado de entrega por oftalmólogo';
+    if (subtitle && subtitle.textContent !== desiredSubtitle) subtitle.textContent = desiredSubtitle;
 
     const importBtn = document.querySelector('#page-comisiones .import-csv-btn');
     if (importBtn && !importBtn.dataset.blackPolished) {
@@ -44,29 +51,54 @@
     }
   }
 
-  function applyCardSemantics() {
-    document.querySelectorAll('.commission-card').forEach(card => {
+  function applyCardSemantics(root = document) {
+    root.querySelectorAll?.('.commission-card').forEach(card => {
+      if (card.dataset.blackSemantics === '1') return;
+      card.dataset.blackSemantics = '1';
       card.setAttribute('role', 'group');
       const name = card.querySelector('.commission-name')?.textContent?.trim();
       if (name) card.setAttribute('aria-label', `Comisiones de ${name}`);
     });
   }
 
-  function polish() {
-    enhanceDeliveryChecks();
+  function polish(root = document) {
+    enhanceDeliveryChecks(root);
+    applyCardSemantics(root);
     refineLabels();
-    applyCardSemantics();
   }
 
-  const observer = new MutationObserver(polish);
+  let scheduled = false;
+  function schedulePolish(root) {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(() => {
+      scheduled = false;
+      polish(root || document);
+    });
+  }
+
+  const observer = new MutationObserver(mutations => {
+    // Solo procesar nodos nuevos generados por un render real del dashboard.
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (!(node instanceof Element)) continue;
+        if (node.matches?.('.commission-card, .branch-paid-btn') || node.querySelector?.('.commission-card, .branch-paid-btn')) {
+          schedulePolish(document);
+          return;
+        }
+      }
+    }
+  });
 
   function boot() {
     const host = document.getElementById('commission-list');
     if (host) observer.observe(host, { childList: true, subtree: true });
+
+    // El módulo principal ya hace su primer render. No forzamos applyFilters()
+    // desde la capa visual para evitar renders dobles y loops al usar fechas.
     polish();
-    if (typeof applyFilters === 'function') applyFilters();
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
   else setTimeout(boot, 0);
 })();
