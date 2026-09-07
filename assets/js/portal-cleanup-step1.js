@@ -30,4 +30,15 @@
 
   const markRead = document.getElementById('notif-mark-read');
   if (markRead) markRead.hidden = true;
+
+  const notifFooter = document.querySelector('.notif-footer');
+  if (notifFooter) notifFooter.hidden = true;
+
+  // El rol real todavía no proviene de Supabase; evitamos etiquetar a toda sesión como Administrador.
+  const roleLabel = document.querySelector('.user-chip-role');
+  if (roleLabel) roleLabel.textContent = 'Sesión activa';
+
+  // Este indicador representa disponibilidad visual del portal, no un health-check de backend.
+  const portalStatus = document.querySelector('.dashboard-status span:last-child');
+  if (portalStatus) portalStatus.textContent = 'Portal activo';
 })();
