@@ -23,8 +23,8 @@
   const isOphthalmologyModule = /(?:^|\/)crm-oftalmologos\.html$/i.test(window.location.pathname);
   if (isOphthalmologyModule) {
     [
-      ["blackos-oft-branches-css", "assets/css/crm-oftalmologos-sucursales.css?v=20260907d"],
-      ["blackos-oft-polish-css", "assets/css/crm-oftalmologos-polish.css?v=20260907d"]
+      ["blackos-oft-branches-css", "assets/css/crm-oftalmologos-sucursales.css?v=20260907e"],
+      ["blackos-oft-polish-css", "assets/css/crm-oftalmologos-polish.css?v=20260907e"]
     ].forEach(([id, href]) => {
       if (document.getElementById(id)) return;
       const link = document.createElement("link");
@@ -39,13 +39,13 @@
 
       const branchesScript = document.createElement("script");
       branchesScript.id = "blackos-oft-branches-js";
-      branchesScript.src = "assets/js/crm-oftalmologos-sucursales.js?v=20260907d";
+      branchesScript.src = "assets/js/crm-oftalmologos-sucursales.js?v=20260907e";
 
       branchesScript.onload = () => {
         if (document.getElementById("blackos-oft-supabase-sync-js")) return;
         const syncScript = document.createElement("script");
         syncScript.id = "blackos-oft-supabase-sync-js";
-        syncScript.src = "assets/js/crm-oftalmologos-supabase-sync.js?v=20260907d";
+        syncScript.src = "assets/js/crm-oftalmologos-supabase-sync.js?v=20260907e";
         document.body.appendChild(syncScript);
       };
 
