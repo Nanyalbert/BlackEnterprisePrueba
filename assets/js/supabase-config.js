@@ -22,14 +22,17 @@
 
   const isOphthalmologyModule = /(?:^|\/)crm-oftalmologos\.html$/i.test(window.location.pathname);
   if (isOphthalmologyModule) {
-    const styleId = "blackos-oft-branches-css";
-    if (!document.getElementById(styleId)) {
+    [
+      ["blackos-oft-branches-css", "assets/css/crm-oftalmologos-sucursales.css"],
+      ["blackos-oft-polish-css", "assets/css/crm-oftalmologos-polish.css"]
+    ].forEach(([id, href]) => {
+      if (document.getElementById(id)) return;
       const link = document.createElement("link");
-      link.id = styleId;
+      link.id = id;
       link.rel = "stylesheet";
-      link.href = "assets/css/crm-oftalmologos-sucursales.css";
+      link.href = href;
       document.head.appendChild(link);
-    }
+    });
 
     window.addEventListener("load", () => {
       if (document.getElementById("blackos-oft-branches-js")) return;
@@ -43,6 +46,15 @@
         const syncScript = document.createElement("script");
         syncScript.id = "blackos-oft-supabase-sync-js";
         syncScript.src = "assets/js/crm-oftalmologos-supabase-sync.js";
+
+        syncScript.onload = () => {
+          if (document.getElementById("blackos-oft-polish-js")) return;
+          const polishScript = document.createElement("script");
+          polishScript.id = "blackos-oft-polish-js";
+          polishScript.src = "assets/js/crm-oftalmologos-polish.js";
+          document.body.appendChild(polishScript);
+        };
+
         document.body.appendChild(syncScript);
       };
 
