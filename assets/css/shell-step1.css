@@ -1,0 +1,162 @@
+/* Black OS — Shell Step 1
+   Capa visual no invasiva para el portal principal.
+   No modifica lógica, IDs, data-view ni comportamiento de módulos. */
+
+.sidebar{
+  background:linear-gradient(180deg,#0b0b0b 0%,#080808 100%);
+}
+
+.sidebar-brand{
+  padding:0 18px;
+  gap:11px;
+}
+
+.sidebar-brand img{
+  width:28px;
+}
+
+.sidebar-brand span{
+  font-size:15px;
+  letter-spacing:.015em;
+}
+
+.sidebar-nav{
+  padding:16px 10px 18px;
+}
+
+.nav-label{
+  margin:18px 10px 7px;
+  padding:0;
+  color:#50504c;
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:.14em;
+}
+
+.sidebar-nav > .nav-label:first-child{
+  margin-top:3px;
+}
+
+.nav-item{
+  position:relative;
+  min-height:42px;
+  padding:10px 11px;
+  gap:11px;
+  border:1px solid transparent;
+  border-radius:10px;
+  color:#8f8f8a;
+  font-size:13px;
+}
+
+.nav-item svg{
+  opacity:.82;
+  transition:opacity .15s ease,transform .15s ease;
+}
+
+.nav-item:hover{
+  background:#121212;
+  border-color:#1f1f1f;
+  color:#e8e8e4;
+}
+
+.nav-item:hover svg{
+  opacity:1;
+}
+
+.nav-item.active{
+  background:#f1f1ed;
+  border-color:#f1f1ed;
+  color:#050505;
+  font-weight:600;
+  box-shadow:0 1px 0 rgba(255,255,255,.08),0 8px 22px rgba(0,0,0,.22);
+}
+
+.nav-item.active svg{
+  opacity:1;
+}
+
+.sidebar-footer{
+  padding:10px;
+  background:rgba(255,255,255,.012);
+}
+
+.sidebar-footer .nav-item{
+  margin:0;
+}
+
+/* El submenú de Administración conserva la lógica actual pero se integra visualmente. */
+.admin-submenu-inner{
+  padding-left:24px!important;
+}
+
+.admin-subitem{
+  min-height:34px!important;
+  margin:2px 4px 2px 0!important;
+  padding:7px 10px!important;
+  border-radius:9px!important;
+  font-size:11px!important;
+}
+
+.admin-subitem.active{
+  background:#171717!important;
+  color:#f1f1ed!important;
+}
+
+/* Contraído: iconos centrados y separación coherente entre grupos. */
+body.sidebar-collapsed .sidebar-nav{
+  padding:14px 12px;
+}
+
+body.sidebar-collapsed .nav-item{
+  width:46px;
+  height:46px;
+  min-height:46px;
+  border-radius:12px;
+}
+
+body.sidebar-collapsed .nav-item svg{
+  width:18px;
+  height:18px;
+  flex-basis:18px;
+}
+
+body.sidebar-collapsed .sidebar-footer{
+  padding:10px 12px;
+}
+
+/* Topbar más sobria para que el módulo sea protagonista. */
+.topbar{
+  padding-left:22px;
+  padding-right:22px;
+  background:rgba(5,5,5,.96);
+}
+
+.topbar-title{
+  font-size:14px;
+  letter-spacing:.01em;
+}
+
+@media(max-width:900px){
+  .sidebar{
+    width:min(286px,86vw);
+  }
+
+  .sidebar-brand{
+    padding-left:18px;
+    padding-right:18px;
+  }
+
+  .sidebar-nav{
+    padding:14px 10px 18px;
+  }
+
+  .nav-item{
+    min-height:44px;
+    font-size:13px;
+  }
+
+  .topbar{
+    padding-left:12px;
+    padding-right:12px;
+  }
+}
