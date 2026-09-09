@@ -48,11 +48,11 @@
 
   const isClientsModule = /(?:^|\/)crm-clientes\.html$/i.test(path);
   if (isClientsModule) {
-    loadCss('blackos-crm-clientes-polish-css', 'assets/css/crm-clientes-polish.css?v=20260909b');
-    loadCss('blackos-crm-clientes-ops-css', 'assets/css/crm-clientes-ops.css?v=20260909b');
-    loadJs('blackos-crm-clientes-polish-js', 'assets/js/crm-clientes-polish.js?v=20260909b');
+    loadCss('blackos-crm-clientes-polish-css', 'assets/css/crm-clientes-polish.css?v=20260909c');
+    loadCss('blackos-crm-clientes-ops-css', 'assets/css/crm-clientes-ops.css?v=20260909c');
+    loadJs('blackos-crm-clientes-polish-js', 'assets/js/crm-clientes-polish.js?v=20260909c');
     window.addEventListener('load', () => {
-      loadJs('blackos-crm-clientes-ops-js', 'assets/js/crm-clientes-ops.js?v=20260909b');
+      loadJs('blackos-crm-clientes-ops-js', 'assets/js/crm-clientes-ops.js?v=20260909c');
     }, { once:true });
   }
 })();
