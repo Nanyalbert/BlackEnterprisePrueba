@@ -48,10 +48,13 @@
 
   const isClientsModule = /(?:^|\/)crm-clientes\.html$/i.test(path);
   if (isClientsModule) {
-    // CSS se inyecta inmediatamente para evitar flash de estilos antiguos.
-    loadCss('blackos-crm-clientes-polish-css', 'assets/css/crm-clientes-polish.css?v=20260907b');
+    loadCss('blackos-crm-clientes-polish-css', 'assets/css/crm-clientes-polish.css?v=20260909a');
+    loadCss('blackos-crm-clientes-ops-css', 'assets/css/crm-clientes-ops.css?v=20260909a');
+    loadJs('blackos-crm-clientes-polish-js', 'assets/js/crm-clientes-polish.js?v=20260909a');
 
-    // El script puede cargarse en <head>; internamente espera DOMContentLoaded si hace falta.
-    loadJs('blackos-crm-clientes-polish-js', 'assets/js/crm-clientes-polish.js?v=20260907b');
+    // La capa operativa debe cargar después del JS principal del CRM.
+    window.addEventListener('load', () => {
+      loadJs('blackos-crm-clientes-ops-js', 'assets/js/crm-clientes-ops.js?v=20260909a');
+    }, { once:true });
   }
 })();
