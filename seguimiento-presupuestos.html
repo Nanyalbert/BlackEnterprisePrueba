@@ -1,1 +1,184 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Black Óptica — Seguimiento de presupuestos</title><script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script><style>body{margin:0;background:#0b0b0b;color:#f4f4f1;font-family:Arial,sans-serif}.wrap{max-width:1100px;margin:auto;padding:28px 18px}.top{display:flex;gap:12px;align-items:center}.back{background:#151515;border:1px solid #2b2b2b;color:#fff;border-radius:10px;padding:10px 14px;cursor:pointer}h1{font-size:30px;margin:22px 0 6px}.sub{color:#999;font-size:13px;max-width:760px;line-height:1.6}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:24px}.card{background:#121212;border:1px solid #292929;border-radius:14px;padding:16px}.card h3{font-size:13px;margin-top:0}.file{width:100%;color:#aaa}.actions{display:flex;gap:10px;margin:18px 0;flex-wrap:wrap}.btn{background:#f4f4f1;color:#111;border:0;border-radius:9px;padding:11px 14px;font-weight:700;cursor:pointer}.btn:disabled{opacity:.35}.msg{width:100%;min-height:76px;background:#171717;color:#eee;border:1px solid #303030;border-radius:10px;padding:10px;margin-top:10px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}.stat{background:#121212;border:1px solid #292929;border-radius:12px;padding:13px}.stat b{font-size:22px;display:block}.stat span{font-size:10px;color:#999}.table-wrap{overflow:auto;border:1px solid #292929;border-radius:12px}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:10px 12px;border-bottom:1px solid #242424;text-align:left;font-size:12px}.table th{color:#999;font-size:10px;text-transform:uppercase}.pill{display:inline-block;border-radius:999px;padding:5px 8px;background:#1c1c1c;color:#bbb}.copy{background:#1b2a22;color:#76d69f;border:1px solid #294737;border-radius:8px;padding:7px 9px;cursor:pointer}.error{color:#ef7770;font-size:12px;margin-top:10px}@media(max-width:800px){.grid,.stats{grid-template-columns:1fr}}</style></head><body><div class="wrap"><div class="top"><button class="back" onclick="location.href='crm-clientes.html'">← Volver al CRM</button></div><h1>Seguimiento de presupuestos</h1><div class="sub">Cruza Clientes + Presupuestos y, opcionalmente, Recetas. Deja afuera a quienes ya confirmaron o ya tienen receta y genera la lista operativa de personas que todavía conviene contactar.</div><div class="grid"><div class="card"><h3>Clientes</h3><input class="file" type="file" id="clientes" accept=".csv"></div><div class="card"><h3>Presupuestos</h3><input class="file" type="file" id="presupuestos" accept=".csv"></div><div class="card"><h3>Recetas · opcional</h3><input class="file" type="file" id="recetas" accept=".csv"></div></div><textarea class="msg" id="plantilla">Hola {nombre}, ¿cómo estás? Te escribía para saber si pudiste revisar el presupuesto que te hicimos. Cualquier consulta quedo a disposición. Saludos!</textarea><div class="actions"><button class="btn" id="procesar" disabled>Procesar seguimiento</button></div><div class="error" id="error"></div><div id="salida" style="display:none"><div class="stats" id="stats"></div><div class="table-wrap"><table class="table"><thead><tr><th>Cliente</th><th>Teléfono</th><th>Presupuestos</th><th>Mensaje</th></tr></thead><tbody id="tbody"></tbody></table></div></div></div><script>let tc='',tp='',tr='';const $=x=>document.getElementById(x);function clean(t){const a=t.split(/\r?\n/);if(/^sep\s*=/i.test(a[0]||''))a.shift();return Papa.parse(a.join('\n'),{header:true,delimiter:';',skipEmptyLines:true,transformHeader:h=>h.trim()}).data}const n=s=>(s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[.,]/g,' ').replace(/\s+/g,' ').trim();const tok=s=>[...new Set(n(s).split(' ').filter(Boolean))].sort().join(' ');const ph=s=>(s||'').toString().replace(/\D/g,'');function col(r,c){const k=Object.keys(r||{});for(const x of c){const h=k.find(q=>n(q)===n(x));if(h)return h}for(const x of c){const h=k.find(q=>n(q).includes(n(x)));if(h)return h}return null}async function read(i,set){i.onchange=async e=>{const f=e.target.files[0];if(f){set(await f.text());$('procesar').disabled=!(tc&&tp)}}}read($('clientes'),v=>tc=v);read($('presupuestos'),v=>tp=v);read($('recetas'),v=>tr=v);function idx(rows){const a=col(rows[0],['Nombre']),b=col(rows[0],['RazonSocial/Apellido','RazonSocial','Apellido']),p=col(rows[0],['Celular','Telefono','Teléfono']);if(!p)throw Error('Clientes: no encuentro la columna de teléfono.');const e={},t={};for(const r of rows){const tel=ph(r[p]);if(!tel)continue;for(const z of [a&&r[a],b&&r[b]])if(z){e[n(z)]??=tel;t[tok(z)]??=tel}}return x=>e[n(x)]||t[tok(x)]||''}$('procesar').onclick=()=>{try{$('error').textContent='';const c=clean(tc),p=clean(tp);const cc=col(p[0],['Cliente']),ce=col(p[0],['Confirmado?','Confirmado','Estado']);if(!cc||!ce)throw Error('Presupuestos: faltan Cliente y Confirmado?/Estado.');const find=idx(c),rx=new Set(),rt=new Set();if(tr){const rr=clean(tr),rc=rr.length&&col(rr[0],['Cliente']);if(rr.length&&!rc)throw Error('Recetas: no encuentro Cliente.');for(const r of rr){const x=r[rc];if(x){rx.add(n(x));rt.add(tok(x))}}}const g={};for(const r of p){const x=r[cc];if(!x)continue;const k=n(x);g[k]??={name:x,count:0,ok:false};g[k].count++;if(['SI','S','CONFIRMADO','YES','TRUE'].includes(n(r[ce])))g[k].ok=true}let conf=0,rec=0,out=[];for(const x of Object.values(g)){if(x.ok){conf++;continue}if(rx.has(n(x.name))||rt.has(tok(x.name))){rec++;continue}const tel=find(x.name);out.push({name:x.name,tel,count:x.count})}const tpl=$('plantilla').value;$('tbody').innerHTML=out.map((x,i)=>{const first=(x.name||'').trim().split(/\s+/)[0]||'';const msg=tpl.replace(/\{nombre\}/gi,first);return `<tr><td>${x.name}</td><td>${x.tel||'—'}</td><td>${x.count}</td><td><button class="copy" onclick="navigator.clipboard.writeText(${JSON.stringify(msg)});this.textContent='Copiado ✓'">Copiar mensaje</button></td></tr>`}).join('');$('stats').innerHTML=`<div class="stat"><b>${Object.keys(g).length}</b><span>En presupuestos</span></div><div class="stat"><b>${conf}</b><span>Confirmados</span></div><div class="stat"><b>${rec}</b><span>Con receta</span></div><div class="stat"><b>${out.length}</b><span>Pendientes</span></div>`;$('salida').style.display='block'}catch(e){$('error').textContent=e.message}};</script></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#090909">
+<title>Black Óptica — Seguimiento de presupuestos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#090909;--surface:#111113;--surface2:#171719;--surface3:#1e1e21;--border:#29292d;--border2:#343439;--text:#f4f4f1;--text2:#aaa9a5;--text3:#6f6f6c;--green:#63d99c;--red:#ef7770;--amber:#e7b45d;--accent:#7ec8e3;--r:16px;--rsm:11px}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif}.wrap{max-width:1080px;margin:0 auto;padding:30px 20px 110px}.top{display:flex;align-items:center;justify-content:space-between;gap:12px}.back,.icon-btn{min-height:42px;border:1px solid var(--border2);background:var(--surface);color:var(--text);border-radius:11px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font:600 12px 'Plus Jakarta Sans',sans-serif}.back:hover,.icon-btn:hover{background:var(--surface2);border-color:#47474c}.svg{width:18px;height:18px;display:inline-flex}.svg svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.hero{padding:34px 0 12px}.eyebrow{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}.hero h1{font-size:clamp(28px,4vw,42px);letter-spacing:-1.4px;margin:0;font-weight:650}.hero p{margin:9px 0 0;max-width:760px;color:var(--text2);font-size:13px;line-height:1.65}.steps{display:flex;gap:8px;margin:22px 0 18px;overflow:auto}.step{flex:1;min-width:170px;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:12px 14px}.step b{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px}.step span{font-size:12px;color:var(--text2)}.step.active{border-color:#4b4b50;background:var(--surface2)}.step.active b,.step.done b{color:var(--text)}.step.done{border-color:rgba(99,217,156,.28)}
+.section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-top:14px}.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px}.section-title{font-size:15px;font-weight:650}.section-desc{font-size:11.5px;color:var(--text2);line-height:1.55;margin-top:4px;max-width:690px}.upload-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.upload-card{border:1px solid var(--border);border-radius:13px;background:var(--surface2);padding:15px;min-height:124px;display:flex;flex-direction:column;justify-content:space-between}.upload-card.required{border-color:#35353a}.upload-top{display:flex;align-items:center;gap:9px}.upload-icon{width:34px;height:34px;border-radius:9px;background:var(--surface3);display:flex;align-items:center;justify-content:center;color:var(--text2)}.upload-icon .svg{width:17px;height:17px}.upload-card strong{font-size:12px}.upload-card small{display:block;color:var(--text3);font-size:10.5px;margin-top:3px}.file-label{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:14px;min-height:38px;border:1px solid var(--border2);border-radius:9px;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;background:#131315}.file-label:hover{background:#1c1c1f;color:var(--text)}.file-label input{display:none}.filename{font-size:10px;color:var(--green);margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:18px}.btn{min-height:46px;border-radius:11px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);padding:0 19px;font:650 12px 'Plus Jakarta Sans',sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:.15s}.btn:hover:not(:disabled){transform:translateY(-1px);background:#202023;border-color:#46464b}.btn.primary{background:#f3f3f1;color:#111;border-color:#f3f3f1;min-width:210px}.btn.primary:hover:not(:disabled){background:#fff;border-color:#fff}.btn.ghost{background:transparent;color:var(--text2)}.btn.danger{color:var(--red);background:transparent;border-color:rgba(239,119,112,.22)}.btn:disabled{opacity:.35;cursor:not-allowed}.error{font-size:11.5px;color:var(--red);text-align:center;margin-top:12px;min-height:16px}.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:18px 0}.stat{background:linear-gradient(180deg,var(--surface2),var(--surface));border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}.stat b{display:block;font-size:24px;line-height:1;font-variant-numeric:tabular-nums}.stat span{display:block;margin-top:8px;font-size:9.5px;color:var(--text2);font-weight:700;letter-spacing:.1em;text-transform:uppercase}.stat.good b{color:var(--green)}.stat.warn b{color:var(--amber)}.stat.info b{color:var(--accent)}
+.editor-grid{display:grid;grid-template-columns:1.35fr .65fr;gap:14px}.field-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:7px}.msg{width:100%;min-height:128px;background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:12px;padding:14px 15px;font:400 13px/1.6 'Plus Jakarta Sans',sans-serif;resize:vertical;outline:none}.msg:focus{border-color:#505057;box-shadow:0 0 0 3px rgba(255,255,255,.03)}.vars{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.var{font-size:10px;font-family:monospace;background:var(--surface3);border:1px solid var(--border);color:var(--accent);padding:3px 7px;border-radius:6px}.preview{border:1px solid var(--border);background:#0d0d0f;border-radius:12px;padding:15px;min-height:128px}.preview-label{font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px}.preview-text{font-size:12.5px;color:var(--text2);line-height:1.65;white-space:pre-wrap}.send-panel{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px;border:1px solid var(--border);background:var(--surface2);border-radius:12px;margin-top:14px}.send-status strong{display:block;font-size:12px}.send-status span{font-size:10.5px;color:var(--text3);margin-top:3px;display:block}.connection{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)}.dot{width:7px;height:7px;border-radius:50%;background:#777}.connection.ok .dot{background:var(--green);box-shadow:0 0 10px rgba(99,217,156,.5)}
+.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:13px;margin-top:14px}.table{width:100%;border-collapse:collapse;min-width:760px}.table th,.table td{padding:11px 12px;border-bottom:1px solid #242428;text-align:left;font-size:11.5px}.table th{color:var(--text3);font-size:9.5px;text-transform:uppercase;letter-spacing:.09em;font-weight:700;background:#111113}.table tr:last-child td{border-bottom:0}.name{font-weight:600}.muted{color:var(--text3)}.status-pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:5px 8px;background:var(--surface3);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)}.status-pill.sent{color:var(--green);background:rgba(99,217,156,.08)}.status-pill.fail{color:var(--red);background:rgba(239,119,112,.08)}.mini-btn{min-height:32px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);padding:0 10px;font:600 10.5px 'Plus Jakarta Sans',sans-serif;cursor:pointer}.mini-btn:hover{color:var(--text);background:var(--surface3)}.progress{display:none;margin-top:12px;height:7px;background:var(--surface3);border-radius:99px;overflow:hidden}.progress>div{height:100%;width:0;background:var(--green);transition:width .2s}.summary-box{display:none;margin-top:14px;border:1px solid rgba(99,217,156,.2);background:rgba(99,217,156,.05);border-radius:12px;padding:14px;font-size:11.5px;color:var(--text2);line-height:1.6}.hidden{display:none!important}
+@media(max-width:850px){.upload-grid,.stats{grid-template-columns:1fr 1fr}.editor-grid{grid-template-columns:1fr}.send-panel{align-items:flex-start;flex-direction:column}}@media(max-width:560px){.wrap{padding:20px 12px 110px}.upload-grid,.stats{grid-template-columns:1fr}.section{padding:15px}.hero{padding-top:24px}.steps{margin-top:16px}.btn.primary{width:100%}.actions{flex-direction:column}.actions .btn{width:100%}.top .back span.label{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <button class="back" onclick="location.href='crm-clientes.html'"><span class="svg"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></span><span class="label">Volver al CRM</span></button>
+    <div id="waStatus" class="connection"><i class="dot"></i><span>WhatsApp pendiente</span></div>
+  </div>
+
+  <div class="hero">
+    <div class="eyebrow">CRM BLACK · HERRAMIENTA COMERCIAL</div>
+    <h1>Seguimiento de presupuestos</h1>
+    <p>Cruzá clientes, presupuestos y recetas para detectar automáticamente a quién conviene contactar. Revisá el resultado, ajustá el mensaje y enviá el seguimiento por WhatsApp.</p>
+  </div>
+
+  <div class="steps">
+    <div class="step active" id="step1"><b>01 · Archivos</b><span>Cargá la información</span></div>
+    <div class="step" id="step2"><b>02 · Resultado</b><span>Revisá los pendientes</span></div>
+    <div class="step" id="step3"><b>03 · Envío</b><span>Mensaje y WhatsApp</span></div>
+  </div>
+
+  <section class="section" id="uploadSection">
+    <div class="section-head"><div><div class="section-title">Cargar información</div><div class="section-desc">Clientes y Presupuestos son obligatorios. Recetas es opcional y permite excluir personas que ya avanzaron a compra.</div></div></div>
+    <div class="upload-grid">
+      <div class="upload-card required"><div><div class="upload-top"><div class="upload-icon"><span class="svg"><svg viewBox="0 0 24 24"><path d="M16 21v-1.5A4.5 4.5 0 0 0 11.5 15h-3A4.5 4.5 0 0 0 4 19.5V21"/><circle cx="10" cy="8" r="3"/><path d="M17 8h4M19 6v4"/></svg></span></div><div><strong>Clientes</strong><small>Nombre + teléfono</small></div></div></div><label class="file-label">Seleccionar archivo<input type="file" id="clientes" accept=".csv,.xlsx,.xls"></label><div class="filename" id="fn-clientes"></div></div>
+      <div class="upload-card required"><div><div class="upload-top"><div class="upload-icon"><span class="svg"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21Z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span></div><div><strong>Presupuestos</strong><small>Cliente + confirmado/estado</small></div></div></div><label class="file-label">Seleccionar archivo<input type="file" id="presupuestos" accept=".csv,.xlsx,.xls"></label><div class="filename" id="fn-presupuestos"></div></div>
+      <div class="upload-card"><div><div class="upload-top"><div class="upload-icon"><span class="svg"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span></div><div><strong>Recetas</strong><small>Opcional · excluye comprados</small></div></div></div><label class="file-label">Seleccionar archivo<input type="file" id="recetas" accept=".csv,.xlsx,.xls"></label><div class="filename" id="fn-recetas"></div></div>
+    </div>
+    <div class="actions"><button class="btn primary" id="procesar" disabled><span class="svg"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>Procesar seguimiento</button></div>
+    <div class="error" id="error"></div>
+  </section>
+
+  <section class="section hidden" id="resultSection">
+    <div class="section-head"><div><div class="section-title">Resultado del cruce</div><div class="section-desc">Solo quedan en seguimiento quienes no están confirmados y no aparecen en Recetas. Los contactos sin teléfono se muestran aparte y no se pueden enviar.</div></div><button class="btn ghost" id="resetBtn">Cambiar archivos</button></div>
+    <div class="stats" id="stats"></div>
+
+    <div class="editor-grid">
+      <div><div class="field-label">Mensaje de seguimiento</div><textarea class="msg" id="plantilla">Hola {{nombre}}, ¿cómo estás? Te escribimos de Black Óptica para saber si pudiste revisar el presupuesto que te preparamos. Si te quedó alguna duda, estamos a disposición para ayudarte.</textarea><div class="vars"><span class="var">{{nombre}}</span><span class="var">{{cliente}}</span></div></div>
+      <div><div class="field-label">Vista previa</div><div class="preview"><div class="preview-label" id="previewLabel">Primer contacto</div><div class="preview-text" id="previewText">—</div></div></div>
+    </div>
+
+    <div class="send-panel">
+      <div class="send-status"><strong id="sendHeadline">Revisá los destinatarios antes de enviar</strong><span id="sendSub">El envío automático se habilita si Evolution API está configurado en CRM Black.</span></div>
+      <button class="btn primary" id="sendAllBtn" disabled><span class="svg"><svg viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></span>Enviar seguimiento</button>
+    </div>
+    <div class="progress" id="progress"><div id="progressBar"></div></div>
+    <div class="summary-box" id="summary"></div>
+
+    <div class="table-wrap"><table class="table"><thead><tr><th>Cliente</th><th>Teléfono</th><th>Presupuestos</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="tbody"></tbody></table></div>
+  </section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let raw={clientes:null,presupuestos:null,recetas:null};
+let seguimiento=[];
+let statsData={total:0,confirmados:0,recetas:0,pendientes:0,sinTel:0};
+let sending=false;
+
+const cfg=(()=>{try{return JSON.parse(localStorage.getItem('black_crm_cfg')||'{}')}catch{return {}}})();
+const evoReady=()=>!!(cfg.evoUrl&&cfg.evoKey&&cfg.evoInstance);
+function updateWaStatus(){const el=$('waStatus');const ok=evoReady();el.classList.toggle('ok',ok);el.querySelector('span').textContent=ok?'WhatsApp configurado':'WhatsApp pendiente';}
+updateWaStatus();
+
+const norm=s=>(s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[.,]/g,' ').replace(/\s+/g,' ').trim();
+const token=s=>[...new Set(norm(s).split(' ').filter(Boolean))].sort().join(' ');
+const phone=s=>(s||'').toString().replace(/\D/g,'');
+const firstName=s=>(s||'').trim().split(/\s+/)[0]||'';
+const esc=s=>(s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function col(row,candidates){const keys=Object.keys(row||{});for(const c of candidates){const hit=keys.find(k=>norm(k)===norm(c));if(hit)return hit}for(const c of candidates){const hit=keys.find(k=>norm(k).includes(norm(c)));if(hit)return hit}return null}
+
+async function parseFile(file){
+  if(!file)return [];
+  if(/\.csv$/i.test(file.name)){
+    const text=await file.text();
+    const lines=text.split(/\r?\n/);if(/^sep\s*=/i.test(lines[0]||''))lines.shift();
+    const sample=lines.slice(0,4).join('\n');
+    const semi=(sample.match(/;/g)||[]).length,comma=(sample.match(/,/g)||[]).length;
+    return Papa.parse(lines.join('\n'),{header:true,delimiter:semi>=comma?';':',',skipEmptyLines:true,transformHeader:h=>h.trim()}).data;
+  }
+  const data=new Uint8Array(await file.arrayBuffer());
+  const wb=XLSX.read(data,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(ws,{defval:''});
+}
+
+function bindFile(id,key){$(id).addEventListener('change',async e=>{const file=e.target.files[0];raw[key]=file?await parseFile(file):null;$('fn-'+id).textContent=file?file.name:'';$('procesar').disabled=!(raw.clientes&&raw.presupuestos);});}
+bindFile('clientes','clientes');bindFile('presupuestos','presupuestos');bindFile('recetas','recetas');
+
+function buildPhoneFinder(rows){
+  if(!rows.length)throw Error('El archivo de Clientes está vacío.');
+  const n1=col(rows[0],['Nombre','Cliente']),n2=col(rows[0],['RazonSocial/Apellido','Razon Social','Apellido','Razón Social']),tel=col(rows[0],['Celular','Telefono','Teléfono','WhatsApp','Móvil','Movil']);
+  if(!tel)throw Error('Clientes: no encuentro una columna de teléfono/celular.');
+  const exact={},tokens={};
+  rows.forEach(r=>{const p=phone(r[tel]);if(!p)return;[n1&&r[n1],n2&&r[n2]].filter(Boolean).forEach(v=>{exact[norm(v)]??=p;tokens[token(v)]??=p;});});
+  return name=>exact[norm(name)]||tokens[token(name)]||'';
+}
+
+function renderMessage(item){return $('plantilla').value.replace(/\{\{nombre\}\}|\{nombre\}/gi,firstName(item.name)).replace(/\{\{cliente\}\}|\{cliente\}/gi,item.name);}
+function updatePreview(){const item=seguimiento.find(x=>x.tel)||seguimiento[0];$('previewLabel').textContent=item?`Vista previa · ${item.name}`:'Sin contactos';$('previewText').textContent=item?renderMessage(item):'—';}
+$('plantilla').addEventListener('input',()=>{updatePreview();renderRows();});
+
+function setSteps(active){[1,2,3].forEach(i=>{$('step'+i).classList.toggle('active',i===active);$('step'+i).classList.toggle('done',i<active);});}
+
+$('procesar').onclick=()=>{
+  try{
+    $('error').textContent='';
+    const c=raw.clientes||[],p=raw.presupuestos||[];
+    if(!c.length||!p.length)throw Error('Clientes y Presupuestos deben contener información.');
+    const clientCol=col(p[0],['Cliente','Nombre','Paciente']),statusCol=col(p[0],['Confirmado?','Confirmado','Estado']);
+    if(!clientCol||!statusCol)throw Error('Presupuestos: faltan las columnas Cliente y Confirmado?/Estado.');
+    const findPhone=buildPhoneFinder(c);
+    const recetaExact=new Set(),recetaTokens=new Set();
+    if(raw.recetas?.length){const rc=col(raw.recetas[0],['Cliente','Nombre','Paciente']);if(!rc)throw Error('Recetas: no encuentro la columna Cliente.');raw.recetas.forEach(r=>{const v=r[rc];if(v){recetaExact.add(norm(v));recetaTokens.add(token(v));}});}
+    const grouped={};
+    p.forEach(r=>{const name=r[clientCol];if(!name)return;const k=norm(name);grouped[k]??={name:String(name).trim(),count:0,confirmed:false};grouped[k].count++;const s=norm(r[statusCol]);if(['SI','S','CONFIRMADO','CONFIRMADA','YES','TRUE','OK','APROBADO','APROBADA'].includes(s))grouped[k].confirmed=true;});
+    let confirmados=0,conReceta=0,sinTel=0;seguimiento=[];
+    Object.values(grouped).forEach(x=>{if(x.confirmed){confirmados++;return;}if(recetaExact.has(norm(x.name))||recetaTokens.has(token(x.name))){conReceta++;return;}const tel=findPhone(x.name);if(!tel)sinTel++;seguimiento.push({name:x.name,tel,count:x.count,status:tel?'pendiente':'sin-telefono',sent:false,failed:false});});
+    statsData={total:Object.keys(grouped).length,confirmados,recetas:conReceta,pendientes:seguimiento.filter(x=>x.tel).length,sinTel};
+    renderResult();$('resultSection').classList.remove('hidden');$('uploadSection').classList.add('hidden');setSteps(2);window.scrollTo({top:0,behavior:'smooth'});
+  }catch(e){$('error').textContent=e.message;}
+};
+
+function renderResult(){
+  $('stats').innerHTML=`<div class="stat"><b>${statsData.total}</b><span>En presupuestos</span></div><div class="stat"><b>${statsData.confirmados}</b><span>Confirmados</span></div><div class="stat"><b>${statsData.recetas}</b><span>Con receta</span></div><div class="stat good"><b>${statsData.pendientes}</b><span>A contactar</span></div><div class="stat ${statsData.sinTel?'warn':''}"><b>${statsData.sinTel}</b><span>Sin teléfono</span></div>`;
+  $('sendAllBtn').disabled=!seguimiento.some(x=>x.tel&&!x.sent);
+  $('sendHeadline').textContent=evoReady()?`Listo para enviar a ${statsData.pendientes} contactos`:`${statsData.pendientes} contactos listos para seguimiento`;
+  $('sendSub').textContent=evoReady()?'Evolution API está configurado. El envío se hará automáticamente y de forma secuencial.':'Evolution API no está configurado: el botón abrirá WhatsApp en modo asistido, uno por uno.';
+  updatePreview();renderRows();
+}
+
+function renderRows(){
+  $('tbody').innerHTML=seguimiento.map((x,i)=>{let cls='',label='Pendiente';if(!x.tel){cls='fail';label='Sin teléfono';}else if(x.sent){cls='sent';label='Enviado';}else if(x.failed){cls='fail';label='Falló';}return `<tr><td><div class="name">${esc(x.name)}</div></td><td>${x.tel?esc(x.tel):'<span class="muted">—</span>'}</td><td>${x.count}</td><td><span class="status-pill ${cls}">${label}</span></td><td>${x.tel&&!x.sent?`<button class="mini-btn" onclick="sendOne(${i})">Enviar</button>`:x.sent?`<button class="mini-btn" onclick="copyMsg(${i})">Copiar mensaje</button>`:'—'}</td></tr>`;}).join('')||'<tr><td colspan="5" class="muted">No hay clientes pendientes de seguimiento.</td></tr>';
+}
+
+async function evolutionSend(tel,text){
+  try{const url=cfg.evoUrl.replace(/\/$/,'')+'/message/sendText/'+encodeURIComponent(cfg.evoInstance);const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.evoKey},body:JSON.stringify({number:tel,text})});return r.ok;}catch{return false;}
+}
+function logSend(item,mode,text,ok){
+  try{const key='black_budget_followup_log';const arr=JSON.parse(localStorage.getItem(key)||'[]');arr.unshift({date:new Date().toISOString(),name:item.name,tel:item.tel,mode,text,ok});localStorage.setItem(key,JSON.stringify(arr.slice(0,1000)));}catch{}
+}
+window.copyMsg=async i=>{const x=seguimiento[i];await navigator.clipboard.writeText(renderMessage(x));};
+window.sendOne=async i=>{
+  const x=seguimiento[i];if(!x?.tel||x.sent)return;const msg=renderMessage(x);
+  if(evoReady()){const ok=await evolutionSend(x.tel,msg);x.sent=ok;x.failed=!ok;logSend(x,'automatico',msg,ok);}else{window.open('https://wa.me/'+x.tel+'?text='+encodeURIComponent(msg),'_blank');x.sent=true;logSend(x,'asistido',msg,true);}renderRows();updateSendAvailability();
+};
+function updateSendAvailability(){const pending=seguimiento.filter(x=>x.tel&&!x.sent);$('sendAllBtn').disabled=!pending.length;$('sendHeadline').textContent=pending.length?`${pending.length} contactos pendientes`:'Seguimiento completado';}
+
+$('sendAllBtn').onclick=async()=>{
+  if(sending)return;const pending=seguimiento.filter(x=>x.tel&&!x.sent);if(!pending.length)return;
+  if(evoReady()){
+    if(!confirm(`Se enviará el seguimiento automáticamente a ${pending.length} contactos por WhatsApp. ¿Confirmás?`))return;
+    sending=true;$('sendAllBtn').disabled=true;$('progress').style.display='block';setSteps(3);let done=0,okCount=0,failCount=0;
+    for(let i=0;i<seguimiento.length;i++){
+      const x=seguimiento[i];if(!x.tel||x.sent)continue;const msg=renderMessage(x);const ok=await evolutionSend(x.tel,msg);x.sent=ok;x.failed=!ok;ok?okCount++:failCount++;done++;logSend(x,'automatico',msg,ok);$('progressBar').style.width=Math.round(done/pending.length*100)+'%';$('sendHeadline').textContent=`Enviando ${done} de ${pending.length}`;renderRows();await new Promise(r=>setTimeout(r,1200));
+    }
+    sending=false;$('summary').style.display='block';$('summary').innerHTML=`Seguimiento finalizado. <strong style="color:var(--green)">${okCount} enviados</strong>${failCount?` · <strong style="color:var(--red)">${failCount} fallaron</strong>`:''}. Los resultados quedaron registrados localmente en este navegador.`;updateSendAvailability();
+  }else{
+    setSteps(3);const first=seguimiento.findIndex(x=>x.tel&&!x.sent);if(first>=0)sendOne(first);$('summary').style.display='block';$('summary').textContent='Modo asistido activo. Se abrió el primer chat de WhatsApp; podés seguir enviando desde la tabla uno por uno.';
+  }
+};
+
+$('resetBtn').onclick=()=>{seguimiento=[];$('resultSection').classList.add('hidden');$('uploadSection').classList.remove('hidden');$('summary').style.display='none';$('progress').style.display='none';$('progressBar').style.width='0';setSteps(1);};
+</script>
+</body>
+</html>
