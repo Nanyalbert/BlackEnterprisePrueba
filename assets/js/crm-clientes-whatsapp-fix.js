@@ -1,5 +1,7 @@
 (() => {
-  function digits(value){return String(value||'').replace(/\D/g,'');}
+  const nativeFetch = window.fetch.bind(window);
+
+  function digits(value){ return String(value||'').replace(/\D/g,''); }
   function normalizeArgentinaWhatsApp(value){
     let d=digits(value);
     if(!d) return '';
@@ -12,9 +14,15 @@
       return '549'+local;
     }
     d=d.replace(/^0+/,'');
+    if(d.length===11){
+      const pos=d.indexOf('15',2);
+      if(pos>=2 && pos<=4) d=d.slice(0,pos)+d.slice(pos+2);
+    }
     d=d.replace(/^15/,'');
     if(d.length===10) return '549'+d;
     if(d.length===11 && d.startsWith('9')) return '54'+d;
+    if(d.length===12 && d.startsWith('54')) return d;
+    if(d.length===13 && d.startsWith('549')) return d;
     return d;
   }
 
@@ -22,41 +30,52 @@
   window.BlackWhatsApp.normalizeArgentina = normalizeArgentinaWhatsApp;
   window.BlackWhatsApp.lastError = null;
 
-  // Reemplaza el envío histórico del CRM. Todas las campañas pasan por acá.
-  window.evolutionSendText = async function(tel, texto){
-    const normalized=normalizeArgentinaWhatsApp(tel);
-    window.BlackWhatsApp.lastError=null;
-    if(!normalized){
-      window.BlackWhatsApp.lastError={status:0,message:'Teléfono inválido',input:tel,normalized:''};
-      return false;
-    }
+  function notifyError(err){
+    window.BlackWhatsApp.lastError=err;
+    console.error('[Black OS WhatsApp]',err);
+    const message = err.kind==='network'
+      ? 'WhatsApp: Evolution no respondió desde el navegador. Posible CORS/red.'
+      : `WhatsApp: Evolution ${err.status||''} ${err.message||'rechazó el envío'}`.trim();
+    try{ if(typeof window.toast==='function') window.toast(message); }catch{}
+    window.dispatchEvent(new CustomEvent('blackos-whatsapp-error',{detail:err}));
+  }
+
+  window.fetch = async function(input, init={}){
+    const url = typeof input==='string' ? input : (input?.url || '');
+    const isEvolutionSend = /\/message\/sendText\//i.test(url);
+    if(!isEvolutionSend) return nativeFetch(input,init);
+
+    let nextInit={...init};
+    let originalNumber='';
+    let normalized='';
     try{
-      if(!window.cfg?.evoUrl || !window.cfg?.evoKey || !window.cfg?.evoInstance){
-        window.BlackWhatsApp.lastError={status:0,message:'Evolution API no está configurada',input:tel,normalized};
-        return false;
+      if(typeof nextInit.body==='string'){
+        const payload=JSON.parse(nextInit.body);
+        originalNumber=payload.number||'';
+        normalized=normalizeArgentinaWhatsApp(originalNumber);
+        if(normalized) payload.number=normalized;
+        nextInit.body=JSON.stringify(payload);
       }
-      const url=window.cfg.evoUrl.replace(/\/$/,'')+'/message/sendText/'+encodeURIComponent(window.cfg.evoInstance);
-      const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','apikey':window.cfg.evoKey},body:JSON.stringify({number:normalized,text:texto})});
-      const raw=await r.text().catch(()=> '');
-      if(!r.ok){
-        window.BlackWhatsApp.lastError={status:r.status,message:raw.slice(0,300)||('HTTP '+r.status),input:tel,normalized};
-        console.error('[Black OS WhatsApp] Evolution rechazó el envío',window.BlackWhatsApp.lastError);
-        return false;
+    }catch(e){ console.warn('[Black OS WhatsApp] No se pudo normalizar payload',e); }
+
+    try{
+      const response=await nativeFetch(input,nextInit);
+      if(!response.ok){
+        let raw='';
+        try{ raw=await response.clone().text(); }catch{}
+        notifyError({
+          kind:'http',status:response.status,
+          message:(raw||response.statusText||'Error de Evolution').slice(0,350),
+          originalNumber,normalized,url
+        });
+      }else{
+        window.BlackWhatsApp.lastError=null;
+        window.dispatchEvent(new CustomEvent('blackos-whatsapp-ok',{detail:{originalNumber,normalized,url}}));
       }
-      return true;
-    }catch(err){
-      window.BlackWhatsApp.lastError={status:0,message:err?.message||'Error de red',input:tel,normalized};
-      console.error('[Black OS WhatsApp] Error de envío',window.BlackWhatsApp.lastError);
-      return false;
+      return response;
+    }catch(error){
+      notifyError({kind:'network',status:0,message:error?.message||'Failed to fetch',originalNumber,normalized,url});
+      throw error;
     }
   };
-
-  // Normaliza también el helper utilizado por cargas/campañas cuando el binding global es reemplazable.
-  try{
-    const old=window.normalizarTel;
-    window.normalizarTel=function(value){
-      const normalized=normalizeArgentinaWhatsApp(value);
-      return normalized || (typeof old==='function'?old(value):digits(value));
-    };
-  }catch{}
 })();
