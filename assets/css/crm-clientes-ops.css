@@ -6,6 +6,8 @@ body.crm-ops-ready .day-summary .day-stat:last-child .day-stat-num{font-size:30p
 body.crm-ops-ready .day-summary .day-stat:last-child .day-stat-label{font-size:11px!important;text-transform:uppercase;letter-spacing:.08em;color:var(--text3)!important;margin-top:4px}
 body.crm-ops-ready .bottom-nav{display:none!important}
 body.crm-ops-ready .content{padding-bottom:110px}
+body.crm-ops-ready .detail-left>div:has(.etapas-list){display:none!important}
+body.crm-ops-ready .kanban-wrap,body.crm-ops-ready .board-wrap{display:none!important}
 
 .crm-ops-nav{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:150;display:flex;align-items:center;gap:5px;padding:6px;background:rgba(16,16,16,.94);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.09);border-radius:16px;box-shadow:0 16px 44px rgba(0,0,0,.34);max-width:calc(100vw - 24px)}
 .crm-ops-nav button,.crm-ops-nav a{min-height:44px;border:0;border-radius:11px;padding:8px 13px;background:transparent;color:#a8a8a8;font:600 11px/1.1 'Plus Jakarta Sans',sans-serif;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;white-space:nowrap;transition:.16s}
