@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/base.css">
 <link rel="stylesheet" href="assets/css/black-ai.css">
+<link rel="stylesheet" href="assets/css/black-ai-chat.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="assets/js/supabase-config.js"></script>
 </head>
@@ -100,10 +101,28 @@
       </div>
     </article>
 
+    <article class="card ai-lab-card">
+      <div class="card-head ai-lab-head">
+        <div><span class="card-kicker">LABORATORIO</span><h3>Probar una conversación real</h3><p>Conversá con Black AI usando OpenAI. Esta prueba no envía mensajes a WhatsApp.</p></div>
+        <span class="ai-runtime-badge" id="ai-runtime-badge">Verificando motor</span>
+      </div>
+      <div class="ai-lab-shell">
+        <div class="ai-lab-log" id="ai-lab-log"><div class="ai-lab-empty" id="ai-lab-empty">Escribí como si fueras un paciente. Black AI responderá usando el tono y las reglas configuradas en esta pantalla.</div></div>
+        <div class="ai-lab-composer">
+          <textarea id="ai-lab-input" maxlength="4000" placeholder="Ej: Hola, quería saber qué opciones tienen de multifocales"></textarea>
+          <div class="ai-lab-actions">
+            <button class="btn-primary" id="ai-lab-send" type="button">Enviar</button>
+            <button class="btn-secondary" id="ai-lab-clear" type="button">Limpiar</button>
+          </div>
+        </div>
+        <div class="ai-lab-meta"><span id="ai-lab-meta">Sin consultas todavía</span><strong>Entorno aislado · No usa Evolution API</strong></div>
+      </div>
+    </article>
+
     <div class="grid three mini-grid">
       <article class="mini-card"><span class="mini-label">WhatsApp</span><strong class="muted" id="evolution-status">Verificando</strong><small id="evolution-detail">Leyendo configuración de CRM Black</small></article>
       <article class="mini-card"><span class="mini-label">Configuración</span><strong class="muted" id="supabase-status">Verificando</strong><small id="supabase-detail">Supabase con respaldo local</small></article>
-      <article class="mini-card"><span class="mini-label">Motor de IA</span><strong class="muted">Pendiente</strong><small>OpenAI se conectará desde un backend seguro</small></article>
+      <article class="mini-card"><span class="mini-label">Motor de IA</span><strong class="muted" id="openai-status">Verificando</strong><small id="openai-detail">Comprobando Edge Function y clave de OpenAI</small></article>
     </div>
   </section>
 
@@ -151,10 +170,10 @@
     <div class="section-intro"><div><h2>Integraciones</h2><p>Servicios que conectan WhatsApp, CRM Black y el motor de IA.</p></div></div>
     <div class="integration-list">
       <article class="integration"><div><span class="integration-logo">WA</span><div><h3>Evolution API</h3><p>Canal de recepción y envío de mensajes de WhatsApp.</p></div></div><span class="connection off" id="evolution-integration-status">Verificando</span></article>
-      <article class="integration"><div><span class="integration-logo">AI</span><div><h3>OpenAI</h3><p>Interpretación de mensajes, generación de respuestas y uso de herramientas.</p></div></div><span class="connection pending">Pendiente</span></article>
+      <article class="integration"><div><span class="integration-logo">AI</span><div><h3>OpenAI</h3><p>Interpretación de mensajes, generación de respuestas y uso de herramientas.</p></div></div><span class="connection pending" id="openai-integration-status">Verificando</span></article>
       <article class="integration"><div><span class="integration-logo">DB</span><div><h3>Supabase</h3><p>Configuración, conocimiento, permisos, historial y auditoría.</p></div></div><span class="connection pending" id="supabase-integration-status">Verificando</span></article>
     </div>
-    <div class="security-note"><strong>Seguridad:</strong> la clave de OpenAI no se almacenará en el navegador. Las solicitudes al modelo pasarán por una función segura del backend.</div>
+    <div class="security-note"><strong>Seguridad:</strong> la clave de OpenAI no se almacena en el navegador. Las solicitudes al modelo pasan por una Supabase Edge Function protegida por la sesión de Black OS.</div>
   </section>
 
   <section class="tab-panel" id="tab-auditoria">
