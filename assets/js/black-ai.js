@@ -61,6 +61,23 @@ function renderAll(){renderStatus();renderEnvironment();renderReplyMode();render
 
 function update(patch){config={...config,...patch};saveConfig(config);renderAll()}
 
+function mountCrmNav(){
+  if(document.querySelector('.ai-crm-nav')) return;
+  const nav=document.createElement('nav');
+  nav.className='ai-crm-nav';
+  nav.setAttribute('aria-label','Navegación CRM Black');
+  nav.innerHTML=`
+    <a href="crm-clientes.html">Inicio</a>
+    <a href="crm-clientes.html">Clientes</a>
+    <a href="crm-clientes.html">Campañas</a>
+    <a href="seguimiento-presupuestos.html">Presupuestos</a>
+    <a href="automatizaciones-postventa.html">Automatizaciones</a>
+    <a href="black-ai.html" class="active" aria-current="page">IA</a>`;
+  document.body.appendChild(nav);
+  const eyebrow=document.querySelector('.eyebrow');
+  if(eyebrow) eyebrow.textContent='CRM BLACK · INTELIGENCIA ARTIFICIAL';
+}
+
 enabled?.addEventListener('change',()=>update({enabled:enabled.checked}));
 document.querySelectorAll('#environment-selector .segment').forEach(btn=>btn.addEventListener('click',()=>update({environment:btn.dataset.value})));
 document.querySelectorAll('input[name="reply-mode"]').forEach(input=>input.addEventListener('change',()=>update({replyMode:input.value})));
@@ -83,4 +100,5 @@ document.getElementById('reset-demo')?.addEventListener('click',()=>{
   renderAll();
 });
 
+mountCrmNav();
 renderAll();
