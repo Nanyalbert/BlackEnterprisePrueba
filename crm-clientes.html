@@ -3,102 +3,254 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="theme-color" content="#080808">
-<title>Black Óptica — CRM Black</title>
-<style>
-  *{box-sizing:border-box}
-  html,body{width:100%;height:100%;margin:0;background:#080808;overflow:hidden;font-family:Arial,sans-serif}
-  .crm-stage{position:fixed;inset:0;background:#080808}
-  #crmFrame{display:block;width:100%;height:100%;border:0;background:#080808}
-  .crm-nav-wrap{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:1000;width:min(760px,calc(100vw - 28px));pointer-events:none}
-  .crm-nav{pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:4px;padding:8px;background:rgba(16,16,16,.96);border:1px solid #2b2b2b;border-radius:18px;box-shadow:0 18px 48px rgba(0,0,0,.45);backdrop-filter:blur(14px);overflow-x:auto;scrollbar-width:none}
-  .crm-nav::-webkit-scrollbar{display:none}
-  .crm-nav-btn{appearance:none;border:0;background:transparent;color:#a8a8a8;display:flex;align-items:center;gap:9px;justify-content:center;min-width:max-content;padding:12px 15px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;transition:.16s ease;white-space:nowrap}
-  .crm-nav-btn:hover{color:#f4f4f4;background:#191919}
-  .crm-nav-btn.active{background:#f6f6f4;color:#111}
-  .crm-nav-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
-  .crm-nav-btn.ai-btn svg{stroke-width:1.6}
-  @media(max-width:720px){.crm-nav-wrap{bottom:10px;width:calc(100vw - 16px)}.crm-nav{justify-content:flex-start;padding:6px}.crm-nav-btn{padding:10px 12px;font-size:12px;gap:7px}}
-</style>
+<meta name="theme-color" content="#000000">
+<title>Black Óptica — CRM Clientes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/crm-clientes.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="assets/js/supabase-config.js"></script>
 </head>
 <body>
-<div class="crm-stage"><iframe id="crmFrame" src="crm-clientes-core.html" title="CRM Black"></iframe></div>
-<div class="crm-nav-wrap">
-  <nav class="crm-nav" aria-label="Navegación CRM Black">
-    <button class="crm-nav-btn active" data-section="inicio" type="button">
-      <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5"/><path d="M9 21v-6h6v6"/></svg><span>Inicio</span>
-    </button>
-    <button class="crm-nav-btn" data-section="clientes" type="button">
-      <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 20v-1.5A4.5 4.5 0 0 1 8 14h2a4.5 4.5 0 0 1 4.5 4.5V20"/><path d="M16 6.5a3 3 0 0 1 0 5.5M17 14a4.5 4.5 0 0 1 3.5 4.4V20"/></svg><span>Clientes</span>
-    </button>
-    <button class="crm-nav-btn" data-section="campanas" type="button">
-      <svg viewBox="0 0 24 24"><path d="M4 13h3l9 5V6l-9 5H4z"/><path d="M7 13v5"/><path d="M19 9a5 5 0 0 1 0 6"/></svg><span>Campañas</span>
-    </button>
-    <button class="crm-nav-btn" data-section="presupuestos" type="button">
-      <svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h4"/></svg><span>Presupuestos</span>
-    </button>
-    <button class="crm-nav-btn" data-section="automatizaciones" type="button">
-      <svg viewBox="0 0 24 24"><path d="m13 2-8 11h6l-1 9 9-12h-6z"/></svg><span>Automatizaciones</span>
-    </button>
-    <button class="crm-nav-btn ai-btn" data-section="ia" type="button">
-      <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="4"/><path d="M9 10h.01M15 10h.01M9 14c.9.7 1.9 1 3 1s2.1-.3 3-1M12 2v3"/></svg><span>IA</span>
-    </button>
-  </nav>
+<div class="topbar">
+  <div class="logo" style="flex:1;display:flex;align-items:center;">
+    <img src="assets/img/Logo---Black.png" alt="Black Óptica" class="crm-brand-logo">
+  </div>
+  <div class="sync-dot" id="syncDot" title="Validando conexión con Supabase"></div><span id="syncLabel" style="font-size:10px;color:var(--text3);font-family:Geist,sans-serif;">validando</span>
+  <a class="topbar-btn portal-back-btn" href="menu.html" title="Volver al Portal" aria-label="Volver al Portal">←</a>
+  <button class="topbar-btn" onclick="openSearch()">🔍</button>
+  <button class="topbar-btn" onclick="openConfig()">⚙️</button>
 </div>
-<script>
-const frame=document.getElementById('crmFrame');
-const buttons=[...document.querySelectorAll('.crm-nav-btn')];
-let currentSection='inicio';
-let pendingView='hoy';
 
-function setActive(section){
-  currentSection=section;
-  buttons.forEach(btn=>btn.classList.toggle('active',btn.dataset.section===section));
-}
+<div class="day-summary">
+  <div class="day-stat" onclick="statClick('contactar')" style="cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'"><div class="day-stat-num" id="dsContactar" style="color:var(--red)">0</div><div class="day-stat-label">🔴 Contactar hoy</div></div>
+  <div class="day-stat" onclick="statClick('respondieron')" style="cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'"><div class="day-stat-num" id="dsRespondieron" style="color:var(--green)">0</div><div class="day-stat-label">✅ Respondieron</div></div>
+  <div class="day-stat" onclick="statClick('nuevos')" style="cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'"><div class="day-stat-num" id="dsNuevos" style="color:var(--accent)">0</div><div class="day-stat-label">🆕 Nuevos hoy</div></div>
+  <div class="day-stat" onclick="statClick('todos')" style="cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'"><div class="day-stat-num" id="dsTotal" style="color:var(--text2)">0</div><div class="day-stat-label">👥 Total leads</div></div>
+</div>
 
-function prepareCore(){
-  try{
-    const doc=frame.contentDocument;
-    if(!doc)return;
-    if(!doc.getElementById('black-crm-shell-hide-legacy')){
-      const style=doc.createElement('style');
-      style.id='black-crm-shell-hide-legacy';
-      style.textContent='.bottom-nav{display:none!important}.content{padding-bottom:105px!important}.fab{bottom:104px!important}';
-      doc.head.appendChild(style);
-    }
-    if(pendingView && typeof frame.contentWindow.setView==='function'){
-      const map={hoy:'nav-hoy',todos:'nav-todos',tablero:'nav-tablero',campanas:'nav-campanas-hidden'};
-      const innerBtn=doc.getElementById(map[pendingView])||doc.createElement('button');
-      frame.contentWindow.setView(pendingView,innerBtn);
-      pendingView=null;
-    }
-  }catch(error){console.warn('CRM shell:',error)}
-}
+<div class="content" id="mainContent"></div>
+<button class="fab" onclick="openAddModal()" title="Agregar nuevo cliente">+</button>
 
-function openCore(view){
-  pendingView=view;
-  const src=(frame.getAttribute('src')||'').split('?')[0];
-  if(src!=='crm-clientes-core.html'){
-    frame.src='crm-clientes-core.html';
-  }else{
-    prepareCore();
-  }
-}
+<div class="bottom-nav">
+  <button class="nav-btn active" id="nav-hoy" onclick="setView('hoy',this)"><div class="nav-btn-icon">📋</div><div class="nav-btn-label">Para hoy</div></button>
+  <button class="nav-btn" id="nav-todos" onclick="setView('todos',this)"><div class="nav-btn-icon">👥</div><div class="nav-btn-label">Clientes</div></button>
+  <button class="nav-btn" id="nav-tablero" onclick="setView('tablero',this)"><div class="nav-btn-icon">⊞</div><div class="nav-btn-label">Tablero</div></button>
+  <details style="flex:1;position:relative;">
+    <summary class="nav-btn" style="list-style:none;width:100%;height:100%;cursor:pointer;"><div class="nav-btn-icon">☰</div><div class="nav-btn-label">Más</div></summary>
+    <div style="position:absolute;right:8px;bottom:54px;width:min(280px,calc(100vw - 24px));background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:8px;box-shadow:0 14px 40px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:4px;z-index:90;">
+      <button class="btn" style="width:100%;justify-content:flex-start;padding:11px 12px" onclick="setView('campanas',document.getElementById('nav-campanas-hidden'))">📣 Campañas</button>
+      <a href="automatizaciones-postventa.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);padding:11px 12px;border:1px solid var(--border2);border-radius:8px;background:var(--accent-bg);font-size:12px;font-weight:600">⚡ Automatizaciones y postventa</a>
+      <button class="btn" style="width:100%;justify-content:flex-start;padding:11px 12px" onclick="setView('resumen',document.getElementById('nav-resumen-hidden'))">📊 Resumen</button>
+      <button class="btn" style="width:100%;justify-content:flex-start;padding:11px 12px" onclick="setView('ajustes',document.getElementById('nav-ajustes-hidden'))">✏️ Ajustes</button>
+    </div>
+  </details>
+  <button id="nav-campanas-hidden" style="display:none"></button>
+  <button id="nav-resumen-hidden" style="display:none"></button>
+  <button id="nav-ajustes-hidden" style="display:none"></button>
+</div>
 
-function navigate(section){
-  setActive(section);
-  if(section==='inicio')return openCore('hoy');
-  if(section==='clientes')return openCore('todos');
-  if(section==='campanas')return openCore('campanas');
-  if(section==='presupuestos')return openCore('tablero');
-  if(section==='automatizaciones'){pendingView=null;frame.src='automatizaciones-postventa.html';return;}
-  if(section==='ia'){pendingView=null;frame.src='black-ai.html';return;}
-}
+<!-- DETALLE -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="detail-layout">
+      <div class="detail-left">
+        <div>
+          <div class="client-name-big" id="d_nombre">Cliente</div>
+          <div class="client-name-sub"><div class="client-live-dot"></div><span id="d_sub">—</span></div>
+        </div>
+        <div>
+          <div class="left-label">Etapa del proceso</div>
+          <div class="etapas-list" id="d_etapas_list"></div>
+        </div>
+        <div>
+          <div class="left-label">Etiquetas del cliente</div>
+          <div class="etiq-detalle" id="d_etiquetas"></div>
+          <div class="etiq-input-row">
+            <input class="etiq-d-input" id="etiqInput" placeholder="Nueva etiqueta..." maxlength="24" onkeydown="if(event.key==='Enter'){event.preventDefault();agregarEtiqueta();}">
+            <button style="padding:6px 12px;background:var(--surface3);border:1px solid var(--border2);border-radius:6px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;font-family:'Geist',sans-serif;" onclick="agregarEtiqueta()">+</button>
+          </div>
+        </div>
+        <div class="left-actions">
+          <button class="la-btn la-wa" onclick="enviarWAdetalle()"><span style="font-size:13px;font-weight:600">📱 Abrir WhatsApp</span></button>
+          <button class="la-btn la-respondio" onclick="registrarRespuesta()">
+            <span style="font-size:12px;font-weight:600">✅ El cliente escribió</span>
+            <span class="la-btn-sub">Pausa automáticos 3hs</span>
+          </button>
+          <button class="la-btn la-envio" onclick="registrarEnvio()">
+            <span style="font-size:12px;font-weight:600">📤 Registré un envío</span>
+            <span class="la-btn-sub">Lo mandé desde el teléfono</span>
+          </button>
+          <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;border:1px solid var(--border);cursor:pointer;background:transparent;">
+            <input type="checkbox" id="d_optout" style="width:16px;height:16px;accent-color:var(--red);cursor:pointer;">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--text2)">No contactar automáticamente</div>
+              <div style="font-size:10px;color:var(--text3)">Desactiva todos los mensajes automáticos</div>
+            </div>
+          </label>
+          <button class="btn" style="justify-content:center;font-size:12px;padding:8px;width:100%" onclick="editarCliente()">✏️ Editar datos</button>
+          <button class="btn" style="justify-content:center;color:var(--red);border-color:rgba(240,80,96,0.2);font-size:12px;padding:8px" onclick="eliminarCliente()">Eliminar</button>
+          <button class="btn" style="justify-content:center;font-size:12px;padding:8px" onclick="duplicarCliente()">⧉ Duplicar</button>
+          <button class="btn" style="justify-content:center;font-size:12px;padding:8px" onclick="closeModal('detailModal')">Cerrar</button>
+        </div>
+      </div>
+      <div class="detail-right">
+        <div id="d_lockbanner"></div>
+        <div><div class="right-label" id="d_seq_label">Mensajes</div><div id="d_secuencia"></div></div>
+        <div>
+          <div class="right-label">Información</div>
+          <div id="d_info"></div>
+          <div style="margin-top:8px;display:flex;gap:6px;">
+            <input id="notaRapida" placeholder="Agregar nota rápida..." style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;font-size:12px;color:var(--text);font-family:Geist,sans-serif;outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();guardarNotaRapida();}">
+            <button onclick="guardarNotaRapida()" style="padding:7px 12px;background:var(--accent-bg);border:1px solid rgba(108,143,255,0.3);border-radius:var(--rsm);font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;font-family:Geist,sans-serif;white-space:nowrap;">+ Nota</button>
+          </div>
+        </div>
+        <div><div class="right-label">Historial</div><div id="d_historial"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
 
-buttons.forEach(btn=>btn.addEventListener('click',()=>navigate(btn.dataset.section)));
-frame.addEventListener('load',()=>{
-  if((frame.getAttribute('src')||'').startsWith('crm-clientes-core.html'))prepareCore();
-});
-</script>
+<!-- NUEVO CLIENTE -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="padding:0 20px 32px">
+      <div style="font-size:18px;font-weight:600;letter-spacing:-0.3px;margin-bottom:4px">Nuevo cliente</div><div style="font-size:12px;color:var(--text2);margin-bottom:18px">Completá los datos del lead. Solo el nombre es obligatorio.</div>
+      <div class="form-group"><label class="form-label">Nombre *</label><input class="form-input" id="f_nombre" placeholder="María González"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">WhatsApp</label><input class="form-input" id="f_tel" placeholder="+54 9 351..." type="tel"></div>
+        <div class="form-group"><label class="form-label">Instagram</label><input class="form-input" id="f_ig" placeholder="@usuario"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Fuente</label>
+          <select class="form-select" id="f_fuente"><option value="whatsapp">WhatsApp</option><option value="instagram">Instagram</option><option value="local">Local físico</option><option value="formulario">Formulario</option><option value="referido">Referido</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Etapa</label><select class="form-select" id="f_etapa"></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Producto / Interés</label><input class="form-input" id="f_producto" placeholder="Lentes de sol, recetados..."></div>
+      <div class="form-group"><label class="form-label">Presupuesto ($)</label><input class="form-input" id="f_monto" type="number" placeholder="85000" inputmode="numeric"></div>
+      <div class="form-group"><label class="form-label">Nota</label><textarea class="form-textarea" id="f_nota" placeholder="Observaciones..."></textarea></div>
+      <button class="btn btn-primary" onclick="guardarCliente()" style="margin-top:4px">Guardar cliente</button>
+      <button class="btn" style="width:100%;justify-content:center;margin-top:8px" onclick="closeModal('addModal')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- BUSCAR -->
+<div class="modal-overlay" id="searchModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="padding:0 20px 32px">
+      <div style="font-size:18px;font-weight:600;margin-bottom:12px">Buscar</div>
+      <div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r);padding:0 14px;height:44px;margin-bottom:14px">
+        <span style="color:var(--text3)">🔍</span>
+        <input id="searchInput" placeholder="Buscar por nombre, producto, etapa..." oninput="renderSearch()" autocomplete="off" style="flex:1;border:none;background:transparent;outline:none;font-size:15px;color:var(--text);font-family:'Geist',sans-serif;">
+      </div>
+      <div id="searchResults"></div>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORTAR -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="padding:0 20px 32px">
+      <div style="font-size:18px;font-weight:600;margin-bottom:4px">Importar clientes</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:18px;line-height:1.6">Subí un archivo Excel (.xlsx) o CSV con tus contactos. La primera fila debe tener los nombres de las columnas.</div>
+
+      <div id="importDropzone" onclick="document.getElementById('importFileInput').click()"
+        style="border:2px dashed var(--border2);border-radius:var(--r);padding:32px 20px;text-align:center;cursor:pointer;transition:all 0.2s;margin-bottom:16px;"
+        onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-bg)'"
+        onmouseout="this.style.borderColor='var(--border2)';this.style.background='transparent'">
+        <div style="font-size:32px;margin-bottom:8px">📂</div>
+        <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px">Tocá para seleccionar archivo</div>
+        <div style="font-size:12px;color:var(--text3)">Excel (.xlsx) o CSV · máx. 5000 filas</div>
+        <input type="file" id="importFileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="procesarArchivo(this)">
+      </div>
+
+      <div id="importPreview" style="display:none">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text3);margin-bottom:10px">Mapeo de columnas detectado</div>
+        <div id="importMapeo" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px"></div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text3);margin-bottom:8px">Vista previa — primeras 3 filas</div>
+        <div id="importTable" style="overflow-x:auto;margin-bottom:16px;border:1px solid var(--border);border-radius:var(--rsm)"></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+          <div style="font-size:12px;color:var(--text2);">Etapa inicial:</div>
+          <select id="importEtapa" style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--rsm);padding:8px 12px;font-size:13px;color:var(--text);font-family:Geist,sans-serif;outline:none;"></select>
+        </div>
+        <div id="importStatus" style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:10px"></div>
+        <button class="btn btn-primary" onclick="ejecutarImportacion()">⬆ Importar clientes</button>
+        <button class="btn" style="width:100%;justify-content:center;margin-top:8px" onclick="resetImport()">Elegir otro archivo</button>
+      </div>
+
+      <button class="btn" style="width:100%;justify-content:center;margin-top:8px" onclick="closeModal('importModal')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIG -->
+<div class="modal-overlay" id="configModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="padding:0 20px 32px">
+      <div style="font-size:18px;font-weight:600;margin-bottom:16px">Configuración</div>
+      <div class="cfg-tabs">
+        <button class="cfg-tab active" id="cfg-tab-conexion" onclick="cfgTab('conexion',this)">Conexión</button>
+        <button class="cfg-tab" id="cfg-tab-pasos" onclick="cfgTab('pasos',this)">Pasos</button>
+        <button class="cfg-tab" id="cfg-tab-datos" onclick="cfgTab('datos',this)">Datos</button>
+      </div>
+      <div id="cfg-conexion">
+        <div class="portal-connection-card">
+          <div class="portal-connection-icon">✓</div>
+          <div>
+            <div class="portal-connection-title">Supabase conectado desde Portal Black</div>
+            <div class="portal-connection-copy">La sesión, URL y clave pública se heredan automáticamente del login. No necesitás cargarlas nuevamente en este CRM.</div>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">Característica por defecto (números sin código de área)</label><input class="form-input" id="sb_area" placeholder="351" inputmode="numeric" oninput="guardarConfig()"></div>
+        <button class="btn btn-primary" onclick="testConexion()" style="margin-bottom:8px">Verificar sesión y base</button>
+        <div id="configResult" style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:4px"></div>
+        <div style="border-top:1px solid var(--border);margin:16px 0 12px"></div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text3);margin-bottom:8px">⚡ Evolution API — WhatsApp automático</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6;background:var(--surface2);border-radius:var(--rsm);padding:10px 12px">Conectá Evolution API (Railway) para que las Campañas se envíen automáticamente a todos con un botón. Sin esto, las campañas funcionan en modo asistido (abrís cada chat).</div>
+        <div class="form-group"><label class="form-label">Evolution URL</label><input class="form-input" id="evo_url" placeholder="https://evolution-api-production-xxxx.up.railway.app" oninput="guardarConfig()"></div>
+        <div class="form-group"><label class="form-label">API Key</label><input class="form-input" id="evo_key" type="password" placeholder="clave de Evolution..." oninput="guardarConfig()"></div>
+        <div class="form-group"><label class="form-label">Nombre de la instancia</label><input class="form-input" id="evo_instance" placeholder="black-optica" oninput="guardarConfig()"></div>
+        <button class="btn btn-primary" onclick="testEvolution()" style="margin-bottom:8px;background:var(--green);border-color:var(--green)">Probar WhatsApp</button>
+        <div id="evoResult" style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:4px"></div>
+      </div>
+      <div id="cfg-pasos" style="display:none">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="background:var(--surface2);border-radius:var(--rsm);padding:12px;border:0.5px solid var(--border2)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:22px;height:22px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0">1</div><span style="font-size:13px;font-weight:600">Supabase — base de datos</span><span style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--green-bg);color:var(--green);margin-left:auto">Gratis</span></div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.6">El Portal Black ya maneja el login con Supabase. Solo necesitás que exista la tabla clientes y que RLS permita acceso al rol authenticated.</div>
+            <button class="btn" style="margin-top:8px;font-size:12px;padding:6px 12px;width:100%;justify-content:center" onclick="copiarSQL()">📋 Copiar SQL seguro para clientes</button>
+          </div>
+          <div style="background:var(--surface2);border-radius:var(--rsm);padding:12px;border:0.5px solid var(--border2)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:22px;height:22px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0">2</div><span style="font-size:13px;font-weight:600">ManyChat — Instagram</span><span style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--amber-bg);color:var(--amber);margin-left:auto">USD 15/mes</span></div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.6">manychat.com → conectá Instagram Business → flujo "New Follower" → mensaje de bienvenida → webhook a n8n.</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:var(--rsm);padding:12px;border:0.5px solid var(--border2)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:22px;height:22px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0">3</div><span style="font-size:13px;font-weight:600">n8n + Evolution API — WhatsApp</span><span style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--amber-bg);color:var(--amber);margin-left:auto">USD 5/mes</span></div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.6">railway.app → Evolution API → escaneá QR → n8n → cada WA nuevo crea tarjeta sola en BLACK CRM.</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:var(--rsm);padding:10px 12px;border:0.5px solid rgba(45,212,160,0.2)"><div style="font-size:12px;color:var(--green);font-weight:600;margin-bottom:2px">💰 Total</div><div style="font-size:13px;color:var(--text);font-weight:500">USD 20/mes — Supabase gratis + Railway $5 + ManyChat $15</div></div>
+        </div>
+      </div>
+      <div id="cfg-datos" style="display:none">
+        <button class="btn" style="width:100%;justify-content:center;padding:12px;margin-bottom:8px;background:var(--accent-bg);border-color:rgba(108,143,255,0.3);color:var(--accent)" onclick="closeModal('configModal');openImport()">⬆ Importar clientes desde Excel / CSV</button>
+        <button class="btn" style="width:100%;justify-content:center;padding:12px;margin-bottom:8px" onclick="exportarCSV()">⬇ Exportar clientes a Excel</button>
+        <div style="font-size:12px;color:var(--text2);line-height:1.6;background:var(--surface2);border-radius:var(--rsm);padding:10px 12px">Para importar: exportá tus contactos de Google Contacts (contacts.google.com → Exportar → Google CSV) y cargálos en Supabase → Table Editor → Import data.</div>
+      </div>
+      <button class="btn" style="width:100%;justify-content:center;margin-top:14px" onclick="closeModal('configModal')">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="assets/js/crm-clientes.js"></script>
 </body>
 </html>

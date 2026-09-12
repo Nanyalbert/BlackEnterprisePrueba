@@ -1,0 +1,522 @@
+/* Black OS — Shell Step 1
+   Capa visual no invasiva para el portal principal.
+   No modifica lógica, IDs, data-view ni comportamiento de módulos. */
+
+.sidebar{
+  background:linear-gradient(180deg,#0b0b0b 0%,#080808 100%);
+}
+
+.sidebar-brand{
+  padding:0 18px;
+  gap:11px;
+}
+
+.sidebar-brand img{
+  width:28px;
+}
+
+.sidebar-brand span{
+  font-size:15px;
+  letter-spacing:.015em;
+}
+
+.sidebar-nav{
+  padding:16px 10px 18px;
+}
+
+.nav-label{
+  margin:18px 10px 7px;
+  padding:0;
+  color:#50504c;
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:.14em;
+}
+
+.sidebar-nav > .nav-label:first-child{
+  margin-top:3px;
+}
+
+.nav-item{
+  position:relative;
+  min-height:42px;
+  padding:10px 11px;
+  gap:11px;
+  border:1px solid transparent;
+  border-radius:10px;
+  color:#8f8f8a;
+  font-size:13px;
+}
+
+.nav-item svg{
+  opacity:.82;
+  transition:opacity .15s ease,transform .15s ease;
+}
+
+.nav-item:hover{
+  background:#121212;
+  border-color:#1f1f1f;
+  color:#e8e8e4;
+}
+
+.nav-item:hover svg{
+  opacity:1;
+}
+
+.nav-item.active{
+  background:#f1f1ed;
+  border-color:#f1f1ed;
+  color:#050505;
+  font-weight:600;
+  box-shadow:0 1px 0 rgba(255,255,255,.08),0 8px 22px rgba(0,0,0,.22);
+}
+
+.nav-item.active svg{
+  opacity:1;
+}
+
+.sidebar-footer{
+  padding:10px;
+  background:rgba(255,255,255,.012);
+}
+
+.sidebar-footer .nav-item{
+  margin:0;
+}
+
+/* El submenú de Administración conserva la lógica actual pero se integra visualmente. */
+.admin-submenu-inner{
+  padding-left:24px!important;
+}
+
+.admin-subitem{
+  min-height:34px!important;
+  margin:2px 4px 2px 0!important;
+  padding:7px 10px!important;
+  border-radius:9px!important;
+  font-size:11px!important;
+}
+
+.admin-subitem.active{
+  background:#171717!important;
+  color:#f1f1ed!important;
+}
+
+/* Contraído: iconos centrados y separación coherente entre grupos. */
+body.sidebar-collapsed .sidebar-nav{
+  padding:14px 12px;
+}
+
+body.sidebar-collapsed .nav-item{
+  width:46px;
+  height:46px;
+  min-height:46px;
+  border-radius:12px;
+}
+
+body.sidebar-collapsed .nav-item svg{
+  width:18px;
+  height:18px;
+  flex-basis:18px;
+}
+
+body.sidebar-collapsed .sidebar-footer{
+  padding:10px 12px;
+}
+
+/* Topbar más sobria para que el módulo sea protagonista. */
+.topbar{
+  padding-left:22px;
+  padding-right:22px;
+  background:rgba(5,5,5,.96);
+}
+
+.topbar-title{
+  font-size:14px;
+  letter-spacing:.01em;
+}
+
+.portal-empty-notifications{
+  display:grid;
+  gap:5px;
+  padding:22px 18px;
+}
+
+.portal-empty-notifications strong{
+  color:#bdbdb7;
+  font-size:12px;
+  font-weight:600;
+}
+
+.portal-empty-notifications span{
+  color:#595954;
+  font-size:10px;
+  line-height:1.5;
+}
+
+/* =========================================================
+   DASHBOARD — PASO 1.3
+========================================================= */
+
+#view-inicio{
+  max-width:1440px;
+  margin:0 auto;
+}
+
+.dashboard-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:24px;
+  margin-bottom:28px;
+}
+
+.dashboard-heading{
+  margin-bottom:0;
+}
+
+.dashboard-eyebrow,
+.dashboard-section-kicker,
+.dashboard-app-label{
+  display:block;
+  color:#666661;
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+
+.dashboard-heading h1{
+  margin-top:7px;
+}
+
+.dashboard-status{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 11px;
+  border:1px solid #242424;
+  border-radius:999px;
+  background:#0d0d0d;
+  color:#8f8f8a;
+  font-size:11px;
+  white-space:nowrap;
+}
+
+.dashboard-status-dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#6fd09a;
+  box-shadow:0 0 0 3px rgba(111,208,154,.08);
+}
+
+.dashboard-section{
+  margin-bottom:26px;
+}
+
+.dashboard-section-head,
+.dashboard-panel-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:18px;
+  margin-bottom:12px;
+}
+
+.dashboard-section-head h2,
+.dashboard-panel-head h2{
+  margin-top:4px;
+  font-size:16px;
+  font-weight:600;
+}
+
+.dashboard-muted{
+  max-width:440px;
+  color:#5e5e59;
+  font-size:10px;
+  line-height:1.5;
+  text-align:right;
+}
+
+.dashboard-kpi-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  border:1px solid #202020;
+  border-radius:16px;
+  overflow:hidden;
+  background:#0b0b0b;
+}
+
+.dashboard-kpi{
+  min-width:0;
+  padding:18px;
+  border-right:1px solid #202020;
+}
+
+.dashboard-kpi:last-child{
+  border-right:0;
+}
+
+.dashboard-kpi-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:18px;
+  color:#7c7c77;
+  font-size:11px;
+}
+
+.dashboard-kpi-tag{
+  padding:4px 7px;
+  border:1px solid #252525;
+  border-radius:999px;
+  color:#5e5e59;
+  font-size:8px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.dashboard-kpi strong{
+  display:block;
+  margin-bottom:5px;
+  color:#f5f5f3;
+  font-size:24px;
+  font-weight:600;
+  letter-spacing:-.03em;
+}
+
+.dashboard-kpi small{
+  color:#555551;
+  font-size:10px;
+}
+
+.dashboard-main-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.5fr) minmax(300px,.8fr);
+  gap:16px;
+  margin-bottom:26px;
+}
+
+.dashboard-panel{
+  min-width:0;
+  padding:18px;
+  border:1px solid #202020;
+  border-radius:16px;
+  background:#0b0b0b;
+}
+
+.dashboard-count{
+  padding:5px 8px;
+  border:1px solid #242424;
+  border-radius:999px;
+  color:#666661;
+  font-size:9px;
+}
+
+.dashboard-empty{
+  min-height:116px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:18px;
+  border:1px dashed #252525;
+  border-radius:13px;
+  background:#090909;
+}
+
+.dashboard-empty-icon{
+  width:38px;
+  height:38px;
+  display:grid;
+  place-items:center;
+  flex:0 0 38px;
+  border:1px solid #282828;
+  border-radius:11px;
+  color:#686863;
+}
+
+.dashboard-empty strong{
+  display:block;
+  margin-bottom:4px;
+  color:#b8b8b2;
+  font-size:12px;
+}
+
+.dashboard-empty p{
+  max-width:650px;
+  color:#555551;
+  font-size:10px;
+  line-height:1.55;
+}
+
+.dashboard-module-list{
+  display:grid;
+  gap:8px;
+}
+
+.dashboard-module-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 11px;
+  border:1px solid #1e1e1e;
+  border-radius:11px;
+  background:#090909;
+}
+
+.dashboard-module-dot{
+  width:7px;
+  height:7px;
+  flex:0 0 7px;
+  border-radius:50%;
+  background:#555;
+}
+
+.dashboard-module-dot.ready{
+  background:#6fd09a;
+}
+
+.dashboard-module-row strong,
+.dashboard-module-row small{
+  display:block;
+}
+
+.dashboard-module-row strong{
+  color:#c8c8c3;
+  font-size:11px;
+  font-weight:600;
+}
+
+.dashboard-module-row small{
+  margin-top:2px;
+  color:#555551;
+  font-size:9px;
+}
+
+.dashboard-tools{
+  margin-bottom:0;
+}
+
+.dashboard-apps{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+
+.dashboard-apps .app-card{
+  min-height:160px;
+  padding:18px;
+  border-radius:15px;
+  background:#0b0b0b;
+}
+
+.dashboard-apps .app-card:hover{
+  transform:translateY(-1px);
+  background:#101010;
+}
+
+.dashboard-app-label{
+  margin-bottom:12px;
+}
+
+.dashboard-apps .app-card h3{
+  margin-bottom:7px;
+}
+
+.dashboard-apps .app-card p{
+  min-height:34px;
+}
+
+.dashboard-apps .app-card-arrow{
+  margin-top:18px;
+  font-size:10px;
+}
+
+@media(max-width:1100px){
+  .dashboard-kpi-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .dashboard-kpi:nth-child(2){
+    border-right:0;
+  }
+
+  .dashboard-kpi:nth-child(-n+2){
+    border-bottom:1px solid #202020;
+  }
+
+  .dashboard-main-grid{
+    grid-template-columns:1fr;
+  }
+
+  .dashboard-apps{
+    grid-template-columns:1fr;
+  }
+}
+
+@media(max-width:900px){
+  .sidebar{
+    width:min(286px,86vw);
+  }
+
+  .sidebar-brand{
+    padding-left:18px;
+    padding-right:18px;
+  }
+
+  .sidebar-nav{
+    padding:14px 10px 18px;
+  }
+
+  .nav-item{
+    min-height:44px;
+    font-size:13px;
+  }
+
+  .topbar{
+    padding-left:12px;
+    padding-right:12px;
+  }
+
+  .dashboard-head{
+    margin-bottom:22px;
+  }
+}
+
+@media(max-width:640px){
+  .dashboard-head,
+  .dashboard-section-head,
+  .dashboard-panel-head{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .dashboard-muted{
+    text-align:left;
+  }
+
+  .dashboard-kpi-grid{
+    grid-template-columns:1fr;
+  }
+
+  .dashboard-kpi,
+  .dashboard-kpi:nth-child(2){
+    border-right:0;
+    border-bottom:1px solid #202020;
+  }
+
+  .dashboard-kpi:last-child{
+    border-bottom:0;
+  }
+
+  .dashboard-status{
+    display:none;
+  }
+
+  .dashboard-panel,
+  .dashboard-apps .app-card,
+  .dashboard-kpi{
+    padding:15px;
+  }
+}

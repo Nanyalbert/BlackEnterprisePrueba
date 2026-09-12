@@ -1,0 +1,93 @@
+/* Black OS — CRM Black — capa operativa simplificada */
+body.crm-ops-ready .day-summary{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:14px 18px 0}
+body.crm-ops-ready .day-summary .day-stat:not(:last-child){display:none!important}
+body.crm-ops-ready .day-summary .day-stat:last-child{border:1px solid var(--border2);border-radius:16px;padding:18px 20px;background:linear-gradient(180deg,var(--surface),var(--surface2));cursor:default!important;max-width:1120px;width:100%;margin:0 auto}
+body.crm-ops-ready .day-summary .day-stat:last-child .day-stat-num{font-size:30px!important;font-weight:700!important;letter-spacing:-1px;color:var(--text)!important}
+body.crm-ops-ready .day-summary .day-stat:last-child .day-stat-label{font-size:11px!important;font-weight:700!important;text-transform:uppercase;letter-spacing:.11em;color:var(--text2)!important;margin-top:6px}
+body.crm-ops-ready .bottom-nav{display:none!important}
+body.crm-ops-ready .content{padding-bottom:128px}
+body.crm-ops-ready .detail-left>div:has(.etapas-list){display:none!important}
+body.crm-ops-ready .kanban-wrap,body.crm-ops-ready .board-wrap{display:none!important}
+
+.crm-svg-icon{display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;flex:0 0 18px}
+.crm-svg-icon svg{display:block;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.topbar-btn.icon-only{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0!important;border-radius:12px!important}
+.fab .crm-svg-icon{width:22px;height:22px}
+
+.crm-ops-nav{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:150;display:flex;align-items:center;gap:5px;padding:6px;background:rgba(16,16,16,.94);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.09);border-radius:16px;box-shadow:0 16px 44px rgba(0,0,0,.34);max-width:calc(100vw - 24px)}
+.crm-ops-nav button,.crm-ops-nav a{min-height:44px;border:0;border-radius:11px;padding:8px 13px;background:transparent;color:#a8a8a8;font:600 11px/1.1 'Plus Jakarta Sans',sans-serif;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;white-space:nowrap;transition:.16s}
+.crm-ops-nav button:hover,.crm-ops-nav a:hover{background:rgba(255,255,255,.07);color:#fff}
+.crm-ops-nav button.active{background:#fff;color:#0d0d0d}
+
+.crm-ops-home,.crm-view-intro{max-width:1120px;margin-left:auto;margin-right:auto}
+.crm-ops-home{padding:18px 18px 40px}
+.crm-ops-eyebrow{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:7px}
+.crm-ops-title{font-size:clamp(26px,4vw,40px);font-weight:650;letter-spacing:-1.25px;color:var(--text);margin:0}
+.crm-ops-sub{font-size:13px;color:var(--text2);margin-top:7px;line-height:1.55;max-width:720px}
+.crm-ops-kpis{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin-top:20px}
+.crm-ops-kpi{border:1px solid var(--border2);border-radius:16px;padding:18px;background:var(--surface);min-height:112px;display:flex;flex-direction:column;justify-content:space-between}
+.crm-ops-kpi.primary{background:linear-gradient(145deg,#151515,#070707);border-color:#292929;color:#fff}
+.crm-ops-kpi-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+.crm-ops-kpi.primary .crm-ops-kpi-label{color:#8c8c8c}
+.crm-ops-kpi-value{font-size:30px;font-weight:700;letter-spacing:-1px;color:var(--text);font-variant-numeric:tabular-nums}
+.crm-ops-kpi-value.compact{font-size:18px}
+.crm-ops-kpi.primary .crm-ops-kpi-value{color:#fff}
+.crm-ops-kpi-note{font-size:11px;color:var(--text3)}
+.crm-ops-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.crm-ops-action{border:1px solid var(--border2);border-radius:16px;padding:18px;background:var(--surface);cursor:pointer;text-align:left;color:var(--text);transition:.16s;min-height:142px;box-shadow:none}
+.crm-ops-action:hover{transform:translateY(-1px);border-color:var(--text3);background:var(--surface2)}
+.crm-ops-action-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;color:var(--text2)}
+.crm-ops-action-top>.crm-svg-icon{width:22px;height:22px;flex-basis:22px}
+.crm-ops-action-arrow{opacity:.45;transition:.16s}.crm-ops-action:hover .crm-ops-action-arrow{opacity:1;transform:translateX(2px)}
+.crm-ops-action strong{display:block;font-size:14px;margin-bottom:5px}
+.crm-ops-action>span:last-child{display:block;font-size:11.5px;color:var(--text2);line-height:1.55;max-width:420px}
+.crm-ops-section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-top:26px;margin-bottom:10px}
+.crm-ops-section-head strong{font-size:13px}.crm-ops-section-head p{font-size:11.5px;color:var(--text3);margin:4px 0 0}.crm-ops-section-head>span{font-size:11px;color:var(--text3)}
+.crm-ops-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)}
+.crm-ops-status i{width:7px;height:7px;border-radius:50%;background:#777;display:inline-block}.crm-ops-status.ok i{background:#2dd4a0}
+
+.crm-view-intro{display:flex;align-items:flex-start;gap:12px;padding:18px 18px 6px}
+.crm-view-intro-icon{width:42px;height:42px;border:1px solid var(--border2);border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--surface);color:var(--text2);flex:0 0 42px}
+.crm-view-intro-icon .crm-svg-icon{width:20px;height:20px}
+.crm-view-intro-title{font-size:18px;font-weight:650;letter-spacing:-.3px;color:var(--text);margin-bottom:4px}
+.crm-view-intro-desc{font-size:12px;line-height:1.55;color:var(--text2);max-width:760px}
+
+body.crm-ops-ready #mainContent>div:not(.crm-ops-home):not(.crm-view-intro),body.crm-ops-ready #mainContent>.section-header,body.crm-ops-ready #mainContent>.work-list,body.crm-ops-ready #mainContent>.filters,body.crm-ops-ready #mainContent>[class*="campaign"],body.crm-ops-ready #mainContent>[class*="campana"]{max-width:1120px;margin-left:auto!important;margin-right:auto!important}
+
+body.crm-ops-ready .btn,body.crm-ops-ready button.btn{min-height:42px;border-radius:10px!important;font-weight:600!important;letter-spacing:-.1px;transition:background .15s,border-color .15s,transform .15s,opacity .15s}
+body.crm-ops-ready .btn:hover,body.crm-ops-ready button.btn:hover{transform:translateY(-1px)}
+body.crm-ops-ready .btn:active,body.crm-ops-ready button.btn:active{transform:translateY(0)}
+body.crm-ops-ready .btn-primary{box-shadow:none!important}
+body.crm-ops-ready .campaign-card,body.crm-ops-ready .campana-card,body.crm-ops-ready .campaign-step,body.crm-ops-ready .campana-step{border-radius:14px!important}
+
+/* CAMPAÑAS — layout más compacto, jerarquía clara y CTAs consistentes. */
+body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent{padding:8px 18px 148px}
+body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent>*:not(.crm-view-intro){max-width:900px!important;margin-left:auto!important;margin-right:auto!important;box-sizing:border-box}
+
+/* Tarjetas numéricas: rótulos más legibles y en mayúsculas. */
+body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent>div>div[style*="display:flex"][style*="gap:8px"][style*="margin-bottom:14px"]>div{padding:14px 12px!important;border-radius:12px!important;background:linear-gradient(180deg,var(--surface2),var(--surface))!important}
+body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent>div>div[style*="display:flex"][style*="gap:8px"][style*="margin-bottom:14px"]>div>div:first-child{font-size:24px!important;line-height:1!important;margin-bottom:8px}
+body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent>div>div[style*="display:flex"][style*="gap:8px"][style*="margin-bottom:14px"]>div>div:last-child{text-transform:uppercase!important;letter-spacing:.10em!important;font-size:10px!important;font-weight:700!important;color:var(--text2)!important}
+
+/* Selector de modo: compacto y centrado, más parecido a un segmented control. */
+body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent .ajustes-tabs{max-width:680px!important;margin:8px auto 16px!important;padding:4px!important;border:1px solid var(--border)!important;border-radius:12px!important;background:var(--surface2)!important;gap:4px!important}
+body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent .ajustes-tab{min-height:40px!important;border-radius:9px!important;font-size:11.5px!important;font-weight:600!important;letter-spacing:.01em!important}
+body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent .ajustes-tab.active{background:var(--surface)!important;box-shadow:0 1px 0 rgba(255,255,255,.04),0 6px 18px rgba(0,0,0,.18)!important;color:var(--text)!important}
+
+/* Editor y preview con radios/espaciado consistentes. */
+body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent textarea{border-radius:12px!important;padding:14px 16px!important;min-height:112px!important;background:var(--surface2)!important}
+body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent textarea:focus{border-color:rgba(255,255,255,.24)!important;box-shadow:0 0 0 3px rgba(255,255,255,.035)!important}
+
+/* Botones finales: no ocupan todo el ancho y quedan centrados como acciones claras. */
+body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent .btn-primary[onclick*="_campañaVista='enviar'"]{width:min(100%,320px)!important;min-height:48px!important;display:flex!important;align-items:center!important;justify-content:center!important;margin:22px auto 0!important;border-radius:12px!important;background:#f3f3f1!important;color:#111!important;border:1px solid #f3f3f1!important;font-size:13px!important;font-weight:700!important;box-shadow:0 8px 24px rgba(0,0,0,.16)!important}
+body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent .btn-primary[onclick*="_campañaVista='enviar'"]:hover{background:#fff!important;border-color:#fff!important;transform:translateY(-1px)!important}
+body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent .btn[onclick*="_campañaVista='inicio'"]{width:min(100%,240px)!important;min-height:42px!important;display:flex!important;align-items:center!important;justify-content:center!important;margin:10px auto 0!important;border-radius:11px!important;background:transparent!important;color:var(--text2)!important;border:1px solid var(--border2)!important;font-size:12px!important;font-weight:600!important}
+body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent .btn[onclick*="_campañaVista='inicio'"]:hover{color:var(--text)!important;background:var(--surface2)!important;border-color:rgba(255,255,255,.18)!important}
+
+/* El resto de botones full-width históricos no se estiran en esta vista. */
+body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent button[style*="width:100%"],body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent .btn[style*="width:100%"]{max-width:560px!important;margin-left:auto!important;margin-right:auto!important}
+body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent input,body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent select{box-sizing:border-box}
+
+@media(max-width:780px){.crm-ops-kpis{grid-template-columns:1fr 1fr}.crm-ops-kpi.primary{grid-column:1/-1}.crm-ops-actions{grid-template-columns:1fr}.crm-ops-nav{width:calc(100vw - 20px);overflow-x:auto;justify-content:flex-start}.crm-ops-nav button,.crm-ops-nav a{flex:0 0 auto;min-width:92px}.crm-ops-home{padding:15px 14px 110px}.crm-view-intro{padding-left:14px;padding-right:14px}body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent{padding-left:12px;padding-right:12px}}
+@media(max-width:560px){body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent>div>div[style*="display:flex"][style*="gap:8px"][style*="margin-bottom:14px"]{display:grid!important;grid-template-columns:1fr!important}body.crm-ops-ready[data-crm-ops-view="campanas"] #mainContent .ajustes-tabs{display:grid!important;grid-template-columns:1fr!important}}
+@media(max-width:430px){.crm-ops-kpis{grid-template-columns:1fr}.crm-ops-kpi.primary{grid-column:auto}.crm-ops-title{font-size:28px}.crm-ops-nav{bottom:8px}.crm-ops-nav button,.crm-ops-nav a{min-height:46px;font-size:10.5px;padding:7px 11px}.crm-view-intro-icon{width:38px;height:38px;flex-basis:38px}}
