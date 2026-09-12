@@ -37,6 +37,36 @@ function setSaveState(text){
   if(state)state.textContent=text;
 }
 
+function setSupabaseUi(statusText,detailText,integrationText,integrationClass='pending'){
+  const status=document.getElementById('supabase-status');
+  const detail=document.getElementById('supabase-detail');
+  const integration=document.getElementById('supabase-integration-status');
+  if(status){status.textContent=statusText;status.classList.toggle('muted',statusText!=='Sincronizado')}
+  if(detail)detail.textContent=detailText;
+  if(integration){integration.textContent=integrationText;integration.className=`connection ${integrationClass}`}
+}
+
+function humanSupabaseError(error){
+  const message=String(error?.message||error?.error_description||error||'Error desconocido');
+  const code=String(error?.code||'');
+  if(/session/i.test(message))return 'No se encontró una sesión activa de Black OS.';
+  if(/permission|row-level|rls|42501/i.test(`${message} ${code}`))return 'Supabase bloqueó la operación por permisos RLS.';
+  if(/does not exist|schema cache|PGRST205|42P01/i.test(`${message} ${code}`))return 'La tabla black_ai_settings no está disponible para la API.';
+  if(/failed to fetch|network|load failed/i.test(message))return 'No se pudo comunicar con Supabase desde el navegador.';
+  return `${code?`${code} · `:''}${message}`;
+}
+
+function resolveSupabaseClient(){
+  // Black AI normalmente corre dentro del iframe de CRM Black. Si el portal padre
+  // está disponible y es same-origin, reutilizamos exactamente su cliente/sesión.
+  try{
+    if(window.parent&&window.parent!==window&&window.parent.BlackPortal?.getSupabase){
+      return window.parent.BlackPortal.getSupabase();
+    }
+  }catch(error){}
+  return window.BlackPortal?.getSupabase?.()||null;
+}
+
 function normalizeConfig(value){
   const c={...defaults,...(value||{})};
   c.enabled=!!c.enabled;
@@ -87,17 +117,24 @@ function update(patch){
   saveTimer=setTimeout(syncConfigToSupabase,350);
 }
 
+async function waitForSession(client,attempts=4){
+  for(let i=0;i<attempts;i++){
+    const {data:{session},error}=await client.auth.getSession();
+    if(error)throw error;
+    if(session)return session;
+    if(i<attempts-1)await new Promise(resolve=>setTimeout(resolve,250));
+  }
+  return null;
+}
+
 async function initSupabaseSettings(){
-  const status=document.getElementById('supabase-status');
-  const detail=document.getElementById('supabase-detail');
-  const integration=document.getElementById('supabase-integration-status');
   try{
-    portalSupabase=window.BlackPortal?.getSupabase?.();
+    setSupabaseUi('Verificando','Validando sesión y tabla de configuración','Verificando','pending');
+    portalSupabase=resolveSupabaseClient();
     if(!portalSupabase)throw new Error('Supabase no disponible');
-    const {data:{session},error:sessionError}=await portalSupabase.auth.getSession();
-    if(sessionError)throw sessionError;
-    if(!session)throw new Error('Sesión no disponible');
-    portalSession=session;
+
+    portalSession=await waitForSession(portalSupabase);
+    if(!portalSession)throw new Error('Sesión no disponible');
 
     const {data,error}=await portalSupabase
       .from('black_ai_settings')
@@ -106,25 +143,23 @@ async function initSupabaseSettings(){
       .maybeSingle();
     if(error)throw error;
 
-    if(data?.config && Object.keys(data.config).length){
+    if(data?.config&&Object.keys(data.config).length){
       config=normalizeConfig(data.config);
       saveLocalConfig();
       renderAll();
     }else{
-      await syncConfigToSupabase(true);
+      const saved=await syncConfigToSupabase(true);
+      if(!saved)throw new Error('No se pudo guardar la configuración inicial');
     }
 
     remoteReady=true;
     setSaveState('Sincronizado con Supabase');
-    if(status){status.textContent='Sincronizado';status.classList.remove('muted')}
-    if(detail)detail.textContent='Configuración compartida entre dispositivos';
-    if(integration){integration.textContent='Conectado';integration.className='connection ready'}
+    setSupabaseUi('Sincronizado','Configuración compartida entre dispositivos','Conectado','ready');
   }catch(error){
     remoteReady=false;
-    setSaveState('Guardado en este dispositivo');
-    if(status){status.textContent='Solo local';status.classList.add('muted')}
-    if(detail)detail.textContent='Ejecutá la migración 10 para habilitar sincronización';
-    if(integration){integration.textContent='Tabla pendiente';integration.className='connection pending'}
+    const reason=humanSupabaseError(error);
+    setSaveState(`Guardado local · ${reason}`);
+    setSupabaseUi('Solo local',reason,'Revisar','pending');
     console.warn('Black AI: configuración Supabase no disponible.',error);
   }
 }
@@ -146,10 +181,13 @@ async function syncConfigToSupabase(force=false){
     if(error)throw error;
     remoteReady=true;
     setSaveState('Sincronizado con Supabase');
+    setSupabaseUi('Sincronizado','Configuración compartida entre dispositivos','Conectado','ready');
     return true;
   }catch(error){
     remoteReady=false;
-    setSaveState('Guardado local · Supabase no disponible');
+    const reason=humanSupabaseError(error);
+    setSaveState(`Guardado local · ${reason}`);
+    setSupabaseUi('Solo local',reason,'Revisar','pending');
     console.warn('Black AI: no se pudo sincronizar configuración.',error);
     return false;
   }
