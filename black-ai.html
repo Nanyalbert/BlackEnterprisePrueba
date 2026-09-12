@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Black AI · Black OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/black-ai.css">
+</head>
+<body>
+<main class="ai-page">
+  <header class="ai-header">
+    <div>
+      <span class="eyebrow">BLACK OS · INTELIGENCIA ARTIFICIAL</span>
+      <h1>Black AI</h1>
+      <p>Centro de control del asistente de atención por WhatsApp.</p>
+    </div>
+    <div class="header-actions">
+      <span class="save-state" id="save-state">Configuración local</span>
+      <button class="btn-secondary" id="reset-demo" type="button">Restablecer demo</button>
+    </div>
+  </header>
+
+  <section class="status-strip" aria-label="Estado general">
+    <div class="status-main">
+      <div class="status-dot" id="ai-status-dot"></div>
+      <div><strong id="ai-status-title">IA desactivada</strong><span id="ai-status-copy">No responde mensajes automáticamente.</span></div>
+    </div>
+    <label class="master-switch">
+      <input type="checkbox" id="ai-enabled">
+      <span class="switch-track"><span class="switch-thumb"></span></span>
+      <span>Activar Black AI</span>
+    </label>
+  </section>
+
+  <nav class="ai-tabs" aria-label="Secciones de Black AI">
+    <button class="ai-tab active" data-tab="control" type="button">Control</button>
+    <button class="ai-tab" data-tab="conocimiento" type="button">Conocimiento</button>
+    <button class="ai-tab" data-tab="comportamiento" type="button">Comportamiento</button>
+    <button class="ai-tab" data-tab="integraciones" type="button">Integraciones</button>
+    <button class="ai-tab" data-tab="auditoria" type="button">Auditoría</button>
+  </nav>
+
+  <section class="tab-panel active" id="tab-control">
+    <div class="section-intro"><div><h2>Control operativo</h2><p>Definí cuándo puede intervenir la IA y con qué pacientes.</p></div><span class="pill pill-safe">V1 · Sin envíos reales</span></div>
+
+    <div class="grid two">
+      <article class="card">
+        <div class="card-head"><div><span class="card-kicker">ENTORNO</span><h3>Modo de operación</h3></div></div>
+        <div class="segmented" id="environment-selector">
+          <button class="segment active" data-value="sandbox" type="button"><strong>Sandbox</strong><span>Pruebas sin acciones reales</span></button>
+          <button class="segment" data-value="production" type="button"><strong>Producción</strong><span>Acciones habilitadas</span></button>
+        </div>
+        <div class="notice"><strong>Recomendado para empezar:</strong> Sandbox mantiene la lógica del bot pero evita reservas, cambios o mensajes reales.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><div><span class="card-kicker">RESPUESTA</span><h3>Modo de atención</h3></div></div>
+        <div class="radio-stack">
+          <label><input type="radio" name="reply-mode" value="assisted" checked><span><strong>Asistido</strong><small>La IA prepara la respuesta y una persona aprueba.</small></span></label>
+          <label><input type="radio" name="reply-mode" value="automatic"><span><strong>Automático</strong><small>La IA responde directamente cuando está autorizada.</small></span></label>
+          <label><input type="radio" name="reply-mode" value="manual"><span><strong>Manual</strong><small>Registra conversaciones pero no genera respuestas.</small></span></label>
+        </div>
+      </article>
+    </div>
+
+    <article class="card scope-card">
+      <div class="card-head"><div><span class="card-kicker">ALCANCE</span><h3>¿Con quién puede usar IA?</h3><p>Este filtro se evalúa antes de enviar cualquier mensaje a OpenAI.</p></div></div>
+      <div class="scope-options">
+        <label class="scope-option active"><input type="radio" name="scope" value="single" checked><span class="scope-icon">1</span><span><strong>Un número de prueba</strong><small>Ideal para desarrollar y probar vos mismo.</small></span></label>
+        <label class="scope-option"><input type="radio" name="scope" value="list"><span class="scope-icon">+</span><span><strong>Lista autorizada</strong><small>Varios números internos o pacientes seleccionados.</small></span></label>
+        <label class="scope-option"><input type="radio" name="scope" value="all"><span class="scope-icon">∞</span><span><strong>Todos los clientes</strong><small>La IA queda disponible para las conversaciones habilitadas.</small></span></label>
+      </div>
+
+      <div class="test-number-box" id="single-number-box">
+        <div><label for="test-number">Número autorizado</label><p>Usá formato internacional. Ejemplo: +54 9 351...</p></div>
+        <div class="number-input-row"><input id="test-number" type="tel" placeholder="+54 9 351 0000000"><button type="button" class="btn-primary" id="save-number">Guardar número</button></div>
+      </div>
+
+      <div class="test-number-box hidden" id="list-number-box">
+        <div><label for="test-number-list">Números autorizados</label><p>Uno por línea. Más adelante se almacenarán en Supabase.</p></div>
+        <textarea id="test-number-list" rows="4" placeholder="+54 9 351 0000000&#10;+54 9 351 1111111"></textarea>
+      </div>
+    </article>
+
+    <div class="grid three mini-grid">
+      <article class="mini-card"><span class="mini-label">WhatsApp</span><strong class="muted">Sin conectar</strong><small>Evolution API / Cloud API</small></article>
+      <article class="mini-card"><span class="mini-label">OpenAI</span><strong class="muted">Sin conectar</strong><small>Backend pendiente</small></article>
+      <article class="mini-card"><span class="mini-label">Base de conocimiento</span><strong>0 fuentes</strong><small>Precios, reglas y documentos</small></article>
+    </div>
+  </section>
+
+  <section class="tab-panel" id="tab-conocimiento">
+    <div class="section-intro"><div><h2>Base de conocimiento</h2><p>La fuente de verdad comercial que el asistente debe consultar antes de responder.</p></div><button class="btn-primary" type="button" disabled>Agregar fuente</button></div>
+    <div class="grid two">
+      <article class="knowledge-card"><div class="knowledge-icon">$</div><div><h3>Lista de precios</h3><p>Productos, materiales, diseños, tratamientos, precios, descuentos y vigencia.</p><span class="empty-tag">Sin cargar</span></div></article>
+      <article class="knowledge-card"><div class="knowledge-icon">%</div><div><h3>Promociones y beneficios</h3><p>Black Protect, segunda unidad, convenios, medios de pago y condiciones comerciales.</p><span class="empty-tag">Sin cargar</span></div></article>
+      <article class="knowledge-card"><div class="knowledge-icon">i</div><div><h3>Información de productos</h3><p>Multifocales, ocupacionales, monofocales, tratamientos y explicaciones para pacientes.</p><span class="empty-tag">Sin cargar</span></div></article>
+      <article class="knowledge-card"><div class="knowledge-icon">?</div><div><h3>Preguntas frecuentes</h3><p>Sucursales, horarios, garantías, adaptación, entregas y políticas de atención.</p><span class="empty-tag">Sin cargar</span></div></article>
+    </div>
+    <div class="notice wide"><strong>Regla propuesta:</strong> precios, descuentos, promociones, stock y turnos deben provenir de datos estructurados. Si el dato no existe o está vencido, la IA no lo inventa y deriva la consulta.</div>
+  </section>
+
+  <section class="tab-panel" id="tab-comportamiento">
+    <div class="section-intro"><div><h2>Comportamiento</h2><p>Definí cómo debe hablar Black AI y qué límites nunca debe cruzar.</p></div></div>
+    <div class="grid two">
+      <article class="card">
+        <div class="card-head"><div><span class="card-kicker">ESTILO</span><h3>Forma de responder</h3></div></div>
+        <div class="form-grid">
+          <label>Tono<select id="tone"><option value="friendly">Amigable y profesional</option><option value="formal">Formal</option><option value="executive">Ejecutivo</option></select></label>
+          <label>Extensión<select id="length"><option value="short">Breve</option><option value="medium">Media</option><option value="detailed">Detallada</option></select></label>
+          <label>Emojis<select id="emoji"><option value="moderate">Moderados</option><option value="none">Sin emojis</option></select></label>
+          <label>Idioma<select><option>Español argentino</option></select></label>
+        </div>
+      </article>
+      <article class="card">
+        <div class="card-head"><div><span class="card-kicker">REGLAS CRÍTICAS</span><h3>Límites del asistente</h3></div></div>
+        <div class="rule-list">
+          <label><input type="checkbox" checked disabled><span>No inventar precios, descuentos ni stock.</span></label>
+          <label><input type="checkbox" checked disabled><span>No realizar diagnósticos ni reemplazar criterio profesional.</span></label>
+          <label><input type="checkbox" checked><span>Derivar reclamos complejos a una persona.</span></label>
+          <label><input type="checkbox" checked><span>Preguntar receta o necesidad cuando corresponda.</span></label>
+          <label><input type="checkbox" checked><span>No negociar fuera de reglas comerciales cargadas.</span></label>
+        </div>
+      </article>
+    </div>
+    <article class="card preview-card">
+      <div class="card-head"><div><span class="card-kicker">PRUEBA</span><h3>Vista previa de respuesta</h3><p>En una etapa posterior este simulador utilizará exactamente la configuración de producción.</p></div></div>
+      <div class="preview-chat"><div class="bubble patient">Hola, ¿cuánto sale un multifocal?</div><div class="bubble ai">¡Hola! Tenemos distintas alternativas según tu receta y el uso que le das. Si tenés la receta a mano, podés enviármela y te oriento con las opciones y valores actualizados.</div></div>
+    </article>
+  </section>
+
+  <section class="tab-panel" id="tab-integraciones">
+    <div class="section-intro"><div><h2>Integraciones</h2><p>Estado de los servicios que van a conectar WhatsApp, Black OS y la IA.</p></div></div>
+    <div class="integration-list">
+      <article class="integration"><div><span class="integration-logo">WA</span><div><h3>Evolution API</h3><p>Recepción y envío de mensajes de WhatsApp.</p></div></div><span class="connection off">No configurada</span></article>
+      <article class="integration"><div><span class="integration-logo">AI</span><div><h3>OpenAI API</h3><p>Interpretación, generación de respuestas y herramientas.</p></div></div><span class="connection off">No configurada</span></article>
+      <article class="integration"><div><span class="integration-logo">DB</span><div><h3>Supabase</h3><p>Clientes, configuración, precios, permisos, logs y conocimiento.</p></div></div><span class="connection pending">A integrar</span></article>
+    </div>
+    <div class="security-note"><strong>Arquitectura:</strong> las claves de OpenAI y Evolution no deben almacenarse en el navegador. La conexión real se hará desde backend/funciones seguras; Black AI solo consumirá endpoints autorizados.</div>
+  </section>
+
+  <section class="tab-panel" id="tab-auditoria">
+    <div class="section-intro"><div><h2>Auditoría</h2><p>Historial de decisiones, respuestas, herramientas usadas y consumo.</p></div></div>
+    <div class="empty-state-ai"><span>Sin actividad todavía</span><strong>Las pruebas aparecerán acá.</strong><p>Guardaremos número, mensaje, respuesta, modo, funciones ejecutadas, resultado, tokens y costo estimado.</p></div>
+  </section>
+</main>
+<script src="assets/js/black-ai.js"></script>
+</body>
+</html>
