@@ -1,4 +1,5 @@
 const STORAGE_KEY='black_ai_v1_config';
+const SETTINGS_ID='global';
 
 const defaults={
   enabled:false,
@@ -12,20 +13,38 @@ const defaults={
   emoji:'moderate'
 };
 
-function loadConfig(){
-  try{return {...defaults,...JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}}catch(error){return {...defaults}}
-}
-function saveConfig(config){
-  localStorage.setItem(STORAGE_KEY,JSON.stringify(config));
-  const state=document.getElementById('save-state');
-  if(state){state.textContent='Configuración guardada';setTimeout(()=>state.textContent='Configuración guardada en este dispositivo',1100)}
-}
-let config=loadConfig();
+let config=loadLocalConfig();
+let portalSupabase=null;
+let portalSession=null;
+let remoteReady=false;
+let saveTimer=null;
 
 const enabled=document.getElementById('ai-enabled');
 const statusDot=document.getElementById('ai-status-dot');
 const statusTitle=document.getElementById('ai-status-title');
 const statusCopy=document.getElementById('ai-status-copy');
+
+function loadLocalConfig(){
+  try{return {...defaults,...JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}}catch{return {...defaults}}
+}
+
+function saveLocalConfig(){
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(config));
+}
+
+function setSaveState(text){
+  const state=document.getElementById('save-state');
+  if(state)state.textContent=text;
+}
+
+function normalizeConfig(value){
+  const c={...defaults,...(value||{})};
+  c.enabled=!!c.enabled;
+  if(!['sandbox','production'].includes(c.environment))c.environment='sandbox';
+  if(!['assisted','automatic','manual'].includes(c.replyMode))c.replyMode='assisted';
+  if(!['single','list','all'].includes(c.scope))c.scope='single';
+  return c;
+}
 
 function renderStatus(){
   if(enabled) enabled.checked=!!config.enabled;
@@ -59,7 +78,82 @@ function renderFields(){
 }
 function renderAll(){renderStatus();renderEnvironment();renderReplyMode();renderScope();renderFields()}
 
-function update(patch){config={...config,...patch};saveConfig(config);renderAll()}
+function update(patch){
+  config=normalizeConfig({...config,...patch});
+  saveLocalConfig();
+  renderAll();
+  setSaveState(remoteReady?'Guardando en Supabase…':'Guardado en este dispositivo');
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(syncConfigToSupabase,350);
+}
+
+async function initSupabaseSettings(){
+  const status=document.getElementById('supabase-status');
+  const detail=document.getElementById('supabase-detail');
+  const integration=document.getElementById('supabase-integration-status');
+  try{
+    portalSupabase=window.BlackPortal?.getSupabase?.();
+    if(!portalSupabase)throw new Error('Supabase no disponible');
+    const {data:{session},error:sessionError}=await portalSupabase.auth.getSession();
+    if(sessionError)throw sessionError;
+    if(!session)throw new Error('Sesión no disponible');
+    portalSession=session;
+
+    const {data,error}=await portalSupabase
+      .from('black_ai_settings')
+      .select('config,updated_at')
+      .eq('id',SETTINGS_ID)
+      .maybeSingle();
+    if(error)throw error;
+
+    if(data?.config && Object.keys(data.config).length){
+      config=normalizeConfig(data.config);
+      saveLocalConfig();
+      renderAll();
+    }else{
+      await syncConfigToSupabase(true);
+    }
+
+    remoteReady=true;
+    setSaveState('Sincronizado con Supabase');
+    if(status){status.textContent='Sincronizado';status.classList.remove('muted')}
+    if(detail)detail.textContent='Configuración compartida entre dispositivos';
+    if(integration){integration.textContent='Conectado';integration.className='connection ready'}
+  }catch(error){
+    remoteReady=false;
+    setSaveState('Guardado en este dispositivo');
+    if(status){status.textContent='Solo local';status.classList.add('muted')}
+    if(detail)detail.textContent='Ejecutá la migración 10 para habilitar sincronización';
+    if(integration){integration.textContent='Tabla pendiente';integration.className='connection pending'}
+    console.warn('Black AI: configuración Supabase no disponible.',error);
+  }
+}
+
+async function syncConfigToSupabase(force=false){
+  saveLocalConfig();
+  if(!portalSupabase||!portalSession){
+    if(!force)setSaveState('Guardado en este dispositivo');
+    return false;
+  }
+  try{
+    const payload={
+      id:SETTINGS_ID,
+      config,
+      updated_at:new Date().toISOString(),
+      updated_by:portalSession.user?.id||null
+    };
+    const {error}=await portalSupabase.from('black_ai_settings').upsert(payload,{onConflict:'id'});
+    if(error)throw error;
+    remoteReady=true;
+    setSaveState('Sincronizado con Supabase');
+    return true;
+  }catch(error){
+    remoteReady=false;
+    setSaveState('Guardado local · Supabase no disponible');
+    console.warn('Black AI: no se pudo sincronizar configuración.',error);
+    return false;
+  }
+}
 
 function readCrmEvolutionConfig(){
   try{
@@ -87,6 +181,37 @@ function renderEvolutionStatus(){
   if(integration){integration.textContent='Configurada';integration.className='connection ready'}
 }
 
+function normalizePhone(value){
+  return String(value||'').replace(/\D/g,'');
+}
+
+function authorizedNumbers(){
+  if(config.scope==='single')return [normalizePhone(config.testNumber)].filter(Boolean);
+  if(config.scope==='list')return String(config.testNumberList||'').split(/[\n,;]/).map(normalizePhone).filter(Boolean);
+  return [];
+}
+
+function evaluateAccess(rawNumber){
+  const phone=normalizePhone(rawNumber);
+  if(!phone)return {ok:false,title:'Número inválido',detail:'Ingresá un número válido para hacer la prueba.'};
+  if(!config.enabled)return {ok:false,title:'Black AI está desactivado',detail:'La configuración bloquea cualquier intervención.'};
+  if(config.replyMode==='manual')return {ok:false,title:'Modo solo manual',detail:'Black AI no genera respuestas mientras este modo esté activo.'};
+  if(config.scope==='all')return {ok:true,title:'Conversación habilitada',detail:`El número ${phone} supera el filtro de alcance. Todavía no se enviará ningún mensaje real.`};
+  const allowed=authorizedNumbers();
+  if(!allowed.length)return {ok:false,title:'Falta configurar el alcance',detail:'No hay ningún número autorizado cargado.'};
+  if(!allowed.includes(phone))return {ok:false,title:'Número fuera del alcance',detail:'Black AI ignoraría esta conversación con la configuración actual.'};
+  return {ok:true,title:'Conversación habilitada',detail:`El número ${phone} está autorizado. Todavía no se enviará ningún mensaje real.`};
+}
+
+function runSimulator(){
+  const input=document.getElementById('simulator-number');
+  const box=document.getElementById('simulator-result');
+  if(!box)return;
+  const result=evaluateAccess(input?.value||'');
+  box.className=`simulator-result ${result.ok?'allowed':'blocked'}`;
+  box.innerHTML=`<strong>${result.title}</strong><span>${result.detail}</span>`;
+}
+
 function ensureCrmNav(){
   if(document.querySelector('.ai-crm-nav'))return;
   const nav=document.createElement('nav');
@@ -111,19 +236,23 @@ document.getElementById('test-number-list')?.addEventListener('change',event=>up
 document.getElementById('tone')?.addEventListener('change',event=>update({tone:event.target.value}));
 document.getElementById('length')?.addEventListener('change',event=>update({length:event.target.value}));
 document.getElementById('emoji')?.addEventListener('change',event=>update({emoji:event.target.value}));
+document.getElementById('simulate-access')?.addEventListener('click',runSimulator);
+document.getElementById('simulator-number')?.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();runSimulator();}});
 
 document.querySelectorAll('.ai-tab').forEach(tab=>tab.addEventListener('click',()=>{
   document.querySelectorAll('.ai-tab').forEach(t=>t.classList.toggle('active',t===tab));
   document.querySelectorAll('.tab-panel').forEach(panel=>panel.classList.toggle('active',panel.id===`tab-${tab.dataset.tab}`));
 }));
 
-document.getElementById('reset-demo')?.addEventListener('click',()=>{
+document.getElementById('reset-demo')?.addEventListener('click',async()=>{
   if(!confirm('¿Restablecer la configuración de Black AI?'))return;
   config={...defaults};
-  saveConfig(config);
+  saveLocalConfig();
   renderAll();
+  await syncConfigToSupabase();
 });
 
 renderAll();
 renderEvolutionStatus();
 ensureCrmNav();
+initSupabaseSettings();
