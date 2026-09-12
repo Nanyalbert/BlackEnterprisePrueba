@@ -9,6 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/base.css">
 <link rel="stylesheet" href="assets/css/black-ai.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="assets/js/supabase-config.js"></script>
 </head>
 <body>
 <main class="ai-page">
@@ -19,7 +21,7 @@
       <p>Configurá cómo, cuándo y con quién puede intervenir el asistente.</p>
     </div>
     <div class="header-actions">
-      <span class="save-state" id="save-state">Configuración guardada en este dispositivo</span>
+      <span class="save-state" id="save-state">Inicializando configuración</span>
       <button class="btn-secondary" id="reset-demo" type="button">Restablecer configuración</button>
     </div>
   </header>
@@ -86,10 +88,22 @@
       </div>
     </article>
 
+    <article class="card simulator-card">
+      <div class="card-head"><div><span class="card-kicker">SIMULADOR</span><h3>Probar reglas de acceso</h3><p>Comprobá si Black AI intervendría con un número antes de conectar respuestas reales.</p></div></div>
+      <div class="simulator-row">
+        <input id="simulator-number" type="tel" placeholder="+54 9 351 0000000">
+        <button class="btn-primary" id="simulate-access" type="button">Evaluar</button>
+      </div>
+      <div class="simulator-result idle" id="simulator-result">
+        <strong>Sin evaluación</strong>
+        <span>Ingresá un número para verificar la configuración actual.</span>
+      </div>
+    </article>
+
     <div class="grid three mini-grid">
       <article class="mini-card"><span class="mini-label">WhatsApp</span><strong class="muted" id="evolution-status">Verificando</strong><small id="evolution-detail">Leyendo configuración de CRM Black</small></article>
+      <article class="mini-card"><span class="mini-label">Configuración</span><strong class="muted" id="supabase-status">Verificando</strong><small id="supabase-detail">Supabase con respaldo local</small></article>
       <article class="mini-card"><span class="mini-label">Motor de IA</span><strong class="muted">Pendiente</strong><small>OpenAI se conectará desde un backend seguro</small></article>
-      <article class="mini-card"><span class="mini-label">Conocimiento</span><strong>Sin fuentes</strong><small>Precios, productos, políticas y preguntas frecuentes</small></article>
     </div>
   </section>
 
@@ -138,7 +152,7 @@
     <div class="integration-list">
       <article class="integration"><div><span class="integration-logo">WA</span><div><h3>Evolution API</h3><p>Canal de recepción y envío de mensajes de WhatsApp.</p></div></div><span class="connection off" id="evolution-integration-status">Verificando</span></article>
       <article class="integration"><div><span class="integration-logo">AI</span><div><h3>OpenAI</h3><p>Interpretación de mensajes, generación de respuestas y uso de herramientas.</p></div></div><span class="connection pending">Pendiente</span></article>
-      <article class="integration"><div><span class="integration-logo">DB</span><div><h3>Supabase</h3><p>Configuración, conocimiento, permisos, historial y auditoría.</p></div></div><span class="connection pending">Próximo paso</span></article>
+      <article class="integration"><div><span class="integration-logo">DB</span><div><h3>Supabase</h3><p>Configuración, conocimiento, permisos, historial y auditoría.</p></div></div><span class="connection pending" id="supabase-integration-status">Verificando</span></article>
     </div>
     <div class="security-note"><strong>Seguridad:</strong> la clave de OpenAI no se almacenará en el navegador. Las solicitudes al modelo pasarán por una función segura del backend.</div>
   </section>
