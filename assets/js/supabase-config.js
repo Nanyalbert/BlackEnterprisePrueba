@@ -83,13 +83,15 @@
 
   const isBlackAiModule = /(?:^|\/)black-ai\.html$/i.test(path);
   if (isBlackAiModule) {
-    const bootBlackAiFix = () => {
+    loadCss('blackos-black-ai-knowledge-css', 'assets/css/black-ai-knowledge.css?v=20260912a');
+    const bootBlackAi = () => {
       loadJs('blackos-black-ai-chat-fix-js', 'assets/js/black-ai-chat-fix.js?v=20260912c');
+      loadJs('blackos-black-ai-knowledge-js', 'assets/js/black-ai-knowledge.js?v=20260912a');
     };
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', bootBlackAiFix, { once:true });
+      document.addEventListener('DOMContentLoaded', bootBlackAi, { once:true });
     } else {
-      bootBlackAiFix();
+      bootBlackAi();
     }
   }
 })();
