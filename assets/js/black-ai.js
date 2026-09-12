@@ -18,6 +18,9 @@ let portalSupabase=null;
 let portalSession=null;
 let remoteReady=false;
 let saveTimer=null;
+let openAiReady=false;
+let aiLabBusy=false;
+let aiLabHistory=[];
 
 const enabled=document.getElementById('ai-enabled');
 const statusDot=document.getElementById('ai-status-dot');
@@ -46,6 +49,20 @@ function setSupabaseUi(statusText,detailText,integrationText,integrationClass='p
   if(integration){integration.textContent=integrationText;integration.className=`connection ${integrationClass}`}
 }
 
+function setOpenAiUi(statusText,detailText,integrationText,integrationClass='pending'){
+  const status=document.getElementById('openai-status');
+  const detail=document.getElementById('openai-detail');
+  const integration=document.getElementById('openai-integration-status');
+  const badge=document.getElementById('ai-runtime-badge');
+  if(status){status.textContent=statusText;status.classList.toggle('muted',statusText!=='Listo')}
+  if(detail)detail.textContent=detailText;
+  if(integration){integration.textContent=integrationText;integration.className=`connection ${integrationClass}`}
+  if(badge){
+    badge.textContent=statusText==='Listo'?'Motor listo':statusText;
+    badge.className=`ai-runtime-badge ${statusText==='Listo'?'ready':integrationClass==='off'?'error':''}`;
+  }
+}
+
 function humanSupabaseError(error){
   const message=String(error?.message||error?.error_description||error||'Error desconocido');
   const code=String(error?.code||'');
@@ -57,8 +74,6 @@ function humanSupabaseError(error){
 }
 
 function resolveSupabaseClient(){
-  // Black AI normalmente corre dentro del iframe de CRM Black. Si el portal padre
-  // está disponible y es same-origin, reutilizamos exactamente su cliente/sesión.
   try{
     if(window.parent&&window.parent!==window&&window.parent.BlackPortal?.getSupabase){
       return window.parent.BlackPortal.getSupabase();
@@ -155,12 +170,14 @@ async function initSupabaseSettings(){
     remoteReady=true;
     setSaveState('Sincronizado con Supabase');
     setSupabaseUi('Sincronizado','Configuración compartida entre dispositivos','Conectado','ready');
+    return true;
   }catch(error){
     remoteReady=false;
     const reason=humanSupabaseError(error);
     setSaveState(`Guardado local · ${reason}`);
     setSupabaseUi('Solo local',reason,'Revisar','pending');
     console.warn('Black AI: configuración Supabase no disponible.',error);
+    return false;
   }
 }
 
@@ -219,6 +236,34 @@ function renderEvolutionStatus(){
   if(integration){integration.textContent='Configurada';integration.className='connection ready'}
 }
 
+async function checkOpenAiRuntime(){
+  if(!portalSupabase||!portalSession){
+    openAiReady=false;
+    setOpenAiUi('Sin conexión','Primero debe estar disponible la sesión de Supabase','Revisar','off');
+    return false;
+  }
+  try{
+    setOpenAiUi('Verificando','Comprobando Edge Function y clave de OpenAI','Verificando','pending');
+    const {data,error}=await portalSupabase.functions.invoke('black-ai-chat',{body:{action:'health'}});
+    if(error)throw error;
+    if(!data?.ok)throw new Error(data?.error||'La función no respondió correctamente');
+    if(!data?.configured){
+      openAiReady=false;
+      setOpenAiUi('Falta clave','OPENAI_API_KEY no está configurada en Edge Function Secrets','Sin clave','off');
+      return false;
+    }
+    openAiReady=true;
+    setOpenAiUi('Listo',`OpenAI disponible · ${data.model||'modelo configurado'}`,'Conectado','ready');
+    return true;
+  }catch(error){
+    openAiReady=false;
+    const message=String(error?.context?.body?.error||error?.message||error||'Error al verificar el motor');
+    setOpenAiUi('No disponible',message,'Revisar','off');
+    console.warn('Black AI: Edge Function no disponible.',error);
+    return false;
+  }
+}
+
 function normalizePhone(value){
   return String(value||'').replace(/\D/g,'');
 }
@@ -250,6 +295,105 @@ function runSimulator(){
   box.innerHTML=`<strong>${result.title}</strong><span>${result.detail}</span>`;
 }
 
+function escapeHtml(value){
+  return String(value||'').replace(/[&<>'"]/g,char=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'
+  })[char]);
+}
+
+function appendLabMessage(role,content){
+  const log=document.getElementById('ai-lab-log');
+  if(!log)return;
+  document.getElementById('ai-lab-empty')?.remove();
+  const item=document.createElement('div');
+  item.className=`ai-lab-message ${role}`;
+  item.innerHTML=escapeHtml(content).replace(/\n/g,'<br>');
+  log.appendChild(item);
+  log.scrollTop=log.scrollHeight;
+  return item;
+}
+
+function appendThinking(){
+  const log=document.getElementById('ai-lab-log');
+  if(!log)return null;
+  document.getElementById('ai-lab-empty')?.remove();
+  const item=document.createElement('div');
+  item.className='ai-lab-message assistant';
+  item.innerHTML='<span class="ai-lab-thinking"><i></i><i></i><i></i></span>';
+  log.appendChild(item);
+  log.scrollTop=log.scrollHeight;
+  return item;
+}
+
+function setLabBusy(busy){
+  aiLabBusy=busy;
+  const send=document.getElementById('ai-lab-send');
+  const input=document.getElementById('ai-lab-input');
+  if(send){send.disabled=busy;send.textContent=busy?'Pensando…':'Enviar'}
+  if(input)input.disabled=busy;
+}
+
+function updateLabMeta(data){
+  const meta=document.getElementById('ai-lab-meta');
+  if(!meta)return;
+  const usage=data?.usage;
+  const inputTokens=usage?.input_tokens;
+  const outputTokens=usage?.output_tokens;
+  const parts=[];
+  if(data?.model)parts.push(data.model);
+  if(Number.isFinite(inputTokens))parts.push(`${inputTokens} entrada`);
+  if(Number.isFinite(outputTokens))parts.push(`${outputTokens} salida`);
+  meta.textContent=parts.length?parts.join(' · '):'Respuesta recibida';
+}
+
+async function sendLabMessage(){
+  if(aiLabBusy)return;
+  const input=document.getElementById('ai-lab-input');
+  const message=input?.value.trim()||'';
+  if(!message)return;
+
+  if(!openAiReady){
+    const ok=await checkOpenAiRuntime();
+    if(!ok){appendLabMessage('error','El motor de IA todavía no está disponible. Revisá la tarjeta “Motor de IA”.');return;}
+  }
+
+  appendLabMessage('user',message);
+  if(input)input.value='';
+  setLabBusy(true);
+  const thinking=appendThinking();
+
+  try{
+    const history=aiLabHistory.slice(-8);
+    const {data,error}=await portalSupabase.functions.invoke('black-ai-chat',{
+      body:{action:'chat',message,history}
+    });
+    thinking?.remove();
+    if(error)throw error;
+    if(!data?.ok||!data?.reply)throw new Error(data?.error||'Black AI no devolvió una respuesta');
+
+    appendLabMessage('assistant',data.reply);
+    aiLabHistory.push({role:'user',content:message},{role:'assistant',content:data.reply});
+    aiLabHistory=aiLabHistory.slice(-10);
+    updateLabMeta(data);
+  }catch(error){
+    thinking?.remove();
+    const messageText=String(error?.context?.body?.error||error?.message||error||'No se pudo generar la respuesta');
+    appendLabMessage('error',messageText);
+    console.warn('Black AI: error en laboratorio.',error);
+  }finally{
+    setLabBusy(false);
+    input?.focus();
+  }
+}
+
+function clearLab(){
+  aiLabHistory=[];
+  const log=document.getElementById('ai-lab-log');
+  if(log)log.innerHTML='<div class="ai-lab-empty" id="ai-lab-empty">Escribí como si fueras un paciente. Black AI responderá usando el tono y las reglas configuradas en esta pantalla.</div>';
+  const meta=document.getElementById('ai-lab-meta');
+  if(meta)meta.textContent='Sin consultas todavía';
+}
+
 function ensureCrmNav(){
   if(document.querySelector('.ai-crm-nav'))return;
   const nav=document.createElement('nav');
@@ -276,6 +420,11 @@ document.getElementById('length')?.addEventListener('change',event=>update({leng
 document.getElementById('emoji')?.addEventListener('change',event=>update({emoji:event.target.value}));
 document.getElementById('simulate-access')?.addEventListener('click',runSimulator);
 document.getElementById('simulator-number')?.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();runSimulator();}});
+document.getElementById('ai-lab-send')?.addEventListener('click',sendLabMessage);
+document.getElementById('ai-lab-clear')?.addEventListener('click',clearLab);
+document.getElementById('ai-lab-input')?.addEventListener('keydown',event=>{
+  if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendLabMessage();}
+});
 
 document.querySelectorAll('.ai-tab').forEach(tab=>tab.addEventListener('click',()=>{
   document.querySelectorAll('.ai-tab').forEach(t=>t.classList.toggle('active',t===tab));
@@ -293,4 +442,4 @@ document.getElementById('reset-demo')?.addEventListener('click',async()=>{
 renderAll();
 renderEvolutionStatus();
 ensureCrmNav();
-initSupabaseSettings();
+initSupabaseSettings().then(ok=>{if(ok)checkOpenAiRuntime();});
