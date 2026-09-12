@@ -69,6 +69,18 @@ function extractOutputText(payload: any) {
   return pieces.join("\n").trim();
 }
 
+function getPublishableKey() {
+  const current = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS");
+  if (current) {
+    try {
+      const keys = JSON.parse(current);
+      if (keys?.default) return String(keys.default);
+    } catch (_) {}
+  }
+  // Compatibilidad mientras Supabase mantenga las variables legacy.
+  return Deno.env.get("SUPABASE_ANON_KEY") || "";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Método no permitido" }, 405);
@@ -78,10 +90,14 @@ Deno.serve(async (req) => {
     if (!authorization) return json({ error: "Sesión requerida" }, 401);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    if (!supabaseUrl || !supabaseAnonKey) return json({ error: "Configuración de Supabase incompleta" }, 500);
+    const supabasePublishableKey = getPublishableKey();
+    if (!supabaseUrl || !supabasePublishableKey) {
+      return json({ error: "Configuración de Supabase incompleta" }, 500);
+    }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    // El publishable key identifica a la aplicación. El token del usuario en
+    // Authorization identifica a la persona y hace que las consultas respeten RLS.
+    const supabase = createClient(supabaseUrl, supabasePublishableKey, {
       global: { headers: { Authorization: authorization } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
@@ -106,12 +122,21 @@ Deno.serve(async (req) => {
     if (!message) return json({ error: "Escribí un mensaje para probar Black AI" }, 400);
     if (message.length > 4000) return json({ error: "El mensaje de prueba es demasiado largo" }, 400);
 
+    const history = Array.isArray(body?.history)
+      ? body.history
+          .filter((item: any) => item && ["user", "assistant"].includes(item.role) && typeof item.content === "string")
+          .slice(-8)
+          .map((item: any) => ({ role: item.role, content: item.content.slice(0, 4000) }))
+      : [];
+
     const { data: settings, error: settingsError } = await supabase
       .from("black_ai_settings")
       .select("config")
       .eq("id", "global")
       .single();
     if (settingsError) return json({ error: "No se pudo leer la configuración de Black AI" }, 500);
+
+    const input = [...history, { role: "user", content: message }];
 
     const openAiResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -122,7 +147,8 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model,
         instructions: buildInstructions(settings?.config || {}),
-        input: message,
+        input,
+        reasoning: { effort: "low" },
         max_output_tokens: 350,
         store: false,
       }),
