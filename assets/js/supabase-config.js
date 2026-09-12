@@ -52,7 +52,6 @@
 
   const isClientsModule = /(?:^|\/)crm-clientes\.html$/i.test(path);
   if (isClientsModule) {
-    // Evita que el navegador llegue a pintar la navegación histórica antes de montar la capa moderna.
     document.documentElement.classList.add('crm-ops-preload');
     const preloadStyle = document.createElement('style');
     preloadStyle.id = 'blackos-crm-preload-style';
@@ -65,13 +64,10 @@
     `;
     document.head.appendChild(preloadStyle);
 
-    // Estilos del CRM moderno se solicitan desde el <head>, antes del primer paint útil.
     loadCss('blackos-crm-clientes-polish-css', 'assets/css/crm-clientes-polish.css?v=20260912a');
     loadCss('blackos-crm-clientes-ops-css', 'assets/css/crm-clientes-ops.css?v=20260912a');
     loadJs('blackos-crm-clientes-polish-js', 'assets/js/crm-clientes-polish.js?v=20260912a');
 
-    // crm-clientes.js está al final del body. DOMContentLoaded garantiza que ya quedó cargado,
-    // sin esperar imágenes, fuentes u otros recursos como ocurría con window.load.
     const bootClientsLayer = () => {
       loadJs('blackos-crm-clientes-whatsapp-fix-js', 'assets/js/crm-clientes-whatsapp-fix.js?v=20260912a', () => {
         loadJs('blackos-crm-clientes-ops-js', 'assets/js/crm-clientes-ops.js?v=20260912a');
@@ -82,6 +78,18 @@
       document.addEventListener('DOMContentLoaded', bootClientsLayer, { once:true });
     } else {
       bootClientsLayer();
+    }
+  }
+
+  const isBlackAiModule = /(?:^|\/)black-ai\.html$/i.test(path);
+  if (isBlackAiModule) {
+    const bootBlackAiFix = () => {
+      loadJs('blackos-black-ai-chat-fix-js', 'assets/js/black-ai-chat-fix.js?v=20260912c');
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootBlackAiFix, { once:true });
+    } else {
+      bootBlackAiFix();
     }
   }
 })();
