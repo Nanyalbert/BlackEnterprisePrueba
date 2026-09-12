@@ -18,7 +18,7 @@ function loadConfig(){
 function saveConfig(config){
   localStorage.setItem(STORAGE_KEY,JSON.stringify(config));
   const state=document.getElementById('save-state');
-  if(state){state.textContent='Guardado';setTimeout(()=>state.textContent='Configuración local',1000)}
+  if(state){state.textContent='Configuración guardada';setTimeout(()=>state.textContent='Configuración guardada en este dispositivo',1100)}
 }
 let config=loadConfig();
 
@@ -30,10 +30,10 @@ const statusCopy=document.getElementById('ai-status-copy');
 function renderStatus(){
   if(enabled) enabled.checked=!!config.enabled;
   statusDot?.classList.toggle('on',!!config.enabled);
-  if(statusTitle) statusTitle.textContent=config.enabled?'IA activada':'IA desactivada';
+  if(statusTitle) statusTitle.textContent=config.enabled?'Asistente activado':'Asistente desactivado';
   if(statusCopy) statusCopy.textContent=config.enabled
-    ? (config.environment==='sandbox'?'Disponible solo bajo reglas de Sandbox.':'Disponible según el alcance configurado.')
-    : 'No responde mensajes automáticamente.';
+    ? (config.environment==='sandbox'?'Activo únicamente dentro del entorno de pruebas.':'Disponible según el alcance y las reglas configuradas.')
+    : 'No interviene en ninguna conversación.';
 }
 
 function renderEnvironment(){
@@ -61,21 +61,45 @@ function renderAll(){renderStatus();renderEnvironment();renderReplyMode();render
 
 function update(patch){config={...config,...patch};saveConfig(config);renderAll()}
 
-function mountCrmNav(){
-  if(document.querySelector('.ai-crm-nav')) return;
+function readCrmEvolutionConfig(){
+  try{
+    const raw=localStorage.getItem('black_crm_cfg');
+    if(!raw)return null;
+    const cfg=JSON.parse(raw);
+    const ready=!!(cfg?.evoUrl&&cfg?.evoKey&&cfg?.evoInstance);
+    return {ready,instance:cfg?.evoInstance||'',url:cfg?.evoUrl||''};
+  }catch{return null}
+}
+
+function renderEvolutionStatus(){
+  const state=readCrmEvolutionConfig();
+  const status=document.getElementById('evolution-status');
+  const detail=document.getElementById('evolution-detail');
+  const integration=document.getElementById('evolution-integration-status');
+  if(!state?.ready){
+    if(status){status.textContent='No configurado';status.classList.add('muted')}
+    if(detail)detail.textContent='Completá la conexión desde CRM Black';
+    if(integration){integration.textContent='No configurada';integration.className='connection off'}
+    return;
+  }
+  if(status){status.textContent='Configurado';status.classList.remove('muted')}
+  if(detail)detail.textContent=state.instance?`Instancia: ${state.instance}`:'Evolution API disponible';
+  if(integration){integration.textContent='Configurada';integration.className='connection ready'}
+}
+
+function ensureCrmNav(){
+  if(document.querySelector('.ai-crm-nav'))return;
   const nav=document.createElement('nav');
   nav.className='ai-crm-nav';
   nav.setAttribute('aria-label','Navegación CRM Black');
   nav.innerHTML=`
     <a href="crm-clientes.html">Inicio</a>
-    <a href="crm-clientes.html">Clientes</a>
-    <a href="crm-clientes.html">Campañas</a>
+    <a href="crm-clientes.html#clientes">Clientes</a>
+    <a href="crm-clientes.html#campanas">Campañas</a>
     <a href="seguimiento-presupuestos.html">Presupuestos</a>
     <a href="automatizaciones-postventa.html">Automatizaciones</a>
-    <a href="black-ai.html" class="active" aria-current="page">IA</a>`;
+    <a class="active" href="black-ai.html">IA</a>`;
   document.body.appendChild(nav);
-  const eyebrow=document.querySelector('.eyebrow');
-  if(eyebrow) eyebrow.textContent='CRM BLACK · INTELIGENCIA ARTIFICIAL';
 }
 
 enabled?.addEventListener('change',()=>update({enabled:enabled.checked}));
@@ -94,11 +118,12 @@ document.querySelectorAll('.ai-tab').forEach(tab=>tab.addEventListener('click',(
 }));
 
 document.getElementById('reset-demo')?.addEventListener('click',()=>{
-  if(!confirm('¿Restablecer la configuración de demostración de Black AI?'))return;
+  if(!confirm('¿Restablecer la configuración de Black AI?'))return;
   config={...defaults};
   saveConfig(config);
   renderAll();
 });
 
-mountCrmNav();
 renderAll();
+renderEvolutionStatus();
+ensureCrmNav();
