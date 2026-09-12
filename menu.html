@@ -24,6 +24,7 @@
     <div class="nav-label">Accesos</div>
     <a href="#" class="nav-item active" data-view="inicio"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Inicio</a>
     <a href="#" class="nav-item" data-view="crm-clientes" id="crm-clientes-nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>CRM Black</a>
+    <a href="#" class="nav-item" data-view="black-ai" id="black-ai-nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 9h.01M15 9h.01M8.5 14c1 1 2.17 1.5 3.5 1.5s2.5-.5 3.5-1.5"/></svg>Black AI</a>
     <a href="#" class="nav-item" data-view="administracion" id="administracion-nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>Administración</a>
     <a href="#" class="nav-item" data-view="crm-oftalmologos" id="crm-oftalmologos-nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>CRM Oftalmólogos</a>
     <div class="nav-label" style="margin-top:20px;">Administración del portal</div>
@@ -43,20 +44,29 @@
     <div class="section-heading"><h2>Herramientas</h2></div>
     <div class="apps-grid">
       <a href="#" class="app-card" data-view="crm-clientes" id="crm-clientes-card"><div class="app-card-body"><h3>CRM Black</h3><p>Gestión de leads, seguimiento de clientes y automatización por WhatsApp.</p></div><div class="app-card-arrow">Ingresar</div></a>
+      <a href="#" class="app-card" data-view="black-ai" id="black-ai-card"><div class="app-card-body"><h3>Black AI</h3><p>Configuración, pruebas y control del asistente inteligente de WhatsApp.</p></div><div class="app-card-arrow">Ingresar</div></a>
       <a href="#" class="app-card" data-view="administracion" id="administracion-card"><div class="app-card-body"><h3>Administración</h3><p>Ventas, utilidad, cobranzas, bancos y resultado del período.</p></div><div class="app-card-arrow">Ingresar</div></a>
       <a href="#" class="app-card" data-view="crm-oftalmologos" id="crm-oftalmologos-card"><div class="app-card-body"><h3>CRM Oftalmólogos</h3><p>Estadísticas y seguimiento de derivaciones para profesionales asociados.</p></div><div class="app-card-arrow">Ingresar</div></a>
     </div>
   </div>
   <div class="view" id="view-usuarios"><div class="content-header"><h1>Usuarios</h1><p>Definí qué puede ver y qué puede hacer cada persona dentro de Black OS.</p></div><div class="section-heading"><h2 id="users-count">3 usuarios</h2><button class="btn btn-primary" id="btn-new-user">Nuevo usuario</button></div><div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Accesos</th><th>Estado</th><th></th></tr></thead><tbody id="users-tbody"></tbody></table></div></div>
   <section class="view" id="view-crm-clientes"><div class="module-frame-wrap"><iframe id="crm-clientes-frame" class="module-frame" src="crm-clientes.html" title="CRM Black" loading="eager"></iframe></div></section>
+  <section class="view" id="view-black-ai"><div class="module-frame-wrap"><iframe id="black-ai-frame" class="module-frame" src="black-ai.html" title="Black AI" loading="eager"></iframe></div></section>
   <section class="view" id="view-administracion"><div class="module-frame-wrap"><iframe id="administracion-frame" class="module-frame" src="administracion.html" title="Administración" loading="eager" style="height:calc(100dvh - 64px)!important;min-height:calc(100dvh - 64px)!important;"></iframe></div></section>
   <section class="view" id="view-crm-oftalmologos"><div class="module-frame-wrap"><iframe id="crm-oftalmologos-frame" class="module-frame" src="crm-oftalmologos.html" title="CRM Oftalmólogos" loading="eager"></iframe></div></section>
 </main>
 </div>
-<div class="modal-overlay" id="user-modal-overlay"><div class="modal"><div class="modal-header"><h3 id="modal-title">Nuevo usuario</h3><button class="modal-close" id="modal-close" aria-label="Cerrar">×</button></div><form id="user-form"><div class="modal-field"><label for="modal-name">Nombre</label><input type="text" id="modal-name" placeholder="Ej: Dr. Gómez" required></div><div class="modal-field"><label for="modal-email">Email</label><input type="email" id="modal-email" placeholder="nombre@ejemplo.com" required></div><div class="modal-field" id="modal-password-field"><label for="modal-password">Contraseña temporal</label><input type="text" id="modal-password" placeholder="Se la compartís vos por WhatsApp"></div><div class="modal-field"><label>Permisos y alcance</label><div class="permisos-list"><label class="permiso-item"><input type="checkbox" value="crm-black"><span>CRM Black</span></label><label class="permiso-item"><input type="checkbox" value="administracion"><span>Administración</span></label><label class="permiso-item"><input type="checkbox" value="crm-oftalmologos"><span>CRM Oftalmólogos</span></label></div></div><div class="modal-actions"><button type="button" class="btn btn-ghost" id="modal-cancel">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div></form></div></div>
+<div class="modal-overlay" id="user-modal-overlay"><div class="modal"><div class="modal-header"><h3 id="modal-title">Nuevo usuario</h3><button class="modal-close" id="modal-close" aria-label="Cerrar">×</button></div><form id="user-form"><div class="modal-field"><label for="modal-name">Nombre</label><input type="text" id="modal-name" placeholder="Ej: Dr. Gómez" required></div><div class="modal-field"><label for="modal-email">Email</label><input type="email" id="modal-email" placeholder="nombre@ejemplo.com" required></div><div class="modal-field" id="modal-password-field"><label for="modal-password">Contraseña temporal</label><input type="text" id="modal-password" placeholder="Se la compartís vos por WhatsApp"></div><div class="modal-field"><label>Permisos y alcance</label><div class="permisos-list"><label class="permiso-item"><input type="checkbox" value="crm-black"><span>CRM Black</span></label><label class="permiso-item"><input type="checkbox" value="black-ai"><span>Black AI</span></label><label class="permiso-item"><input type="checkbox" value="administracion"><span>Administración</span></label><label class="permiso-item"><input type="checkbox" value="crm-oftalmologos"><span>CRM Oftalmólogos</span></label></div></div><div class="modal-actions"><button type="button" class="btn btn-ghost" id="modal-cancel">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div></form></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="assets/js/supabase-config.js"></script>
 <script src="assets/js/portal.js"></script>
+<script>
+  try {
+    TITLES['black-ai'] = 'Black AI';
+    if (!MODULE_VIEWS.includes('black-ai')) MODULE_VIEWS.push('black-ai');
+    APP_LABELS['black-ai'] = 'Black AI';
+  } catch (error) { console.warn('No se pudo registrar Black AI en el portal', error); }
+</script>
 <script src="assets/js/permisos.js"></script>
 </body>
 </html>
