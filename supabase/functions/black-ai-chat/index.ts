@@ -69,16 +69,25 @@ function extractOutputText(payload: any) {
   return pieces.join("\n").trim();
 }
 
-function getPublishableKey() {
-  const current = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS");
-  if (current) {
-    try {
-      const keys = JSON.parse(current);
-      if (keys?.default) return String(keys.default);
-    } catch (_) {}
+function firstSecretValue(raw: string | undefined) {
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === "string") return parsed;
+    if (parsed && typeof parsed === "object") {
+      const value = Object.values(parsed).find((item) => typeof item === "string" && item.length > 10);
+      if (value) return String(value);
+    }
+  } catch (_) {
+    if (raw.length > 10) return raw;
   }
-  // Compatibilidad mientras Supabase mantenga las variables legacy.
-  return Deno.env.get("SUPABASE_ANON_KEY") || "";
+  return "";
+}
+
+function getSupabaseApiKey() {
+  return firstSecretValue(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS"))
+    || Deno.env.get("SUPABASE_ANON_KEY")
+    || firstSecretValue(Deno.env.get("SUPABASE_SECRET_KEYS"));
 }
 
 Deno.serve(async (req) => {
@@ -90,20 +99,20 @@ Deno.serve(async (req) => {
     if (!authorization) return json({ error: "Sesión requerida" }, 401);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabasePublishableKey = getPublishableKey();
-    if (!supabaseUrl || !supabasePublishableKey) {
-      return json({ error: "Configuración de Supabase incompleta" }, 500);
+    const supabaseApiKey = getSupabaseApiKey();
+    if (!supabaseUrl || !supabaseApiKey) {
+      return json({ error: "Configuración de Supabase incompleta", code: "SUPABASE_ENV_MISSING" }, 500);
     }
 
-    // El publishable key identifica a la aplicación. El token del usuario en
-    // Authorization identifica a la persona y hace que las consultas respeten RLS.
-    const supabase = createClient(supabaseUrl, supabasePublishableKey, {
+    const supabase = createClient(supabaseUrl, supabaseApiKey, {
       global: { headers: { Authorization: authorization } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
     const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError || !userData?.user) return json({ error: "Sesión inválida" }, 401);
+    if (userError || !userData?.user) {
+      return json({ error: "Sesión inválida", code: "INVALID_SESSION" }, 401);
+    }
 
     const body = await req.json().catch(() => ({}));
     const action = String(body?.action || "chat");
@@ -134,7 +143,10 @@ Deno.serve(async (req) => {
       .select("config")
       .eq("id", "global")
       .single();
-    if (settingsError) return json({ error: "No se pudo leer la configuración de Black AI" }, 500);
+    if (settingsError) {
+      console.error("black_ai_settings", settingsError);
+      return json({ error: "No se pudo leer la configuración de Black AI", code: "SETTINGS_READ_FAILED" }, 500);
+    }
 
     const input = [...history, { role: "user", content: message }];
 
@@ -164,7 +176,7 @@ Deno.serve(async (req) => {
     }
 
     const reply = extractOutputText(openAiPayload);
-    if (!reply) return json({ error: "OpenAI respondió sin texto" }, 502);
+    if (!reply) return json({ error: "OpenAI respondió sin texto", code: "EMPTY_RESPONSE" }, 502);
 
     return json({
       ok: true,
@@ -175,6 +187,6 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error("black-ai-chat", error);
-    return json({ error: "Error interno de Black AI" }, 500);
+    return json({ error: String(error?.message || "Error interno de Black AI"), code: "INTERNAL_ERROR" }, 500);
   }
 });
