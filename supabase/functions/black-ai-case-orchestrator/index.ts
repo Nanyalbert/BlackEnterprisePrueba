@@ -90,7 +90,7 @@ Respondé SOLO JSON válido con estas claves exactas:
 {"objective":null,"optical_case":null,"main_use":null,"previous_lens_type":null,"budget_context":null,"urgency":null,"preferences":{}}
 
 ESTADO ACTUAL:
-${JSON.stringify({objective:current?.objective, optical_case:current?.optical_case, main_use:current?.main_use, previous_lens_type:current?.previous_lens_type, budget_context:current?.budget_context, urgency:current?.urgency})}
+${JSON.stringify({objective:current?.objective,optical_case:current?.optical_case,main_use:current?.main_use,previous_lens_type:current?.previous_lens_type,budget_context:current?.budget_context,urgency:current?.urgency})}
 
 MENSAJE:
 ${message.slice(0,3000)}
@@ -140,6 +140,66 @@ function questionForKey(key:string|null,objective:string|null){
     ready_for_proposal:"Ya tengo la información técnica necesaria para armarte una propuesta.",
   };
   return key?(questions[key]||""):"";
+}
+
+async function writeContextualReply(message:string,state:any,nextKey:string|null,fallback:string){
+  const openAiKey=Deno.env.get("OPENAI_API_KEY")||"";
+  if(!openAiKey||!message.trim()||!fallback)return fallback;
+  const model=Deno.env.get("OPENAI_MODEL")||"gpt-5.6-luna";
+  const prompt=`
+Sos Black AI, asistente de Black Óptica en Argentina.
+Redactá UNA respuesta breve de WhatsApp, natural, profesional y cálida, en español argentino.
+
+Tu tarea NO es decidir qué preguntar: eso ya lo decidió el motor.
+Tenés que conservar exactamente el objetivo de la próxima pregunta indicada y redactarla usando el contexto conocido para que no suene robótica.
+
+REGLAS:
+- Una sola pregunta principal por mensaje.
+- Idealmente 1 a 3 oraciones.
+- Reconocé brevemente lo que el paciente ya contó cuando aporte naturalidad.
+- No repitas preguntas cuya respuesta ya está en el estado.
+- No inventes precios, promociones, stock, tiempos, garantías, características técnicas ni diagnósticos.
+- No prometas que una solución es la mejor ni recomiendes un diseño específico si el motor todavía no lo determinó.
+- Si falta receta, podés explicar brevemente que sirve para evaluar correctamente las opciones, sin dar consejo médico.
+- No menciones bases de datos, motores, estados, claves internas ni IA.
+- Devolvé SOLO el texto final, sin comillas ni markdown.
+
+MENSAJE DEL PACIENTE:
+${message.slice(0,2000)}
+
+CONTEXTO CONOCIDO:
+${JSON.stringify({objective:state?.objective,optical_case:state?.optical_case,main_use:state?.main_use,previous_lens_type:state?.previous_lens_type,budget_context:state?.budget_context,urgency:state?.urgency,preferences:state?.preferences})}
+
+PRÓXIMO PASO OBLIGATORIO:
+${nextKey||"sin clave"}
+
+PREGUNTA BASE QUE DEBE RESPETARSE:
+${fallback}
+`.trim();
+
+  try{
+    const response=await fetch("https://api.openai.com/v1/responses",{
+      method:"POST",
+      headers:{"Authorization":`Bearer ${openAiKey}`,"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model,
+        input:[{role:"user",content:[{type:"input_text",text:prompt}]}],
+        reasoning:{effort:"low"},
+        max_output_tokens:180,
+        store:false
+      })
+    });
+    const payload=await response.json().catch(()=>({}));
+    if(!response.ok){
+      console.error("case reply OpenAI",response.status,payload);
+      return fallback;
+    }
+    const text=extractOutputText(payload).trim();
+    return text?text.slice(0,900):fallback;
+  }catch(error){
+    console.error("case reply",error);
+    return fallback;
+  }
 }
 
 Deno.serve(async(req)=>{
@@ -231,14 +291,17 @@ Deno.serve(async(req)=>{
       nextKey=data;
     }
 
-    const reply=questionForKey(nextKey,state.objective);
+    const fallback=questionForKey(nextKey,state.objective);
+    const reply=await writeContextualReply(message,state,nextKey,fallback);
     state.next_best_question_key=nextKey;
     state.next_best_question_context={
       ...(current.next_best_question_context||{}),
-      suggested_question:reply,
+      suggested_question:fallback,
+      generated_reply:reply,
       last_message:message.slice(0,500),
       inferred_facts:inferred,
-      extraction_mode:extraction.mode
+      extraction_mode:extraction.mode,
+      reply_mode:reply===fallback?"fallback":"openai_contextual"
     };
 
     const {data:upserted,error:upsertError}=await supabase.from("black_ai_case_state").upsert(state,{onConflict:"phone"}).select("*").single();
@@ -248,10 +311,11 @@ Deno.serve(async(req)=>{
       ok:true,
       state:upserted,
       next_question_key:nextKey,
-      suggested_question:reply,
+      suggested_question:fallback,
       reply,
       inferred_facts:inferred,
-      extraction_mode:extraction.mode
+      extraction_mode:extraction.mode,
+      reply_mode:reply===fallback?"fallback":"openai_contextual"
     });
   }catch(error){
     console.error("black-ai-case-orchestrator",error);
