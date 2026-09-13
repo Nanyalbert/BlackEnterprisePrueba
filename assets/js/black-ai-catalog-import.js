@@ -1,7 +1,7 @@
 (()=>{
   const SOURCE='sinergia';
   const $=id=>document.getElementById(id);
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=v=>Number(v||0).toLocaleString('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0});
   function client(){try{if(window.parent&&window.parent!==window&&window.parent.BlackPortal?.getSupabase)return window.parent.BlackPortal.getSupabase();}catch(_){ }return window.BlackPortal?.getSupabase?.()||null}
   function cleanHeader(v){return String(v||'').replace(/^\uFEFF/,'').trim()}
@@ -26,7 +26,26 @@
     return rows.slice(1).map(cols=>Object.fromEntries(headers.map((h,i)=>[h,String(cols[i]??'').trim()])));
   }
 
-  function number(v){const s=String(v??'').trim().replace(/\./g,'').replace(',','.').replace(/[^\d.-]/g,'');const n=Number(s);return Number.isFinite(n)?n:null}
+  function number(v){
+    let s=String(v??'').trim().replace(/\s/g,'').replace(/[^\d,.-]/g,'');
+    if(!s)return null;
+    const comma=s.lastIndexOf(','),dot=s.lastIndexOf('.');
+    let normalized=s;
+    if(comma>=0&&dot>=0){
+      const decimalSep=comma>dot?',':'.';
+      const thousandsSep=decimalSep===','?'.':',';
+      normalized=s.split(thousandsSep).join('').replace(decimalSep,'.');
+    }else if(comma>=0){
+      const decimals=s.length-comma-1;
+      normalized=(decimals>0&&decimals<=2)?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');
+    }else if(dot>=0){
+      const dots=(s.match(/\./g)||[]).length;
+      const decimals=s.length-dot-1;
+      normalized=(dots===1&&decimals>0&&decimals<=2)?s:s.replace(/\./g,'');
+    }
+    const n=Number(normalized);
+    return Number.isFinite(n)?n:null;
+  }
 
   function classify(desc){
     const d=norm(desc),features=[];
@@ -79,7 +98,7 @@
       source_system:SOURCE,source_key:stableKey(raw),name:desc.trim(),family:c.lensLike?'lens':'catalog',design:c.design,
       material:c.material,treatment:c.treatment,optical_case:c.optical_case,supply_mode:c.supply_mode,description:desc.trim(),
       currency:'ARS',base_price:price,is_active:true,
-      metadata:{source:{system:SOURCE,id_rubro:raw.IdRubro||null,id_subrubro:raw.IdSubRubro||null,id_subsubrubro:raw.IdSubSubRubro||null,price_includes_vat:true},features:c.features,classification_version:2},
+      metadata:{source:{system:SOURCE,id_rubro:raw.IdRubro||null,id_subrubro:raw.IdSubRubro||null,id_subsubrubro:raw.IdSubSubRubro||null,price_includes_vat:true},features:c.features,classification_version:3},
       _review:price===null||(c.lensLike&&!c.optical_case),_raw:raw
     };
   }
