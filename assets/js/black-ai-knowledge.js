@@ -16,6 +16,17 @@
     }catch(_){ }
     return window.BlackPortal?.getSupabase?.()||null;
   }
+  function ensureCatalogImporter(){
+    if(!document.querySelector('link[data-black-ai-catalog-import]')){
+      const link=document.createElement('link');link.rel='stylesheet';link.href='assets/css/black-ai-catalog-import.css';link.dataset.blackAiCatalogImport='1';document.head.appendChild(link);
+    }
+    if(window.BlackAiCatalogImport)return Promise.resolve();
+    return new Promise((resolve,reject)=>{
+      const existing=document.querySelector('script[data-black-ai-catalog-import]');
+      if(existing){existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',reject,{once:true});return;}
+      const script=document.createElement('script');script.src='assets/js/black-ai-catalog-import.js';script.dataset.blackAiCatalogImport='1';script.onload=resolve;script.onerror=()=>reject(new Error('No se pudo cargar el importador de catálogo.'));document.body.appendChild(script);
+    });
+  }
   function isExpired(item){return item.valid_until&&item.valid_until<today()}
   function isNotStarted(item){return item.valid_from&&item.valid_from>today()}
   function usable(item){return item.is_active&&!isExpired(item)&&!isNotStarted(item)}
@@ -43,7 +54,7 @@
     host.innerHTML=`
       <div class="section-intro">
         <div><h2>Conocimiento</h2><p>Información comercial aprobada que Black AI puede utilizar para responder.</p></div>
-        <button class="btn-primary" type="button" id="knowledge-add">Agregar información</button>
+        <div class="knowledge-head-actions"><button class="btn-secondary" type="button" id="knowledge-import">Importar catálogo</button><button class="btn-primary" type="button" id="knowledge-add">Agregar información</button></div>
       </div>
       <div class="knowledge-manager">
         <div class="knowledge-toolbar">
@@ -87,6 +98,7 @@
 
   function bind(){
     el('knowledge-add')?.addEventListener('click',()=>openModal());
+    el('knowledge-import')?.addEventListener('click',async()=>{try{await ensureCatalogImporter();window.BlackAiCatalogImport?.open();}catch(error){alert(error?.message||error)}});
     document.querySelectorAll('.knowledge-filter').forEach(btn=>btn.addEventListener('click',()=>{state.filter=btn.dataset.filter;render()}));
     document.querySelectorAll('[data-edit]').forEach(btn=>btn.addEventListener('click',()=>openModal(state.items.find(x=>x.id===btn.dataset.edit))));
     document.querySelectorAll('[data-toggle]').forEach(btn=>btn.addEventListener('click',()=>toggle(btn.dataset.toggle)));
