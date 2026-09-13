@@ -1,11 +1,10 @@
 (()=>{
-  const VERSION='20260913-1';
+  const VERSION='20260913-3';
   const state={client:null,items:[],search:'',caseFilter:'all',modeFilter:'all',treatmentFilter:'all',activeFilter:'active',loaded:false};
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=v=>Number(v||0).toLocaleString('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0});
   const label=v=>({monofocal:'Monofocal',bifocal:'Bifocal',occupational:'Ocupacional',multifocal:'Multifocal',stock:'Stock',range_extended:'R.E',laboratory:'Laboratorio',antireflective:'Antirreflejo',blue_filter:'Filtro Blue',super_blue:'Super Blue',photochromic:'Fotocromático',photochromic_blue:'Fotocromático Blue',black_blue_4k:'Black Blue 4K',none:'Sin tratamiento'}[v]||v||'—');
   function resolveClient(){try{if(window.parent&&window.parent!==window&&window.parent.BlackPortal?.getSupabase)return window.parent.BlackPortal.getSupabase()}catch(_){ }return window.BlackPortal?.getSupabase?.()||null}
-  function loadAsset(tag,attrs){if(document.querySelector(`[data-catalog-${tag}]`))return;const el=document.createElement(tag==='css'?'link':'script');if(tag==='css'){el.rel='stylesheet';el.href=`assets/css/black-ai-catalog.css?v=${VERSION}`}else{el.src=`assets/js/black-ai-catalog-import.js?v=20260913-2`}el.dataset[`catalog${tag[0].toUpperCase()+tag.slice(1)}`]='1';document[tag==='css'?'head':'body'].appendChild(el)}
 
   function ensureShell(){
     if(!document.querySelector('link[data-catalog-css]')){const link=document.createElement('link');link.rel='stylesheet';link.href=`assets/css/black-ai-catalog.css?v=${VERSION}`;link.dataset.catalogCss='1';document.head.appendChild(link)}
@@ -55,10 +54,10 @@
 
   function render(){
     const panel=document.getElementById('tab-catalogo');if(!panel)return;
-    const rows=filtered(),active=state.items.filter(x=>x.is_active).length,technical=state.items.filter(technicalReady).length,last=lastUpdate();
+    const rows=filtered(),active=state.items.filter(x=>x.is_active).length,inactive=state.items.length-active,technical=state.items.filter(technicalReady).length,last=lastUpdate();
     panel.innerHTML=`
-      <div class="section-intro catalog-intro"><div><h2>Catálogo</h2><p>Productos y precios que Black AI puede consultar en tiempo real desde Supabase.</p></div><button class="btn-primary" id="catalog-import" type="button">Actualizar catálogo</button></div>
-      <div class="catalog-stats"><div><span>Productos</span><strong>${state.items.length}</strong></div><div><span>Activos</span><strong>${active}</strong></div><div><span>Con ficha técnica</span><strong>${technical}</strong></div><div><span>Última actualización</span><strong>${last?new Date(last).toLocaleDateString('es-AR'):'—'}</strong></div></div>
+      <div class="section-intro catalog-intro"><div><h2>Catálogo</h2><p>Productos y precios que Black AI puede consultar en tiempo real desde Supabase. Los productos inactivos quedan excluidos de las respuestas y cotizaciones.</p></div><button class="btn-primary" id="catalog-import" type="button">Actualizar catálogo</button></div>
+      <div class="catalog-stats"><div><span>Productos</span><strong>${state.items.length}</strong></div><div><span>Activos</span><strong>${active}</strong></div><div><span>Inactivos</span><strong>${inactive}</strong></div><div><span>Con ficha técnica</span><strong>${technical}</strong></div><div><span>Última actualización</span><strong>${last?new Date(last).toLocaleDateString('es-AR'):'—'}</strong></div></div>
       <div class="catalog-toolbar">
         <input id="catalog-search" value="${esc(state.search)}" placeholder="Buscar producto, material, tratamiento o diseño…">
         <select id="catalog-case"><option value="all">Todos los casos</option>${unique('optical_case').map(v=>`<option value="${esc(v)}" ${state.caseFilter===v?'selected':''}>${esc(label(v))}</option>`).join('')}</select>
@@ -73,7 +72,7 @@
 
   function rowHtml(x){
     const tech=technicalReady(x);
-    return `<tr data-product="${x.id}"><td><div class="catalog-product"><strong>${esc(x.name)}</strong><small>${x.is_active?'Activo':'Inactivo'}</small></div></td><td class="catalog-price">${money(x.base_price)}</td><td>${esc(label(x.optical_case))}</td><td>${esc(label(x.supply_mode))}</td><td>${esc(x.material||'—')}</td><td>${esc(label(x.treatment))}</td><td>${esc(x.design||'—')}</td><td><span class="catalog-tech ${tech?'ready':'pending'}">${tech?'Configurado':'Pendiente'}</span></td></tr>`;
+    return `<tr data-product="${x.id}" ${x.is_active?'':'style="opacity:.58"'}><td><div class="catalog-product"><strong>${esc(x.name)}</strong><small>${x.is_active?'Activo':'Inactivo · Black AI no lo ofrece'}</small></div></td><td class="catalog-price">${money(x.base_price)}</td><td>${esc(label(x.optical_case))}</td><td>${esc(label(x.supply_mode))}</td><td>${esc(x.material||'—')}</td><td>${esc(label(x.treatment))}</td><td>${esc(x.design||'—')}</td><td><span class="catalog-tech ${tech?'ready':'pending'}">${tech?'Configurado':'Pendiente'}</span></td></tr>`;
   }
 
   function bind(){
@@ -83,13 +82,31 @@
     document.getElementById('catalog-treatment')?.addEventListener('change',e=>{state.treatmentFilter=e.target.value;render()});
     document.getElementById('catalog-active')?.addEventListener('change',e=>{state.activeFilter=e.target.value;render()});
     document.getElementById('catalog-import')?.addEventListener('click',async()=>{
-      if(!window.BlackAiCatalogImport){await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='assets/js/black-ai-catalog-import.js?v=20260913-2';s.onload=resolve;s.onerror=reject;document.body.appendChild(s)})}
+      if(!window.BlackAiCatalogImport){await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='assets/js/black-ai-catalog-import.js?v=20260913-3';s.onload=resolve;s.onerror=reject;document.body.appendChild(s)})}
       window.BlackAiCatalogImport?.open();
     });
     document.querySelectorAll('[data-product]').forEach(tr=>tr.addEventListener('click',()=>openDetail(state.items.find(x=>x.id===tr.dataset.product))));
   }
 
-  function openDetail(x){if(!x)return;const tech=technicalReady(x),wrap=document.createElement('div');wrap.className='catalog-detail-backdrop';wrap.innerHTML=`<div class="catalog-detail"><button class="catalog-detail-close">×</button><span class="card-kicker">PRODUCTO</span><h3>${esc(x.name)}</h3><div class="catalog-detail-grid"><div><span>Precio</span><strong>${money(x.base_price)}</strong></div><div><span>Caso</span><strong>${esc(label(x.optical_case))}</strong></div><div><span>Modalidad</span><strong>${esc(label(x.supply_mode))}</strong></div><div><span>Material</span><strong>${esc(x.material||'—')}</strong></div><div><span>Tratamiento</span><strong>${esc(label(x.treatment))}</strong></div><div><span>Diseño</span><strong>${esc(x.design||'—')}</strong></div></div><div class="catalog-detail-section"><h4>Información técnica</h4>${tech?`<div class="catalog-range-grid"><span>Esfera: ${esc(x.sphere_min??'—')} a ${esc(x.sphere_max??'—')}</span><span>Cilindro: ${esc(x.cylinder_min??'—')} a ${esc(x.cylinder_max??x.cylinder_abs_max??'—')}</span><span>Adición: ${esc(x.addition_min??'—')} a ${esc(x.addition_max??'—')}</span></div>`:'<p>Este producto todavía no tiene rangos ópticos cargados. El precio comercial ya está disponible, pero no debe usarse como candidato automático hasta completar la ficha técnica.</p>'}</div></div>`;document.body.appendChild(wrap);const close=()=>wrap.remove();wrap.querySelector('.catalog-detail-close').onclick=close;wrap.onclick=e=>{if(e.target===wrap)close()}}
+  async function setActive(x,value,button){
+    if(!state.client||!x)return;
+    const action=value?'reactivar':'inhabilitar';
+    if(!confirm(`¿Querés ${action} este producto?\n\n${x.name}\n\n${value?'Volverá a estar disponible para Black AI.':'Black AI dejará de ofrecerlo y de usarlo para precios.'}`))return;
+    if(button){button.disabled=true;button.textContent=value?'Reactivando…':'Inhabilitando…'}
+    const {error}=await state.client.from('black_ai_products').update({is_active:value,updated_at:new Date().toISOString()}).eq('id',x.id);
+    if(error){alert(error.message||'No se pudo actualizar el producto.');if(button){button.disabled=false;button.textContent=value?'Reactivar producto':'Inhabilitar producto'}return}
+    x.is_active=value;
+    render();
+  }
+
+  function openDetail(x){
+    if(!x)return;
+    const tech=technicalReady(x),wrap=document.createElement('div');wrap.className='catalog-detail-backdrop';
+    wrap.innerHTML=`<div class="catalog-detail"><button class="catalog-detail-close">×</button><span class="card-kicker">PRODUCTO</span><h3>${esc(x.name)}</h3><div class="catalog-detail-grid"><div><span>Precio</span><strong>${money(x.base_price)}</strong></div><div><span>Estado</span><strong>${x.is_active?'Activo':'Inactivo'}</strong></div><div><span>Caso</span><strong>${esc(label(x.optical_case))}</strong></div><div><span>Modalidad</span><strong>${esc(label(x.supply_mode))}</strong></div><div><span>Material</span><strong>${esc(x.material||'—')}</strong></div><div><span>Tratamiento</span><strong>${esc(label(x.treatment))}</strong></div><div><span>Diseño</span><strong>${esc(x.design||'—')}</strong></div></div><div class="catalog-detail-section"><h4>Información técnica</h4>${tech?`<div class="catalog-range-grid"><span>Esfera: ${esc(x.sphere_min??'—')} a ${esc(x.sphere_max??'—')}</span><span>Cilindro: ${esc(x.cylinder_min??'—')} a ${esc(x.cylinder_max??x.cylinder_abs_max??'—')}</span><span>Adición: ${esc(x.addition_min??'—')} a ${esc(x.addition_max??'—')}</span></div>`:'<p>Este producto todavía no tiene rangos ópticos cargados. El precio comercial ya está disponible, pero no debe usarse como candidato automático hasta completar la ficha técnica.</p>'}</div><div class="catalog-detail-section"><h4>Disponibilidad para Black AI</h4><p>${x.is_active?'Este producto está habilitado y puede aparecer en consultas de precio y propuestas.':'Este producto está inhabilitado. Se conserva en el catálogo e historial, pero Black AI no debe ofrecerlo.'}</p><button class="${x.is_active?'btn-secondary':'btn-primary'}" type="button" data-toggle-product>${x.is_active?'Inhabilitar producto':'Reactivar producto'}</button></div></div>`;
+    document.body.appendChild(wrap);
+    const close=()=>wrap.remove();wrap.querySelector('.catalog-detail-close').onclick=close;wrap.onclick=e=>{if(e.target===wrap)close()};
+    wrap.querySelector('[data-toggle-product]')?.addEventListener('click',async e=>{await setActive(x,!x.is_active,e.currentTarget);close()});
+  }
 
   ensureShell();
   window.BlackAiCatalog={activate,reload:async()=>{state.loaded=false;await load()}};
