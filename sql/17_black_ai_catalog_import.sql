@@ -9,9 +9,11 @@ alter table public.black_ai_products
   add column if not exists last_import_batch_id uuid references public.black_ai_import_batches(id) on delete set null,
   add column if not exists imported_at timestamptz;
 
+-- Índice único compatible con UPSERT de PostgREST/Supabase.
+-- PostgreSQL permite múltiples NULL en índices unique, por eso no necesitamos índice parcial.
+drop index if exists public.black_ai_products_source_unique_idx;
 create unique index if not exists black_ai_products_source_unique_idx
-  on public.black_ai_products (source_system, source_key)
-  where source_system is not null and source_key is not null;
+  on public.black_ai_products (source_system, source_key);
 
 create index if not exists black_ai_products_source_idx
   on public.black_ai_products (source_system, is_active);
@@ -28,13 +30,10 @@ comment on column public.black_ai_products.last_import_batch_id is
 comment on column public.black_ai_products.imported_at is
 'Fecha/hora de la ultima sincronizacion desde el sistema externo.';
 
--- El usuario autenticado ya posee permisos CRUD por sql/13.
--- Reafirmamos lectura/escritura para que el importador del CRM pueda operar.
 grant select, insert, update on table public.black_ai_products to authenticated;
 grant select, insert, update on table public.black_ai_import_batches to authenticated;
 grant select, insert, update on table public.black_ai_import_rows to authenticated;
 
--- La Edge Function podra consumir el catalogo ya importado.
 grant select on table public.black_ai_products to service_role;
 
 -- NOTA:
