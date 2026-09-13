@@ -77,6 +77,46 @@ async function callCaseOrchestrator(supabaseUrl: string, secret: string, row: an
   return payload;
 }
 
+function normalizedList(value: unknown) {
+  return String(value || "").split(/[\n,;]/).map(digits).filter(Boolean);
+}
+
+function isAuthorized(config: any, phone: string) {
+  if (!config?.enabled) return false;
+  if (config?.replyMode !== "automatic") return false;
+  const scope = String(config?.scope || "single");
+  if (scope === "all") return true;
+  if (scope === "single") return digits(config?.testNumber) === phone;
+  if (scope === "list") return normalizedList(config?.testNumberList).includes(phone);
+  return false;
+}
+
+function evolutionConfig() {
+  const baseUrl = Deno.env.get("EVOLUTION_API_URL") || Deno.env.get("EVOLUTION_URL") || "";
+  const apiKey = Deno.env.get("EVOLUTION_API_KEY") || Deno.env.get("EVOLUTION_KEY") || "";
+  const instance = Deno.env.get("EVOLUTION_INSTANCE") || "";
+  return { baseUrl: baseUrl.replace(/\/+$/, ""), apiKey, instance };
+}
+
+async function sendEvolutionText(phone: string, text: string, instanceFromEvent: string) {
+  const cfg = evolutionConfig();
+  const instance = instanceFromEvent || cfg.instance;
+  if (!cfg.baseUrl || !cfg.apiKey || !instance) {
+    throw new Error("Faltan EVOLUTION_API_URL / EVOLUTION_API_KEY / instancia en Secrets");
+  }
+  const response = await fetch(`${cfg.baseUrl}/message/sendText/${encodeURIComponent(instance)}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": cfg.apiKey,
+    },
+    body: JSON.stringify({ number: phone, text }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.message || payload?.error || `Evolution HTTP ${response.status}`);
+  return payload;
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Método no permitido" }, 405);
 
@@ -145,7 +185,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!rows.length) return json({ ok: true, received: 0, orchestrated: 0 });
+    if (!rows.length) return json({ ok: true, received: 0, orchestrated: 0, replied: 0 });
 
     const supabase = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -160,15 +200,34 @@ Deno.serve(async (req) => {
       return json({ error: "No se pudo registrar el evento", detail: error.message }, 500);
     }
 
+    const { data: settingsRow } = await supabase.from("black_ai_settings").select("config").eq("id", "global").maybeSingle();
+    const config = settingsRow?.config || {};
+
     const orchestrationResults = await Promise.allSettled(
       rows.map((row) => callCaseOrchestrator(supabaseUrl, expected, row))
     );
 
     let orchestrated = 0;
     let orchestrationErrors = 0;
-    for (const result of orchestrationResults) {
+    let replied = 0;
+    let replyErrors = 0;
+
+    for (let i = 0; i < orchestrationResults.length; i++) {
+      const result = orchestrationResults[i];
+      const row = rows[i];
       if (result.status === "fulfilled") {
-        if (!(result.value as any)?.skipped) orchestrated += 1;
+        const value: any = result.value;
+        if (!value?.skipped) orchestrated += 1;
+        const reply = String(value?.reply || value?.suggested_question || "").trim();
+        if (!value?.skipped && reply && isAuthorized(config, String(row?.phone || ""))) {
+          try {
+            await sendEvolutionText(String(row.phone), reply, String(row.instance_name || instanceName || ""));
+            replied += 1;
+          } catch (error) {
+            replyErrors += 1;
+            console.error("Evolution reply", error);
+          }
+        }
       } else {
         orchestrationErrors += 1;
         console.error("black-ai-case-orchestrator call", result.reason);
@@ -180,6 +239,8 @@ Deno.serve(async (req) => {
       received: rows.length,
       orchestrated,
       orchestration_errors: orchestrationErrors,
+      replied,
+      reply_errors: replyErrors,
     });
   } catch (error) {
     console.error("black-ai-evolution-webhook", error);
