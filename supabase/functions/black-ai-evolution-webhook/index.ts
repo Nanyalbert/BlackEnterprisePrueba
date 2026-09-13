@@ -54,6 +54,29 @@ function extractReferral(message: any, data: any) {
     || null;
 }
 
+async function callCaseOrchestrator(supabaseUrl: string, secret: string, row: any) {
+  if (!row?.phone || row?.from_me || row?.is_group) return { skipped: true };
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/black-ai-case-orchestrator`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-black-ai-webhook-secret": secret,
+    },
+    body: JSON.stringify({
+      phone: row.phone,
+      message: row.text_content || row.caption || "",
+      source: "evolution",
+      message_type: row.message_type,
+      provider_message_id: row.message_id,
+    }),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error || `Orchestrator HTTP ${response.status}`);
+  return payload;
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Método no permitido" }, 405);
 
@@ -72,7 +95,6 @@ Deno.serve(async (req) => {
     const instanceName = String(payload?.instance || payload?.instanceName || payload?.sender || "");
     const data = payload?.data || payload;
 
-    // Evolution puede enviar un objeto individual o una colección según versión/configuración.
     const candidates = Array.isArray(data) ? data : [data];
     const rows: any[] = [];
 
@@ -96,7 +118,6 @@ Deno.serve(async (req) => {
       }
       const referral = extractReferral(message, item);
 
-      // Solo metadata resumida. Nunca persistimos base64 ni el payload entero.
       rows.push({
         provider: "evolution",
         event_name: eventName,
@@ -124,7 +145,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!rows.length) return json({ ok: true, received: 0 });
+    if (!rows.length) return json({ ok: true, received: 0, orchestrated: 0 });
 
     const supabase = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -139,7 +160,27 @@ Deno.serve(async (req) => {
       return json({ error: "No se pudo registrar el evento", detail: error.message }, 500);
     }
 
-    return json({ ok: true, received: rows.length });
+    const orchestrationResults = await Promise.allSettled(
+      rows.map((row) => callCaseOrchestrator(supabaseUrl, expected, row))
+    );
+
+    let orchestrated = 0;
+    let orchestrationErrors = 0;
+    for (const result of orchestrationResults) {
+      if (result.status === "fulfilled") {
+        if (!(result.value as any)?.skipped) orchestrated += 1;
+      } else {
+        orchestrationErrors += 1;
+        console.error("black-ai-case-orchestrator call", result.reason);
+      }
+    }
+
+    return json({
+      ok: true,
+      received: rows.length,
+      orchestrated,
+      orchestration_errors: orchestrationErrors,
+    });
   } catch (error) {
     console.error("black-ai-evolution-webhook", error);
     return json({ error: String((error as any)?.message || "Error interno") }, 500);
