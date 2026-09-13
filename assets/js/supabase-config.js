@@ -85,9 +85,13 @@
   if (isBlackAiModule) {
     loadCss('blackos-black-ai-knowledge-css', 'assets/css/black-ai-knowledge.css?v=20260912a');
     loadCss('blackos-black-ai-inbox-css', 'assets/css/black-ai-inbox.css?v=20260912a');
+    loadCss('blackos-black-ai-catalog-css', 'assets/css/black-ai-catalog.css?v=20260913-4');
+    loadCss('blackos-black-ai-followups-css', 'assets/css/black-ai-followups.css?v=20260913-1');
     const bootBlackAi = () => {
       loadJs('blackos-black-ai-chat-fix-js', 'assets/js/black-ai-chat-fix.js?v=20260912c');
       loadJs('blackos-black-ai-knowledge-js', 'assets/js/black-ai-knowledge.js?v=20260912a');
+      loadJs('blackos-black-ai-catalog-js', 'assets/js/black-ai-catalog.js?v=20260913-4');
+      loadJs('blackos-black-ai-followups-js', 'assets/js/black-ai-followups.js?v=20260913-1');
       loadJs('blackos-black-ai-inbox-js', 'assets/js/black-ai-inbox.js?v=20260912a');
     };
     if (document.readyState === 'loading') {
