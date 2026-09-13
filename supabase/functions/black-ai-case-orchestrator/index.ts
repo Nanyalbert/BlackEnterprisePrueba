@@ -46,10 +46,10 @@ function inferFactsFromMessage(message:string,current:any){
   }
 
   if(!current?.optical_case){
-    if(/\b(multifocal|progresiv)\b/.test(text)) facts.optical_case="multifocal";
-    else if(/\b(ocupacional|oficina|computadora|pc|pantalla)\b/.test(text)) facts.optical_case="occupational";
-    else if(/\b(bifocal)\b/.test(text)) facts.optical_case="bifocal";
-    else if(/\b(monofocal|solo lejos|solo cerca)\b/.test(text)) facts.optical_case="monofocal";
+    if(/\b(multifoc|progresiv)\w*/.test(text)) facts.optical_case="multifocal";
+    else if(/\b(ocupacional|oficina|computadora|pc|pantalla)\w*/.test(text)) facts.optical_case="occupational";
+    else if(/\b(bifoc)\w*/.test(text)) facts.optical_case="bifocal";
+    else if(/\b(monofoc)\w*|\bsolo lejos\b|\bsolo cerca\b/.test(text)) facts.optical_case="monofocal";
   }
 
   if(!current?.main_use){
@@ -60,8 +60,8 @@ function inferFactsFromMessage(message:string,current:any){
   }
 
   if(!current?.previous_lens_type){
-    if(/\b(nunca use multifocal|nunca tuve multifocal|primer multifocal)\b/.test(text)) facts.previous_lens_type="sin experiencia en multifocales";
-    else if(/\b(uso multifocal|ya use multifocal|tengo multifocal)\b/.test(text)) facts.previous_lens_type="usa multifocales";
+    if(/\b(nunca use multifoc|nunca tuve multifoc|primer multifoc)\w*/.test(text)) facts.previous_lens_type="sin experiencia en multifocales";
+    else if(/\b(uso multifoc|ya use multifoc|tengo multifoc)\w*/.test(text)) facts.previous_lens_type="usa multifocales";
   }
 
   return facts;
