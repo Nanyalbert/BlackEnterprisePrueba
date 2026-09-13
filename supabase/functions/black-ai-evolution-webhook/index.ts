@@ -117,6 +117,116 @@ async function sendEvolutionText(phone: string, text: string, instanceFromEvent:
   return payload;
 }
 
+function textOf(row: any) {
+  return String(row?.text_content || row?.caption || "").trim();
+}
+
+function looksLikeCommercialQuote(text: string) {
+  const t = String(text || "");
+  const hasMoney = /\$\s*[\d.]{2,}/.test(t) || /\b\d{2,3}(?:[.\s]\d{3})+\b/.test(t);
+  const hasCommercialFormat = /👉|~\s*\$|\*\s*\$|\boff\b|descuento|precio|cotiz|presupuesto/i.test(t);
+  const hasOpticalProduct = /org[aá]nico|antirreflejo|filtro azul|super blue|multifocal|bifocal|ocupacional|cristal|lente|alto [ií]ndice/i.test(t);
+  return hasMoney && (hasCommercialFormat || hasOpticalProduct);
+}
+
+function detectPatientFollowupSignal(text: string) {
+  const t = String(text || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const pending = /\b(te|les)?\s*(confirmo|aviso)\b|\bdespues\s+(te|les)?\s*(confirmo|aviso)\b|\bmanana\s+(te|les)?\s*(confirmo|aviso)\b|\blo\s+(voy\s+a\s+)?pensar\b|\bdejame\s+pensarlo\b|\bte\s+digo\b|\bmas\s+tarde\s+(te\s+)?(aviso|confirmo)\b/.test(t);
+  if (pending) return "pending_confirmation";
+  const interested = /\bme\s+(interesa|gusta|sirve|conviene)\b|\bquiero\s+eso\b|\bme\s+quedaria\s+bien\b/.test(t);
+  const defer = /\bmas\s+adelante\b|\bpor\s+ahora\b|\bno\s+ahora\b|\bdespues\b|\botro\s+dia\b|\bcuando\s+pueda\b/.test(t);
+  if (interested && defer) return "interested_no_close";
+  return null;
+}
+
+async function getScenario(supabase: any, key: string) {
+  const { data, error } = await supabase
+    .from("black_ai_followup_scenarios")
+    .select("id,key,is_active,initial_delay_hours,max_attempts")
+    .eq("key", key)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+async function closeOpenFollowupsForReply(supabase: any, phone: string, at: string) {
+  if (!phone) return 0;
+  const { data, error } = await supabase
+    .from("black_ai_followup_opportunities")
+    .update({
+      status: "replied",
+      last_patient_message_at: at,
+      next_followup_at: null,
+      stop_reason: "patient_replied",
+      updated_at: at,
+    })
+    .eq("phone", phone)
+    .in("status", ["waiting", "scheduled", "paused"])
+    .select("id");
+  if (error) throw error;
+  return (data || []).length;
+}
+
+async function openOrRefreshFollowup(supabase: any, args: {
+  phone: string;
+  scenarioKey: string;
+  sourceId?: string | null;
+  sourceType?: string;
+  context?: any;
+  businessAt?: string | null;
+  patientAt?: string | null;
+}) {
+  const scenario = await getScenario(supabase, args.scenarioKey);
+  if (!scenario?.is_active) return { skipped: true, reason: "scenario_inactive" };
+
+  const now = new Date();
+  const delay = Math.max(1, Number(scenario.initial_delay_hours || 24));
+  const next = new Date(now.getTime() + delay * 3600000).toISOString();
+  const { data: existing, error: findError } = await supabase
+    .from("black_ai_followup_opportunities")
+    .select("id,context")
+    .eq("phone", args.phone)
+    .eq("scenario_id", scenario.id)
+    .in("status", ["waiting", "scheduled", "paused"])
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (findError) throw findError;
+
+  const payload: any = {
+    scenario_id: scenario.id,
+    phone: args.phone,
+    source_type: args.sourceType || "conversation",
+    source_id: args.sourceId || null,
+    status: "scheduled",
+    next_followup_at: next,
+    stop_reason: null,
+    context: { ...(existing?.context || {}), ...(args.context || {}), detected_at: now.toISOString(), detector_version: 1 },
+    updated_at: now.toISOString(),
+  };
+  if (args.businessAt) payload.last_business_message_at = args.businessAt;
+  if (args.patientAt) payload.last_patient_message_at = args.patientAt;
+
+  if (existing?.id) {
+    const { data, error } = await supabase
+      .from("black_ai_followup_opportunities")
+      .update(payload)
+      .eq("id", existing.id)
+      .select("id,status,next_followup_at")
+      .single();
+    if (error) throw error;
+    return { refreshed: true, opportunity: data };
+  }
+
+  const { data, error } = await supabase
+    .from("black_ai_followup_opportunities")
+    .insert({ ...payload, followup_count: 0, created_at: now.toISOString() })
+    .select("id,status,next_followup_at")
+    .single();
+  if (error) throw error;
+  return { created: true, opportunity: data };
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Método no permitido" }, 405);
 
@@ -200,6 +310,46 @@ Deno.serve(async (req) => {
       return json({ error: "No se pudo registrar el evento", detail: error.message }, 500);
     }
 
+    let followupDetected = 0;
+    let followupClosed = 0;
+    let followupErrors = 0;
+
+    for (const row of rows) {
+      if (!row?.phone || row?.is_group) continue;
+      const messageText = textOf(row);
+      const at = row.provider_timestamp || new Date().toISOString();
+      try {
+        if (!row.from_me) {
+          followupClosed += await closeOpenFollowupsForReply(supabase, String(row.phone), at);
+          const signal = detectPatientFollowupSignal(messageText);
+          if (signal) {
+            const result = await openOrRefreshFollowup(supabase, {
+              phone: String(row.phone),
+              scenarioKey: signal,
+              sourceId: row.message_id,
+              sourceType: "patient_message",
+              patientAt: at,
+              context: { trigger_text: messageText.slice(0, 1000), trigger: signal },
+            });
+            if (!result?.skipped) followupDetected += 1;
+          }
+        } else if (messageText && looksLikeCommercialQuote(messageText)) {
+          const result = await openOrRefreshFollowup(supabase, {
+            phone: String(row.phone),
+            scenarioKey: "quote_no_reply",
+            sourceId: row.message_id,
+            sourceType: "outbound_quote",
+            businessAt: at,
+            context: { quote_text: messageText.slice(0, 1600), trigger: "outbound_quote" },
+          });
+          if (!result?.skipped) followupDetected += 1;
+        }
+      } catch (followupError) {
+        followupErrors += 1;
+        console.error("followup detection", followupError);
+      }
+    }
+
     const { data: settingsRow } = await supabase.from("black_ai_settings").select("config").eq("id", "global").maybeSingle();
     const config = settingsRow?.config || {};
 
@@ -241,6 +391,9 @@ Deno.serve(async (req) => {
       orchestration_errors: orchestrationErrors,
       replied,
       reply_errors: replyErrors,
+      followups_detected: followupDetected,
+      followups_closed_by_reply: followupClosed,
+      followup_errors: followupErrors,
     });
   } catch (error) {
     console.error("black-ai-evolution-webhook", error);
