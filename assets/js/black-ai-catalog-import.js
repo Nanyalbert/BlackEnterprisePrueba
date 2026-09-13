@@ -39,9 +39,7 @@
       normalized=(dots===1&&decimals>0&&decimals<=2)?raw:raw.replace(/\./g,'');
     }
     const n=Number(normalized);
-    if(!Number.isFinite(n))return null;
-    // SINERGIA exporta PrecioVentaConIva en centavos: 2900000 = $29.000.
-    return n/100;
+    return Number.isFinite(n)?n:null;
   }
 
   function classify(desc){
@@ -76,7 +74,7 @@
 
   function normalizedRow(raw){
     const desc=raw.Descripcion||'',c=classify(desc),price=sinergiaPrice(raw.PrecioVentaConIva);
-    return{source_system:SOURCE,source_key:stableKey(raw),name:desc.trim(),family:c.lensLike?'lens':'catalog',design:c.design,material:c.material,treatment:c.treatment,optical_case:c.optical_case,supply_mode:c.supply_mode,description:desc.trim(),currency:'ARS',base_price:price,is_active:true,metadata:{source:{system:SOURCE,id_rubro:raw.IdRubro||null,id_subrubro:raw.IdSubRubro||null,id_subsubrubro:raw.IdSubSubRubro||null,price_includes_vat:true,price_scale:'cents_div_100'},features:c.features,classification_version:4},_review:price===null||(c.lensLike&&!c.optical_case),_raw:raw};
+    return{source_system:SOURCE,source_key:stableKey(raw),name:desc.trim(),family:c.lensLike?'lens':'catalog',design:c.design,material:c.material,treatment:c.treatment,optical_case:c.optical_case,supply_mode:c.supply_mode,description:desc.trim(),currency:'ARS',base_price:price,is_active:true,metadata:{source:{system:SOURCE,id_rubro:raw.IdRubro||null,id_subrubro:raw.IdSubRubro||null,id_subsubrubro:raw.IdSubSubRubro||null,price_includes_vat:true,price_scale:'direct'},features:c.features,classification_version:5},_review:price===null||(c.lensLike&&!c.optical_case),_raw:raw};
   }
 
   const changed=(a,b)=>['name','family','design','material','treatment','optical_case','supply_mode','base_price'].some(k=>String(a?.[k]??'')!==String(b?.[k]??''));
@@ -94,7 +92,7 @@
 
   function renderPreview(rows){
     const s=stats(rows),safe=s.new+s.modified;
-    return `<div class="catalog-import-stats"><div><span>Total</span><strong>${s.total}</strong></div><div><span>Nuevos</span><strong>${s.new}</strong></div><div><span>Modificados</span><strong>${s.modified}</strong></div><div><span>Sin cambios</span><strong>${s.unchanged}</strong></div><div><span>Revisar</span><strong>${s.review}</strong></div></div><div class="catalog-import-note"><b>Previsualización:</b> todavía no se modificó el catálogo. Al aplicar se procesarán ${safe} artículos.</div><div class="catalog-import-note">Precio SINERGIA normalizado desde centavos. Ejemplo: 2900000 → <b>$29.000</b>. Super Blue permanece separado como <b>super_blue</b>.</div><div class="catalog-import-table-wrap"><table class="catalog-import-table"><thead><tr><th>Estado</th><th>Descripción</th><th>Precio</th><th>Caso</th><th>Modalidad</th><th>Tratamiento</th></tr></thead><tbody>${rows.slice(0,120).map(r=>`<tr><td><span class="catalog-status ${r._status}">${statusLabel(r._status)}</span></td><td>${esc(r.name)}</td><td>${r.base_price==null?'—':money(r.base_price)}</td><td>${esc(r.optical_case||'—')}</td><td>${esc(r.supply_mode||'—')}</td><td>${esc(r.treatment||'—')}</td></tr>`).join('')}</tbody></table></div>`;
+    return `<div class="catalog-import-stats"><div><span>Total</span><strong>${s.total}</strong></div><div><span>Nuevos</span><strong>${s.new}</strong></div><div><span>Modificados</span><strong>${s.modified}</strong></div><div><span>Sin cambios</span><strong>${s.unchanged}</strong></div><div><span>Revisar</span><strong>${s.review}</strong></div></div><div class="catalog-import-note"><b>Previsualización:</b> todavía no se modificó el catálogo. Al aplicar se procesarán ${safe} artículos.</div><div class="catalog-import-note">Precio SINERGIA tomado directamente de <b>PrecioVentaConIva</b>. Ejemplo: 29000.00 → <b>$29.000</b>. Super Blue permanece separado como <b>super_blue</b>.</div><div class="catalog-import-table-wrap"><table class="catalog-import-table"><thead><tr><th>Estado</th><th>Descripción</th><th>Precio</th><th>Caso</th><th>Modalidad</th><th>Tratamiento</th></tr></thead><tbody>${rows.slice(0,120).map(r=>`<tr><td><span class="catalog-status ${r._status}">${statusLabel(r._status)}</span></td><td>${esc(r.name)}</td><td>${r.base_price==null?'—':money(r.base_price)}</td><td>${esc(r.optical_case||'—')}</td><td>${esc(r.supply_mode||'—')}</td><td>${esc(r.treatment||'—')}</td></tr>`).join('')}</tbody></table></div>`;
   }
 
   async function applyImport(file,rows,modal){
