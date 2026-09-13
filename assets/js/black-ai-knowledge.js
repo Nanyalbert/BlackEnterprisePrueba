@@ -17,14 +17,15 @@
     return window.BlackPortal?.getSupabase?.()||null;
   }
   function ensureCatalogImporter(){
+    const IMPORTER_VERSION='20260913-2';
     if(!document.querySelector('link[data-black-ai-catalog-import]')){
-      const link=document.createElement('link');link.rel='stylesheet';link.href='assets/css/black-ai-catalog-import.css';link.dataset.blackAiCatalogImport='1';document.head.appendChild(link);
+      const link=document.createElement('link');link.rel='stylesheet';link.href=`assets/css/black-ai-catalog-import.css?v=${IMPORTER_VERSION}`;link.dataset.blackAiCatalogImport='1';document.head.appendChild(link);
     }
     if(window.BlackAiCatalogImport)return Promise.resolve();
     return new Promise((resolve,reject)=>{
       const existing=document.querySelector('script[data-black-ai-catalog-import]');
       if(existing){existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',reject,{once:true});return;}
-      const script=document.createElement('script');script.src='assets/js/black-ai-catalog-import.js';script.dataset.blackAiCatalogImport='1';script.onload=resolve;script.onerror=()=>reject(new Error('No se pudo cargar el importador de catálogo.'));document.body.appendChild(script);
+      const script=document.createElement('script');script.src=`assets/js/black-ai-catalog-import.js?v=${IMPORTER_VERSION}`;script.dataset.blackAiCatalogImport='1';script.onload=resolve;script.onerror=()=>reject(new Error('No se pudo cargar el importador de catálogo.'));document.body.appendChild(script);
     });
   }
   function isExpired(item){return item.valid_until&&item.valid_until<today()}
