@@ -109,6 +109,110 @@ function formatKnowledge(items: any[]) {
   }).join("\n\n");
 }
 
+function parseJsonObject(text: string) {
+  const cleaned = String(text || "").trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
+  try { return JSON.parse(cleaned); } catch (_) {}
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    try { return JSON.parse(cleaned.slice(start, end + 1)); } catch (_) {}
+  }
+  return null;
+}
+
+function normalizePrescription(value: any) {
+  const eye = (source: any) => ({
+    sphere: source?.sphere ?? null,
+    cylinder: source?.cylinder ?? null,
+    axis: source?.axis ?? null,
+    addition: source?.addition ?? null,
+  });
+  const confidence = Math.max(0, Math.min(1, Number(value?.confidence ?? 0)));
+  const uncertain = Array.isArray(value?.uncertain_fields)
+    ? value.uncertain_fields.map((x: any) => String(x)).slice(0, 12)
+    : [];
+  return {
+    od: eye(value?.od),
+    oi: eye(value?.oi),
+    pd: value?.pd ?? null,
+    notes: String(value?.notes ?? "").slice(0, 500),
+    confidence,
+    uncertain_fields: uncertain,
+  };
+}
+
+async function analyzePrescription(openAiKey: string, model: string, imageDataUrl: string) {
+  if (!/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(imageDataUrl)) {
+    return { error: "Formato de imagen no válido", code: "INVALID_IMAGE" };
+  }
+  if (imageDataUrl.length > 12_000_000) {
+    return { error: "La imagen es demasiado grande", code: "IMAGE_TOO_LARGE" };
+  }
+
+  const prompt = `
+Analizá esta FOTO DE UNA RECETA ÓPTICA únicamente para TRANSCRIBIR los datos visibles.
+No diagnostiques, no interpretes clínicamente y no completes datos faltantes por inferencia.
+
+Extraé, si están visibles:
+- OD: esfera, cilindro, eje, adición
+- OI: esfera, cilindro, eje, adición
+- DP/DIP si figura
+- observaciones breves relevantes para transcripción
+
+REGLAS CRÍTICAS:
+- Conservá el signo + o - exactamente como aparece.
+- No conviertas notación de cilindro positivo a negativo ni viceversa.
+- No hagas transposición óptica.
+- Si un valor no se puede leer con seguridad, devolvelo como null y agregá el nombre del campo a uncertain_fields.
+- No supongas eje, adición, DP/DIP ni ningún valor ausente.
+- confidence debe ser un número entre 0 y 1 que represente la confianza global de lectura.
+
+Respondé SOLO con JSON válido, sin markdown, con esta forma exacta:
+{
+  "od":{"sphere":null,"cylinder":null,"axis":null,"addition":null},
+  "oi":{"sphere":null,"cylinder":null,"axis":null,"addition":null},
+  "pd":null,
+  "notes":"",
+  "confidence":0,
+  "uncertain_fields":[]
+}
+`.trim();
+
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${openAiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      input: [{
+        role: "user",
+        content: [
+          { type: "input_text", text: prompt },
+          { type: "input_image", image_url: imageDataUrl, detail: "high" },
+        ],
+      }],
+      reasoning: { effort: "low" },
+      max_output_tokens: 500,
+      store: false,
+    }),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    console.error("OpenAI prescription error", response.status, payload);
+    return {
+      error: payload?.error?.message || "OpenAI no pudo leer la receta",
+      code: payload?.error?.code || "OPENAI_VISION_ERROR",
+    };
+  }
+  const text = extractOutputText(payload);
+  const parsed = parseJsonObject(text);
+  if (!parsed) return { error: "La IA no devolvió una lectura estructurada", code: "INVALID_PRESCRIPTION_JSON" };
+  return { prescription: normalizePrescription(parsed), usage: payload?.usage || null, model: payload?.model || model };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Método no permitido" }, 405);
@@ -138,6 +242,14 @@ Deno.serve(async (req) => {
 
     if (action === "health") return json({ ok: true, configured: Boolean(openAiKey), model });
     if (!openAiKey) return json({ error: "OPENAI_API_KEY no configurada", code: "OPENAI_KEY_MISSING" }, 503);
+
+    if (action === "analyze_prescription") {
+      const imageDataUrl = String(body?.image_data_url || "");
+      if (!imageDataUrl) return json({ error: "Falta la imagen de la receta", code: "IMAGE_REQUIRED" }, 400);
+      const result: any = await analyzePrescription(openAiKey, model, imageDataUrl);
+      if (result.error) return json({ error: result.error, code: result.code }, 502);
+      return json({ ok: true, prescription: result.prescription, usage: result.usage, model: result.model, mode: "prescription_reader" });
+    }
 
     const message = String(body?.message || "").trim();
     if (!message) return json({ error: "Escribí un mensaje para probar Black AI" }, 400);
