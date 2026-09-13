@@ -1,30 +1,39 @@
 (()=>{
-  const state={client:null,items:[],loading:false};
+  const state={client:null,items:[],loading:false,open:new Set()};
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function rich(v){return esc(v).replace(/\*([^*\n]+)\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')}
   function resolveClient(){try{if(window.parent&&window.parent!==window&&window.parent.BlackPortal?.getSupabase)return window.parent.BlackPortal.getSupabase();}catch(_){ }return window.BlackPortal?.getSupabase?.()||null}
   function fmt(ts){if(!ts)return '';try{return new Date(ts).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'})}catch{return ts}}
   function typeLabel(item){return ({text:'Texto',image:'Imagen',audio:'Audio',video:'Video',document:'Documento'}[item.message_type]||item.message_type||'Mensaje')}
   function statusLabel(v){return ({processed:'Procesado',classified:'Clasificado',needs_review:'Revisar',error:'Error',unprocessed:'Sin procesar'}[v]||v||'Sin procesar')}
   function classificationLabel(v){return ({conversation:'Conversación',prescription:'Receta',frame:'Armazón',receipt:'Comprobante',promotion:'Promoción',other:'Otro',unclear:'No claro'}[v]||v||'Sin clasificar')}
   function summary(item){if(item.text_content)return item.text_content;if(item.caption)return item.caption;if(item.message_type==='image')return 'Imagen recibida';if(item.message_type==='audio')return 'Audio recibido';if(item.message_type==='document')return 'Documento recibido';return 'Mensaje recibido'}
+  function preview(item){const s=summary(item);return s.length>95?s.slice(0,92)+'…':s}
   function rxLine(label,eye){if(!eye)return '';return `<div class="rx-row"><strong>${label}</strong><span>Esf ${esc(eye.sphere??'—')}</span><span>Cil ${esc(eye.cylinder??'—')}</span><span>Eje ${esc(eye.axis??'—')}</span></div>`}
-  function prescriptionCard(item){const p=item.ai_analysis?.prescription;if(!p)return '';const add=item.ai_analysis?.prescription?.explicit_addition;const conf=item.ai_analysis?.confidence;return `<div class="ai-panel rx-panel"><div class="ai-panel-title"><span>Receta interpretada</span>${conf!=null?`<em>${Math.round(Number(conf)*100)}% confianza</em>`:''}</div>${p.distance?`<div class="rx-block"><b>Lejos</b>${rxLine('OD',p.distance.od)}${rxLine('OI',p.distance.oi)}</div>`:''}${p.near?`<div class="rx-block"><b>Cerca</b>${rxLine('OD',p.near.od)}${rxLine('OI',p.near.oi)}</div>`:''}${add?`<div class="rx-add">Adición: ${esc(add)}</div>`:''}${p.pd?`<div class="rx-add">DP: ${esc(p.pd)}</div>`:''}${Array.isArray(p.uncertain_fields)&&p.uncertain_fields.length?`<div class="rx-warning">Revisar: ${esc(p.uncertain_fields.join(', '))}</div>`:''}</div>`}
-  function responseCard(item){const reply=item.metadata?.reply_preview;if(!reply)return '';return `<div class="ai-panel reply-panel"><div class="ai-panel-title"><span>Respuesta de Black AI</span></div><p>${esc(reply)}</p></div>`}
+  function prescriptionCard(item){const p=item.ai_analysis?.prescription;if(!p)return '';const add=p.explicit_addition;const conf=item.ai_analysis?.confidence;return `<div class="ai-panel rx-panel"><div class="ai-panel-title"><span>Receta interpretada</span>${conf!=null?`<em>${Math.round(Number(conf)*100)}% confianza</em>`:''}</div>${p.distance?`<div class="rx-block"><b>Lejos</b>${rxLine('OD',p.distance.od)}${rxLine('OI',p.distance.oi)}</div>`:''}${p.near?`<div class="rx-block"><b>Cerca</b>${rxLine('OD',p.near.od)}${rxLine('OI',p.near.oi)}</div>`:''}${add?`<div class="rx-add">Adición: ${esc(add)}</div>`:''}${p.pd?`<div class="rx-add">DP: ${esc(p.pd)}</div>`:''}${Array.isArray(p.uncertain_fields)&&p.uncertain_fields.length?`<div class="rx-warning">Revisar: ${esc(p.uncertain_fields.join(', '))}</div>`:''}</div>`}
+  function responseCard(item){const reply=item.metadata?.reply_preview;if(!reply)return '';return `<div class="ai-panel reply-panel"><div class="ai-panel-title"><span>Respuesta de Black AI</span></div><p>${rich(reply)}</p></div>`}
   function analysisCard(item){if(item.ai_classification==='prescription')return prescriptionCard(item);const a=item.ai_analysis;if(!a)return '';const conf=a.confidence!=null?`${Math.round(Number(a.confidence)*100)}%`:'';return `<div class="ai-panel"><div class="ai-panel-title"><span>Análisis IA</span>${conf?`<em>${conf} confianza</em>`:''}</div><div class="ai-analysis-line"><span>${esc(classificationLabel(item.ai_classification))}</span>${a.summary?`<p>${esc(a.summary)}</p>`:''}</div></div>`}
+  function card(item){const open=state.open.has(item.id);return `<article class="inbox-item ${open?'is-open':''}" data-id="${esc(item.id)}">
+    <button class="inbox-summary" type="button" data-toggle="${esc(item.id)}" aria-expanded="${open?'true':'false'}">
+      <div class="inbox-summary-main"><div class="inbox-avatar">${esc((item.push_name||item.phone||'?').slice(0,1).toUpperCase())}</div><div><div class="inbox-name-line"><strong>${esc(item.push_name||item.phone||'Sin nombre')}</strong><span>${esc(fmt(item.received_at))}</span></div><p>${esc(preview(item))}</p></div></div>
+      <div class="inbox-summary-side"><div class="inbox-badges"><span class="inbox-type">${esc(typeLabel(item))}</span><span class="inbox-status status-${esc(item.ai_status||'unprocessed')}">${esc(statusLabel(item.ai_status))}</span></div><span class="inbox-chevron">${open?'−':'+'}</span></div>
+    </button>
+    <div class="inbox-detail" ${open?'':'hidden'}>
+      <div class="message-block"><span class="message-label">Paciente</span><p>${esc(summary(item))}</p></div>
+      ${responseCard(item)}${analysisCard(item)}
+      <div class="inbox-meta"><span>${esc(classificationLabel(item.ai_classification))}</span><span>${esc(item.phone||'Sin número')}</span><span>Evento: ${esc(item.event_name||'-')}</span><span>Instancia: ${esc(item.instance_name||'-')}</span>${item.referral?'<span class="has-referral">Campaña detectada</span>':''}</div>
+    </div>
+  </article>`}
   function render(){
     const host=$('tab-auditoria');if(!host)return;
     const processed=state.items.filter(x=>['processed','classified'].includes(x.ai_status)).length;
     const review=state.items.filter(x=>x.ai_status==='needs_review'||x.ai_status==='error').length;
     host.innerHTML=`<div class="section-intro"><div><h2>Actividad</h2><p>Mensajes recibidos por WhatsApp, respuesta de Black AI y análisis realizado.</p></div><button class="btn-secondary" id="inbox-refresh" type="button">Actualizar</button></div>
       <div class="inbox-stats"><div><span>Eventos</span><strong>${state.items.length}</strong></div><div><span>Procesados</span><strong>${processed}</strong></div><div><span>Para revisar</span><strong>${review}</strong></div></div>
-      <div class="inbox-list">${state.items.length?state.items.map(item=>`<article class="inbox-item">
-        <div class="inbox-top"><div><strong>${esc(item.push_name||item.phone||'Sin nombre')}</strong><span>${esc(item.phone||'Sin número')} · ${esc(fmt(item.received_at))}</span></div><div class="inbox-badges"><span class="inbox-type">${esc(typeLabel(item))}</span><span class="inbox-status status-${esc(item.ai_status||'unprocessed')}">${esc(statusLabel(item.ai_status))}</span></div></div>
-        <div class="message-block"><span class="message-label">Paciente</span><p>${esc(summary(item))}</p></div>
-        ${responseCard(item)}${analysisCard(item)}
-        <div class="inbox-meta"><span>${esc(classificationLabel(item.ai_classification))}</span><span>Evento: ${esc(item.event_name||'-')}</span><span>Instancia: ${esc(item.instance_name||'-')}</span>${item.referral?'<span class="has-referral">Campaña detectada</span>':''}</div>
-      </article>`).join(''):`<div class="inbox-empty">Todavía no hay actividad registrada.</div>`}</div>`;
+      <div class="inbox-list">${state.items.length?state.items.map(card).join(''):`<div class="inbox-empty">Todavía no hay actividad registrada.</div>`}</div>`;
     $('inbox-refresh')?.addEventListener('click',load);
+    host.querySelectorAll('[data-toggle]').forEach(btn=>btn.addEventListener('click',()=>{const id=btn.getAttribute('data-toggle');if(!id)return;state.open.has(id)?state.open.delete(id):state.open.add(id);render()}));
   }
   async function load(){
     if(state.loading)return;state.loading=true;
