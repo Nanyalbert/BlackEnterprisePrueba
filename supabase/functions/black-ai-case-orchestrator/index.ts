@@ -5,24 +5,44 @@ const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{
   headers:{"Content-Type":"application/json; charset=utf-8"}
 });
 
+function firstSecretValue(raw:string|undefined){
+  if(!raw)return "";
+  try{
+    const parsed=JSON.parse(raw);
+    if(typeof parsed==="string")return parsed;
+    if(parsed&&typeof parsed==="object"){
+      const value=Object.values(parsed).find((item)=>typeof item==="string"&&String(item).length>10);
+      if(value)return String(value);
+    }
+  }catch(_){
+    if(raw.length>10)return raw;
+  }
+  return "";
+}
+
+function getServiceKey(){
+  return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+    || firstSecretValue(Deno.env.get("SUPABASE_SECRET_KEYS"));
+}
+
 Deno.serve(async(req)=>{
   if(req.method!=="POST")return json({error:"Método no permitido"},405);
 
   try{
-    const authorization=req.headers.get("Authorization")||"";
-    if(!authorization)return json({error:"Sesión requerida"},401);
+    const expected=Deno.env.get("BLACK_AI_WEBHOOK_SECRET")||"";
+    const url=new URL(req.url);
+    const supplied=req.headers.get("x-black-ai-webhook-secret")||url.searchParams.get("token")||"";
+
+    if(!expected)return json({error:"BLACK_AI_WEBHOOK_SECRET no configurado"},500);
+    if(supplied!==expected)return json({error:"No autorizado"},401);
 
     const supabaseUrl=Deno.env.get("SUPABASE_URL")||"";
-    const supabaseKey=Deno.env.get("SUPABASE_ANON_KEY")||"";
-    if(!supabaseUrl||!supabaseKey)return json({error:"Configuración de Supabase incompleta"},500);
+    const serviceKey=getServiceKey();
+    if(!supabaseUrl||!serviceKey)return json({error:"Configuración de Supabase incompleta"},500);
 
-    const supabase=createClient(supabaseUrl,supabaseKey,{
-      global:{headers:{Authorization:authorization}},
+    const supabase=createClient(supabaseUrl,serviceKey,{
       auth:{persistSession:false,autoRefreshToken:false}
     });
-
-    const {data:userData,error:userError}=await supabase.auth.getUser();
-    if(userError||!userData?.user)return json({error:"Sesión inválida"},401);
 
     const body=await req.json().catch(()=>({}));
     const phone=String(body?.phone||"").replace(/\D/g,"");
