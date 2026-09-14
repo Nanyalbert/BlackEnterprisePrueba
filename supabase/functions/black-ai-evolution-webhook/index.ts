@@ -21,17 +21,11 @@ function firstSecretValue(raw: string | undefined) {
 }
 
 function getServiceKey() {
-  return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
-    || firstSecretValue(Deno.env.get("SUPABASE_SECRET_KEYS"));
+  return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || firstSecretValue(Deno.env.get("SUPABASE_SECRET_KEYS"));
 }
 
-function digits(value: unknown) {
-  return String(value || "").replace(/\D/g, "");
-}
-
-function phoneFromJid(jid: string) {
-  return digits(jid.split("@")[0] || "");
-}
+function digits(value: unknown) { return String(value || "").replace(/\D/g, ""); }
+function phoneFromJid(jid: string) { return digits(jid.split("@")[0] || ""); }
 
 function classifyMessage(message: any) {
   if (!message || typeof message !== "object") return { type: "unknown", mediaType: null, text: "", caption: "", mimetype: "", mediaUrl: "" };
@@ -57,11 +51,7 @@ function extractReferral(message: any, data: any) {
 function extractOutputText(payload: any) {
   if (typeof payload?.output_text === "string" && payload.output_text.trim()) return payload.output_text.trim();
   const parts: string[] = [];
-  for (const item of payload?.output || []) {
-    for (const content of item?.content || []) {
-      if (content?.type === "output_text" && typeof content?.text === "string") parts.push(content.text);
-    }
-  }
+  for (const item of payload?.output || []) for (const content of item?.content || []) if (content?.type === "output_text" && typeof content?.text === "string") parts.push(content.text);
   return parts.join("\n").trim();
 }
 
@@ -70,9 +60,7 @@ function parseJsonObject(text: string) {
   try { return JSON.parse(cleaned); } catch (_) {}
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
-  if (start >= 0 && end > start) {
-    try { return JSON.parse(cleaned.slice(start, end + 1)); } catch (_) {}
-  }
+  if (start >= 0 && end > start) try { return JSON.parse(cleaned.slice(start, end + 1)); } catch (_) {}
   return null;
 }
 
@@ -84,16 +72,10 @@ function numOrNull(value: any) {
 
 function normalizeEye(value: any) {
   const axisRaw = numOrNull(value?.axis);
-  return {
-    sphere: numOrNull(value?.sphere),
-    cylinder: numOrNull(value?.cylinder),
-    axis: axisRaw !== null && axisRaw >= 0 && axisRaw <= 180 ? axisRaw : null,
-  };
+  return { sphere: numOrNull(value?.sphere), cylinder: numOrNull(value?.cylinder), axis: axisRaw !== null && axisRaw >= 0 && axisRaw <= 180 ? axisRaw : null };
 }
 
-function round2(value: number) {
-  return Math.round(value * 100) / 100;
-}
+function round2(value: number) { return Math.round(value * 100) / 100; }
 
 function buildPrescriptionFromVision(value: any) {
   const farOd = normalizeEye(value?.distance?.od);
@@ -122,33 +104,87 @@ function evolutionConfig() {
   return { baseUrl: baseUrl.replace(/\/+$/, ""), apiKey, instance };
 }
 
+function findEvolutionMessageRecord(payload: any, messageId: string) {
+  const candidates = [
+    payload,
+    payload?.messages,
+    payload?.records,
+    payload?.data,
+    payload?.messages?.records,
+    payload?.data?.messages,
+    payload?.data?.records,
+  ];
+  for (const candidate of candidates) {
+    const list = Array.isArray(candidate) ? candidate : [];
+    const exact = list.find((x: any) => String(x?.key?.id || x?.id || x?.messageId || "") === messageId);
+    if (exact) return exact;
+    if (list.length === 1) return list[0];
+  }
+  return null;
+}
+
+function asWebMessageInfo(record: any, row: any) {
+  if (!record) return null;
+  const key = record?.key && typeof record.key === "object" ? record.key : {
+    id: row?.message_id,
+    remoteJid: row?.remote_jid || undefined,
+    fromMe: Boolean(row?.from_me),
+  };
+  const message = record?.message && typeof record.message === "object" ? record.message : null;
+  if (!key?.id || !message) return null;
+  return {
+    key,
+    message,
+    messageTimestamp: record?.messageTimestamp ?? record?.timestamp ?? undefined,
+    pushName: record?.pushName ?? row?.push_name ?? undefined,
+    participant: record?.participant ?? undefined,
+  };
+}
+
 async function getEvolutionMediaBase64(row: any) {
   const cfg = evolutionConfig();
   const instance = String(row?.instance_name || cfg.instance || "");
-  if (!cfg.baseUrl || !cfg.apiKey || !instance || !row?.message_id) throw new Error("No se puede recuperar la imagen: configuración o message_id faltante");
+  const messageId = String(row?.message_id || "");
+  if (!cfg.baseUrl || !cfg.apiKey || !instance || !messageId) throw new Error("MEDIA_CONFIG_OR_ID_MISSING");
+
+  const findResponse = await fetch(`${cfg.baseUrl}/chat/findMessages/${encodeURIComponent(instance)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "apikey": cfg.apiKey },
+    body: JSON.stringify({ where: { key: { id: messageId } }, limit: 1 }),
+  });
+  const findPayload = await findResponse.json().catch(() => ({}));
+  if (!findResponse.ok) throw new Error(`MEDIA_FIND_HTTP_${findResponse.status}:${String(findPayload?.message || findPayload?.error || "findMessages")}`);
+
+  const record = findEvolutionMessageRecord(findPayload, messageId);
+  if (!record) throw new Error("MEDIA_MESSAGE_NOT_FOUND");
+  const webMessage = asWebMessageInfo(record, row);
+  if (!webMessage) throw new Error("MEDIA_MESSAGE_INCOMPLETE");
+
   const response = await fetch(`${cfg.baseUrl}/chat/getBase64FromMediaMessage/${encodeURIComponent(instance)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "apikey": cfg.apiKey },
-    body: JSON.stringify({ message: { key: { id: row.message_id } }, convertToMp4: false }),
+    body: JSON.stringify({ message: webMessage, convertToMp4: false }),
   });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload?.message || payload?.error || `Evolution media HTTP ${response.status}`);
+  if (!response.ok) throw new Error(`MEDIA_BASE64_HTTP_${response.status}:${String(payload?.message || payload?.error || "getBase64")}`);
+
   const raw = String(payload?.base64 || payload?.data?.base64 || payload?.media?.base64 || "");
-  if (!raw) throw new Error("Evolution no devolvió base64 de la imagen");
-  if (/^data:image\//i.test(raw)) return raw;
+  if (!raw) throw new Error("MEDIA_BASE64_EMPTY");
+  if (/^data:image\//i.test(raw)) return { dataUrl: raw, messageFound: true, mediaDownloaded: true };
   const mime = String(payload?.mimetype || payload?.mimeType || row?.media_mimetype || "image/jpeg").split(";")[0];
-  return `data:${mime};base64,${raw}`;
+  return { dataUrl: `data:${mime};base64,${raw}`, messageFound: true, mediaDownloaded: true };
 }
 
 async function analyzePrescriptionImage(row: any) {
   const openAiKey = Deno.env.get("OPENAI_API_KEY") || "";
-  if (!openAiKey) throw new Error("OPENAI_API_KEY no configurada");
-  const imageDataUrl = await getEvolutionMediaBase64(row);
+  if (!openAiKey) throw new Error("OPENAI_API_KEY_MISSING");
+  const media = await getEvolutionMediaBase64(row);
+  const imageDataUrl = media.dataUrl;
+  if (!/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(imageDataUrl)) throw new Error("MEDIA_NOT_SUPPORTED_IMAGE");
   const model = Deno.env.get("OPENAI_MODEL") || "gpt-5.6-luna";
   const prompt = `
 Analizá la imagen recibida por una óptica.
-Primero decidí si ES una receta óptica. No supongas que toda imagen es una receta.
-Si es receta, transcribí únicamente lo visible.
+Primero decidí si ES una receta óptica. Si es receta, transcribí únicamente lo visible.
 
 REGLAS:
 - Conservá exactamente los signos + y -.
@@ -157,11 +193,12 @@ REGLAS:
 - No calcules ADD: el sistema la calcula después de forma determinística.
 - Eje solo entre 0 y 180. Si no se lee, null.
 - Si un valor es dudoso, null y agregalo a uncertain_fields.
-- No diagnostiques.
+- No diagnostiques ni inventes valores ausentes.
 
 Respondé SOLO JSON válido:
 {"is_prescription":true,"distance":{"od":{"sphere":null,"cylinder":null,"axis":null},"oi":{"sphere":null,"cylinder":null,"axis":null}},"near":{"od":{"sphere":null,"cylinder":null,"axis":null},"oi":{"sphere":null,"cylinder":null,"axis":null}},"pd":null,"confidence":0,"uncertain_fields":[],"notes":""}
 `.trim();
+
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: { "Authorization": `Bearer ${openAiKey}`, "Content-Type": "application/json" },
@@ -174,11 +211,14 @@ Respondé SOLO JSON válido:
     }),
   });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload?.error?.message || `OpenAI vision HTTP ${response.status}`);
+  if (!response.ok) throw new Error(`VISION_HTTP_${response.status}:${String(payload?.error?.message || "OpenAI vision")}`);
   const parsed = parseJsonObject(extractOutputText(payload));
-  if (!parsed) throw new Error("La lectura visual no devolvió JSON válido");
+  if (!parsed) throw new Error("VISION_INVALID_JSON");
   const isPrescription = parsed?.is_prescription === true;
   return {
+    message_found: media.messageFound,
+    media_downloaded: media.mediaDownloaded,
+    vision_ok: true,
     is_prescription: isPrescription,
     prescription: isPrescription ? buildPrescriptionFromVision(parsed) : null,
     confidence: Math.max(0, Math.min(1, Number(parsed?.confidence || 0))),
@@ -208,13 +248,9 @@ async function callCaseOrchestrator(supabaseUrl: string, secret: string, row: an
   return payload;
 }
 
-function normalizedList(value: unknown) {
-  return String(value || "").split(/[\n,;]/).map(digits).filter(Boolean);
-}
-
+function normalizedList(value: unknown) { return String(value || "").split(/[\n,;]/).map(digits).filter(Boolean); }
 function isAuthorized(config: any, phone: string) {
-  if (!config?.enabled) return false;
-  if (config?.replyMode !== "automatic") return false;
+  if (!config?.enabled || config?.replyMode !== "automatic") return false;
   const scope = String(config?.scope || "single");
   if (scope === "all") return true;
   if (scope === "single") return digits(config?.testNumber) === phone;
@@ -225,7 +261,7 @@ function isAuthorized(config: any, phone: string) {
 async function sendEvolutionText(phone: string, text: string, instanceFromEvent: string) {
   const cfg = evolutionConfig();
   const instance = instanceFromEvent || cfg.instance;
-  if (!cfg.baseUrl || !cfg.apiKey || !instance) throw new Error("Faltan EVOLUTION_API_URL / EVOLUTION_API_KEY / instancia en Secrets");
+  if (!cfg.baseUrl || !cfg.apiKey || !instance) throw new Error("EVOLUTION_SEND_CONFIG_MISSING");
   const response = await fetch(`${cfg.baseUrl}/message/sendText/${encodeURIComponent(instance)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "apikey": cfg.apiKey },
@@ -236,10 +272,7 @@ async function sendEvolutionText(phone: string, text: string, instanceFromEvent:
   return payload;
 }
 
-function textOf(row: any) {
-  return String(row?.text_content || row?.caption || "").trim();
-}
-
+function textOf(row: any) { return String(row?.text_content || row?.caption || "").trim(); }
 function looksLikeCommercialQuote(text: string) {
   const t = String(text || "");
   const hasMoney = /\$\s*[\d.]{2,}/.test(t) || /\b\d{2,3}(?:[.\s]\d{3})+\b/.test(t);
@@ -250,8 +283,7 @@ function looksLikeCommercialQuote(text: string) {
 
 function detectPatientFollowupSignal(text: string) {
   const t = String(text || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const pending = /\b(te|les)?\s*(confirmo|aviso)\b|\bdespues\s+(te|les)?\s*(confirmo|aviso)\b|\bmanana\s+(te|les)?\s*(confirmo|aviso)\b|\blo\s+(voy\s+a\s+)?pensar\b|\bdejame\s+pensarlo\b|\bte\s+digo\b|\bmas\s+tarde\s+(te\s+)?(aviso|confirmo)\b/.test(t);
-  if (pending) return "pending_confirmation";
+  if (/\b(te|les)?\s*(confirmo|aviso)\b|\bdespues\s+(te|les)?\s*(confirmo|aviso)\b|\bmanana\s+(te|les)?\s*(confirmo|aviso)\b|\blo\s+(voy\s+a\s+)?pensar\b|\bdejame\s+pensarlo\b|\bte\s+digo\b|\bmas\s+tarde\s+(te\s+)?(aviso|confirmo)\b/.test(t)) return "pending_confirmation";
   const interested = /\bme\s+(interesa|gusta|sirve|conviene)\b|\bquiero\s+eso\b|\bme\s+quedaria\s+bien\b/.test(t);
   const defer = /\bmas\s+adelante\b|\bpor\s+ahora\b|\bno\s+ahora\b|\bdespues\b|\botro\s+dia\b|\bcuando\s+pueda\b/.test(t);
   if (interested && defer) return "interested_no_close";
@@ -290,6 +322,14 @@ async function openOrRefreshFollowup(supabase: any, args: { phone: string; scena
   const { data, error } = await supabase.from("black_ai_followup_opportunities").insert({ ...payload, followup_count: 0, created_at: now.toISOString() }).select("id,status,next_followup_at").single();
   if (error) throw error;
   return { created: true, opportunity: data };
+}
+
+async function saveMediaTrace(supabase: any, row: any, trace: any) {
+  if (!row?.message_id) return;
+  try {
+    const { data } = await supabase.from("black_ai_inbox").select("metadata").eq("provider", "evolution").eq("message_id", row.message_id).maybeSingle();
+    await supabase.from("black_ai_inbox").update({ metadata: { ...(data?.metadata || {}), media_pipeline: { ...trace, checked_at: new Date().toISOString() } } }).eq("provider", "evolution").eq("message_id", row.message_id);
+  } catch (error) { console.error("media trace", error); }
 }
 
 Deno.serve(async (req) => {
@@ -351,7 +391,7 @@ Deno.serve(async (req) => {
 
     const { data: settingsRow } = await supabase.from("black_ai_settings").select("config").eq("id", "global").maybeSingle();
     const config = settingsRow?.config || {};
-    let followupDetected = 0, followupClosed = 0, followupErrors = 0, orchestrated = 0, orchestrationErrors = 0, replied = 0, replyErrors = 0, imagesAnalyzed = 0, prescriptionsRead = 0;
+    let followupDetected = 0, followupClosed = 0, followupErrors = 0, orchestrated = 0, orchestrationErrors = 0, replied = 0, replyErrors = 0, imagesAnalyzed = 0, prescriptionsRead = 0, mediaFailures = 0;
 
     for (const row of processingRows) {
       if (!row?.phone || row?.is_group) continue;
@@ -375,21 +415,35 @@ Deno.serve(async (req) => {
         let result: any;
         if (row.message_type === "image") {
           imagesAnalyzed += 1;
+          const trace: any = { message_found: false, media_downloaded: false, vision_ok: false, prescription_detected: false };
           try {
             const analysis = await analyzePrescriptionImage(row);
-            if (analysis.is_prescription && analysis.prescription && analysis.confidence >= 0.45) {
+            trace.message_found = Boolean(analysis.message_found);
+            trace.media_downloaded = Boolean(analysis.media_downloaded);
+            trace.vision_ok = Boolean(analysis.vision_ok);
+            trace.prescription_detected = Boolean(analysis.is_prescription);
+            trace.confidence = analysis.confidence;
+            trace.uncertain_fields = analysis.uncertain_fields;
+            await saveMediaTrace(supabase, row, trace);
+            if (analysis.is_prescription && analysis.prescription && analysis.confidence >= 0.35) {
               prescriptionsRead += 1;
               result = await callCaseOrchestrator(supabaseUrl, expected, row, {
-                message: "El paciente acaba de enviar una foto de su receta óptica.",
+                message: "El paciente acaba de enviar una foto de su receta óptica. La receta fue leída y sus datos están disponibles en el estado del caso.",
                 prescription: analysis.prescription,
                 prescription_analysis: analysis,
               });
+            } else if (analysis.is_prescription) {
+              result = { reply: "Recibí la receta y pude reconocerla, pero algunos valores no se leen con suficiente seguridad. ¿Podés mandarme una foto más de frente y con buena luz?", media_guard: true };
             } else {
-              result = { reply: "Recibí la imagen, pero no pude identificar una receta óptica con suficiente claridad. Si es tu receta, ¿podés enviarme una foto completa, de frente y con buena luz?", media_guard: true };
+              result = { reply: "Recibí la imagen, pero no parece ser una receta óptica. Si querés cotizar con graduación, mandame una foto completa de la receta.", media_guard: true };
             }
           } catch (visionError) {
-            console.error("prescription vision", visionError);
-            result = { reply: "Recibí la foto de la receta, pero no pude leerla con suficiente claridad. ¿Podés enviarme otra foto completa, de frente y con buena luz?", media_guard: true };
+            mediaFailures += 1;
+            const errorText = String((visionError as any)?.message || visionError || "MEDIA_UNKNOWN_ERROR").slice(0, 500);
+            trace.error = errorText;
+            await saveMediaTrace(supabase, row, trace);
+            console.error("prescription vision", errorText);
+            result = { reply: "Recibí la foto, pero tuve un problema al procesarla. No hace falta que la envíes varias veces; estamos intentando leerla correctamente.", media_guard: true };
           }
         } else {
           result = await callCaseOrchestrator(supabaseUrl, expected, row);
@@ -403,7 +457,7 @@ Deno.serve(async (req) => {
       } catch (e) { orchestrationErrors += 1; console.error("orchestration", e); }
     }
 
-    return json({ ok: true, received: rows.length, processed: processingRows.length, duplicates_ignored: rows.length - processingRows.length, orchestrated, orchestration_errors: orchestrationErrors, replied, reply_errors: replyErrors, images_analyzed: imagesAnalyzed, prescriptions_read: prescriptionsRead, followups_detected: followupDetected, followups_closed_by_reply: followupClosed, followup_errors: followupErrors });
+    return json({ ok: true, received: rows.length, processed: processingRows.length, duplicates_ignored: rows.length - processingRows.length, orchestrated, orchestration_errors: orchestrationErrors, replied, reply_errors: replyErrors, images_analyzed: imagesAnalyzed, prescriptions_read: prescriptionsRead, media_failures: mediaFailures, followups_detected: followupDetected, followups_closed_by_reply: followupClosed, followup_errors: followupErrors });
   } catch (error) {
     console.error("black-ai-evolution-webhook", error);
     return json({ error: String((error as any)?.message || "Error interno") }, 500);
