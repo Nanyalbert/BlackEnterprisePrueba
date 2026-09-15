@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const BUILD_ID="black-ai-case-orchestrator-20260914-router1";
+const BUILD_ID="black-ai-case-orchestrator-20260914-router2";
 
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{
   status,
@@ -50,6 +50,10 @@ function isNegative(message:string){
   const t=normalizeText(message);
   return /^(no|incorrecto|incorrecta|esta mal|estan mal|no esta bien|hay un error)(\b|[.! ])/.test(t);
 }
+function explicitlyDeniesPrescription(message:string){
+  const t=normalizeText(message);
+  return /\b(no\s+(te\s+|les\s+)?(mande|envie|pase)\s+(ninguna\s+)?receta|todavia\s+no\s+(te\s+|les\s+)?(mande|envie|pase)\s+receta|no\s+mande\s+receta|no\s+envie\s+receta|no\s+tengo\s+receta)\b/.test(t);
+}
 
 function detectDirectIntent(message:string){
   const t=normalizeText(message);
@@ -60,7 +64,7 @@ function detectDirectIntent(message:string){
   if(/\b(armazon|armazones|marco|marcos)\b/.test(t))return "frames";
   if(/\b(lentes? de contacto|contactologia|contactolog)\b/.test(t))return "contact_lenses";
   if(/\b(cuotas?|tarjeta|transferencia|efectivo|medio[s]? de pago|formas? de pago|pagar)\b/.test(t))return "payment_methods";
-  if(/\b(black protect|promocion|promo|descuento|beneficio|convenio)\b/.test(t))return "promotion";
+  if(/\b(black protect|promocion|promo|descuento|beneficio|convenio|obra social|mutual|ministerio)\b/.test(t))return "promotion";
   if(/\b(turno|turnos|agenda|reservar|coordinar atencion)\b/.test(t))return "appointment";
   if(/\b(reclamo|garantia|problema|se rompio|se quebr|devolucion|no me adapto|adaptacion)\b/.test(t))return "support";
   if(/\b(multifocal|monofocal|ocupacional|bifocal|receta|graduacion|cristal|lente)\b/.test(t)&&/\b(precio|sale|cuesta|cotiz|presupuesto|valor)\b/.test(t))return "prescription_lens_quote";
@@ -105,7 +109,7 @@ intent permitido:
 - payment_methods: formas de pago/cuotas
 - appointment: turnos
 - support: reclamos, garantías o problemas
-- promotion: promociones, convenios o beneficios
+- promotion: promociones, convenios, obras sociales, mutuales o beneficios
 - general_product: otra consulta de producto
 - other
 
@@ -115,7 +119,8 @@ price_request: general | exact | none
 
 REGLAS:
 - Una consulta de anteojos de sol NO es prescription_lens_quote salvo que el paciente además pregunte por graduación.
-- Horarios, ubicación, pagos, promociones, turnos y reclamos NO requieren receta.
+- Horarios, ubicación, pagos, promociones, convenios, obras sociales, turnos y reclamos NO requieren receta.
+- Si el paciente menciona una institución, empresa, ministerio, mutual u obra social y pregunta o comenta algo relacionado a cobertura/beneficio, puede ser promotion aunque no diga la palabra convenio.
 - Un saludo solo es greeting.
 - progresivos = multifocal.
 - precio general de una categoría = price_request general.
@@ -167,8 +172,8 @@ async function getKnowledgeSnapshot(supabase:any,message:string,intent:string|nu
     const haystackWords=new Set(words(`${x.title} ${x.content}`));
     let overlap=0;for(const w of msgWords)if(haystackWords.has(w))overlap+=1;
     const score=categoryWeight(x.category)+(overlap*8)+Math.max(0,20-Math.min(20,Number(x.priority||100)/5));
-    return {...x,score,content:stripKnowledgePrices(x.content)};
-  }).sort((a:any,b:any)=>b.score-a.score||Number(a.priority||100)-Number(b.priority||100)).slice(0,8).map((x:any)=>({id:x.id,category:x.category,title:x.title,content:x.content,priority:x.priority,data:x.data||{}}));
+    return {...x,score,overlap,content:stripKnowledgePrices(x.content)};
+  }).sort((a:any,b:any)=>b.score-a.score||Number(a.priority||100)-Number(b.priority||100)).slice(0,8).map((x:any)=>({id:x.id,category:x.category,title:x.title,content:x.content,priority:x.priority,data:x.data||{},score:x.score,overlap:x.overlap}));
 }
 
 function generalFallback(intent:string|null){
@@ -181,8 +186,8 @@ function generalFallback(intent:string|null){
     payment_methods:"No tengo las condiciones de pago confirmadas en la información disponible. Puedo derivarte para que te las confirmen.",
     appointment:"Perfecto. ¿Qué día o franja horaria te quedaría cómoda para atenderte?",
     support:"Contame brevemente qué pasó así te ayudo a derivarlo correctamente.",
-    promotion:"Puedo revisar los beneficios vigentes. ¿Sobre cuál querés consultar?",
-    general_product:"¿Qué producto querés consultar?"
+    promotion:"Puedo revisar los beneficios o convenios vigentes. ¿Sobre cuál querés consultar?",
+    general_product:"¿Qué producto o beneficio querés consultar?"
   };
   return map[String(intent)]||"¿En qué te puedo ayudar?";
 }
@@ -197,8 +202,9 @@ Sos Black AI, asistente de Black Óptica. Respondé la consulta actual en españ
 
 REGLAS:
 - NO conviertas toda consulta en una cotización con receta.
-- Horarios, ubicación, anteojos de sol, armazones, lentes de contacto, pagos, promociones, turnos y soporte se responden según su intención.
+- Horarios, ubicación, anteojos de sol, armazones, lentes de contacto, pagos, promociones, convenios, obras sociales, turnos y soporte se responden según su intención.
 - Usá como hechos SOLO el CONOCIMIENTO APROBADO de abajo.
+- Si el conocimiento contiene una institución o convenio que coincide con lo que menciona el paciente, respondé usando esa información aunque el paciente no haya dicho literalmente "convenio".
 - Si el conocimiento no contiene el dato concreto, no lo inventes.
 - Los importes dentro de Conocimiento NO son fuente autorizada de precio; fueron ocultados a propósito. Los precios deben venir del Catálogo en otra etapa.
 - No inventes stock, horarios, sucursales, promociones, garantías ni tiempos.
@@ -338,18 +344,33 @@ Deno.serve(async(req)=>{
     const extraction=await inferFactsWithAI(message,current);
     const inferred=extraction.facts||{};
     const intent=String(inferred.intent||detectDirectIntent(message)||"other");
-    const directGeneral=["greeting","hours_location","sunglasses","frames","contact_lenses","payment_methods","appointment","support","promotion","general_product"].includes(intent);
     const pendingPrescription=current.prescription_status==="awaiting_confirmation"||current.prescription_status==="needs_review";
     let justConfirmed=false;
 
-    // La confirmación de receta es un estado real, no una inferencia comercial.
-    if(current.prescription_status==="awaiting_confirmation"&&isAffirmative(message)){
+    // Si el paciente aclara que nunca envió receta, un estado viejo no puede secuestrar la conversación.
+    if(explicitlyDeniesPrescription(message)){
+      const upserted=await persistContext(supabase,current,phone,{
+        prescription:{},prescription_status:"none",prescription_confirmed_at:null,prescription_source_message_id:null,prescription_analysis:{},prescription_updated_at:null,
+        technical_result:{},candidate_products:[],missing_data:[],technical_family_key:null,requires_human_review:false,stage:"discovery",last_patient_message_at:new Date().toISOString(),
+        next_best_question_key:null,next_best_question_context:{build_id:BUILD_ID,last_message:message.slice(0,500),route:"prescription_state_reset",reason:"patient_denied_having_sent_prescription"}
+      });
+      return json({ok:true,build_id:BUILD_ID,state:upserted,reply:"Perfecto, gracias por aclararlo. Dejamos de lado la receta. ¿Qué querés consultar?",route:"prescription_state_reset"});
+    }
+
+    // Primero consultamos Conocimiento. Una coincidencia clara tiene prioridad sobre un estado viejo de receta.
+    const knowledgeProbe=await getKnowledgeSnapshot(supabase,message,intent);
+    const strongKnowledgeMatch=knowledgeProbe.some((x:any)=>Number(x.overlap||0)>=2||Number(x.score||0)>=34);
+    const directGeneral=["greeting","hours_location","sunglasses","frames","contact_lenses","payment_methods","appointment","support","promotion","general_product"].includes(intent)
+      || (intent==="other"&&strongKnowledgeMatch);
+
+    // La confirmación de receta solo se procesa cuando realmente es una respuesta a esa confirmación.
+    if(current.prescription_status==="awaiting_confirmation"&&isAffirmative(message)&&!directGeneral){
       justConfirmed=true;
       current.prescription_status="confirmed";
       current.prescription_confirmed_at=new Date().toISOString();
       current.stage="needs";
       current.requires_human_review=false;
-    }else if(current.prescription_status==="awaiting_confirmation"&&isNegative(message)){
+    }else if(current.prescription_status==="awaiting_confirmation"&&isNegative(message)&&!directGeneral){
       const upserted=await persistContext(supabase,current,phone,{
         prescription_status:"needs_review",stage:"prescription",requires_human_review:true,last_patient_message_at:new Date().toISOString(),
         next_best_question_key:"correct_prescription",next_best_question_context:{...(current.next_best_question_context||{}),build_id:BUILD_ID,last_message:message.slice(0,500),reason:"patient_rejected_transcription"}
@@ -357,22 +378,21 @@ Deno.serve(async(req)=>{
       return json({ok:true,build_id:BUILD_ID,state:upserted,reply:"Gracias por avisarme. Para no cotizar con un dato incorrecto, mandame otra foto de la receta más de frente y nítida y la vuelvo a leer.",route:"prescription_correction"});
     }
 
-    // Una consulta general se responde como consulta general, incluso si existe una receta pendiente.
-    // Si el mismo mensaje confirma la receta Y pregunta otra cosa, primero queda confirmada y luego se responde esa otra consulta.
+    // Consultas generales o coincidencias claras de Conocimiento tienen prioridad sobre el flujo de receta.
     if(directGeneral){
-      const knowledge=await getKnowledgeSnapshot(supabase,message,intent);
-      const fallback=generalFallback(intent);
-      const reply=await answerGeneralQuery({message,intent,knowledge,fallback,pendingPrescription:pendingPrescription&&!justConfirmed});
+      const routedIntent=intent==="other"&&strongKnowledgeMatch?"general_product":intent;
+      const knowledge=knowledgeProbe;
+      const fallback=generalFallback(routedIntent);
+      const reply=await answerGeneralQuery({message,intent:routedIntent,knowledge,fallback,pendingPrescription:pendingPrescription&&!justConfirmed});
       const upserted=await persistContext(supabase,current,phone,{
         prescription_status:current.prescription_status||"none",
         prescription_confirmed_at:current.prescription_confirmed_at||null,
         last_patient_message_at:new Date().toISOString(),
-        next_best_question_context:{...(current.next_best_question_context||{}),build_id:BUILD_ID,last_message:message.slice(0,500),last_intent:intent,knowledge_ids:knowledge.map((x:any)=>x.id),route:"general_query"}
+        next_best_question_context:{...(current.next_best_question_context||{}),build_id:BUILD_ID,last_message:message.slice(0,500),last_intent:routedIntent,knowledge_ids:knowledge.map((x:any)=>x.id),knowledge_match:strongKnowledgeMatch,route:"general_query"}
       });
-      return json({ok:true,build_id:BUILD_ID,state:upserted,reply,intent,route:"general_query",knowledge_used:knowledge.map((x:any)=>({id:x.id,title:x.title,category:x.category}))});
+      return json({ok:true,build_id:BUILD_ID,state:upserted,reply,intent:routedIntent,route:"general_query",knowledge_used:knowledge.map((x:any)=>({id:x.id,title:x.title,category:x.category,score:x.score,overlap:x.overlap}))});
     }
 
-    // Si la receta sigue pendiente y el mensaje no fue una confirmación ni otra consulta clara, no avanzamos a precio.
     if(current.prescription_status==="awaiting_confirmation"&&!justConfirmed){
       return json({ok:true,build_id:BUILD_ID,state:current,reply:"Antes de avanzar con la cotización, necesito que me confirmes si los valores que te leí de la receta están correctos.",route:"prescription_confirmation_gate"});
     }
@@ -405,7 +425,6 @@ Deno.serve(async(req)=>{
       last_inbox_id:body?.inbox_id??current.last_inbox_id??null,updated_at:new Date().toISOString()
     };
 
-    // La evaluación técnica exacta solo se ejecuta con receta confirmada.
     if(state.prescription_status==="confirmed"&&state.technical_family_key&&state.optical_case&&state.prescription?.od&&state.prescription?.oi){
       const od=state.prescription.od||{};const oi=state.prescription.oi||{};const addition=state.prescription.addition??od.addition??oi.addition??null;
       const {data:evaluation,error:evaluationError}=await supabase.rpc("black_ai_evaluate_prescription_case",{
@@ -428,7 +447,7 @@ Deno.serve(async(req)=>{
 
     const allowPrice=priceRequest==="general"||(priceRequest==="exact"&&state.prescription_status==="confirmed");
     const price=(allowPrice&&state.optical_case)?await getPriceSnapshot(supabase,state.optical_case):null;
-    const knowledge=await getKnowledgeSnapshot(supabase,message,intent==="other"?"prescription_lens_quote":intent);
+    const knowledge=knowledgeProbe.length?knowledgeProbe:await getKnowledgeSnapshot(supabase,message,intent==="other"?"prescription_lens_quote":intent);
     const fallback=questionForKey(nextKey,state.objective);
     const previousKey=current.next_best_question_key||null;const previousContext=current.next_best_question_context||{};
     const repeated=Boolean(previousKey&&nextKey&&previousKey===nextKey);const previousReply=String(previousContext.generated_reply||"");const previousCount=Number(previousContext.repeat_count||0);const repeatCount=repeated?previousCount+1:0;
@@ -439,7 +458,7 @@ Deno.serve(async(req)=>{
 
     const {data:upserted,error:upsertError}=await supabase.from("black_ai_case_state").upsert(state,{onConflict:"phone"}).select("*").single();
     if(upsertError)throw upsertError;
-    return json({ok:true,build_id:BUILD_ID,state:upserted,next_question_key:nextKey,suggested_question:fallback,reply,intent,inferred_facts:inferred,extraction_mode:extraction.mode,price_request:priceRequest,price_snapshot:price,knowledge_used:knowledge.map((x:any)=>({id:x.id,title:x.title,category:x.category})),loop_guard:{repeated,repeat_count:repeatCount},route:"prescription_flow",reply_mode:reply===fallback?"fallback":"openai_contextual"});
+    return json({ok:true,build_id:BUILD_ID,state:upserted,next_question_key:nextKey,suggested_question:fallback,reply,intent,inferred_facts:inferred,extraction_mode:extraction.mode,price_request:priceRequest,price_snapshot:price,knowledge_used:knowledge.map((x:any)=>({id:x.id,title:x.title,category:x.category,score:x.score,overlap:x.overlap})),loop_guard:{repeated,repeat_count:repeatCount},route:"prescription_flow",reply_mode:reply===fallback?"fallback":"openai_contextual"});
   }catch(error){
     console.error("black-ai-case-orchestrator",error);
     return json({error:String((error as any)?.message||"Error interno"),build_id:BUILD_ID},500);
