@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const BUILD_ID="black-ai-case-orchestrator-20260914-router2";
+const BUILD_ID="black-ai-case-orchestrator-20260914-commercial1";
 
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{
   status,
@@ -67,7 +67,7 @@ function detectDirectIntent(message:string){
   if(/\b(black protect|promocion|promo|descuento|beneficio|convenio|obra social|mutual|ministerio)\b/.test(t))return "promotion";
   if(/\b(turno|turnos|agenda|reservar|coordinar atencion)\b/.test(t))return "appointment";
   if(/\b(reclamo|garantia|problema|se rompio|se quebr|devolucion|no me adapto|adaptacion)\b/.test(t))return "support";
-  if(/\b(multifocal|monofocal|ocupacional|bifocal|receta|graduacion|cristal|lente)\b/.test(t)&&/\b(precio|sale|cuesta|cotiz|presupuesto|valor)\b/.test(t))return "prescription_lens_quote";
+  if(/\b(multifocal|multifocales|progresivo|progresivos|monofocal|monofocales|ocupacional|ocupacionales|bifocal|bifocales|receta|graduacion|cristal|cristales|lente|lentes)\b/.test(t)&&/\b(precio|precios|sale|salen|cuesta|cuestan|cotiz|presupuesto|valor|valores)\b/.test(t))return "prescription_lens_quote";
   return null;
 }
 
@@ -101,16 +101,16 @@ No asumas que toda conversación es una cotización con receta.
 
 intent permitido:
 - greeting
-- prescription_lens_quote: cotización de cristales/lentes con graduación, multifocal, monofocal, ocupacional o bifocal
-- sunglasses: anteojos/lentes de sol
-- frames: armazones
-- contact_lenses: lentes de contacto/contactología
-- hours_location: horarios, dirección, ubicación o sucursales
-- payment_methods: formas de pago/cuotas
-- appointment: turnos
-- support: reclamos, garantías o problemas
-- promotion: promociones, convenios, obras sociales, mutuales o beneficios
-- general_product: otra consulta de producto
+- prescription_lens_quote
+- sunglasses
+- frames
+- contact_lenses
+- hours_location
+- payment_methods
+- appointment
+- support
+- promotion
+- general_product
 - other
 
 objective permitido: quote | appointment | support | product_info | other | null
@@ -121,17 +121,18 @@ REGLAS:
 - Una consulta de anteojos de sol NO es prescription_lens_quote salvo que el paciente además pregunte por graduación.
 - Horarios, ubicación, pagos, promociones, convenios, obras sociales, turnos y reclamos NO requieren receta.
 - Si el paciente menciona una institución, empresa, ministerio, mutual u obra social y pregunta o comenta algo relacionado a cobertura/beneficio, puede ser promotion aunque no diga la palabra convenio.
-- Un saludo solo es greeting.
 - progresivos = multifocal.
-- precio general de una categoría = price_request general.
-- precio exacto para su graduación/receta = price_request exact.
+- Si dice que quiere multifocales pero NO pregunta precio, price_request=none.
+- Si pregunta precios de multifocales/monofocales como categoría, price_request=general.
+- price_request=exact solo cuando solicita precio exacto de SU caso particular con graduación/configuración específica.
+- No deduzcas que es primer usuario de multifocales. previous_lens_type solo se completa si el paciente lo dijo explícitamente.
 - No inventes receta, graduación, precio, stock ni diagnóstico.
 
 Respondé SOLO JSON válido:
 {"intent":"other","objective":null,"optical_case":null,"price_request":"none","product_category":null,"main_use":null,"previous_lens_type":null,"budget_context":null,"urgency":null,"preferences":{}}
 
 ESTADO ACTUAL:
-${JSON.stringify({objective:current?.objective,optical_case:current?.optical_case,prescription_status:current?.prescription_status,main_use:current?.main_use})}
+${JSON.stringify({objective:current?.objective,optical_case:current?.optical_case,prescription_status:current?.prescription_status,main_use:current?.main_use,previous_lens_type:current?.previous_lens_type})}
 
 MENSAJE:
 ${message.slice(0,3000)}
@@ -150,14 +151,25 @@ ${message.slice(0,3000)}
 }
 
 function stripKnowledgePrices(value:string){
-  return String(value||"").replace(/\$\s*[\d.]+(?:,\d+)?/g,"[precio: consultar Catálogo vigente]");
+  return String(value||"").replace(/\$\s*[\d.]+(?:,\d+)?/g,"[precio: usar Catálogo vigente]");
 }
 
-async function getKnowledgeSnapshot(supabase:any,message:string,intent:string|null){
+function structuredKnowledgeBonus(data:any,context:any){
+  if(!data||typeof data!=="object")return 0;
+  let score=0;
+  if(data.scope==="global")score+=12;
+  if(data.intent&&context?.intent&&data.intent===context.intent)score+=30;
+  if(data.optical_case&&context?.optical_case&&data.optical_case===context.optical_case)score+=40;
+  if(data.supply_mode&&context?.supply_mode&&data.supply_mode===context.supply_mode)score+=35;
+  if(data.treatment&&context?.treatment&&data.treatment===context.treatment)score+=25;
+  return score;
+}
+
+async function getKnowledgeSnapshot(supabase:any,message:string,intent:string|null,context:any={}){
   const today=new Date().toISOString().slice(0,10);
   const {data,error}=await supabase.from("black_ai_knowledge")
     .select("id,category,title,content,data,priority,valid_from,valid_until")
-    .eq("is_active",true).order("priority",{ascending:true}).order("updated_at",{ascending:false}).limit(60);
+    .eq("is_active",true).order("priority",{ascending:true}).order("updated_at",{ascending:false}).limit(80);
   if(error){console.error("knowledge snapshot",error);return [];}
   const msgWords=new Set(words(message));
   const categoryWeight=(category:string)=>{
@@ -168,23 +180,28 @@ async function getKnowledgeSnapshot(supabase:any,message:string,intent:string|nu
     if(intent==="prescription_lens_quote")return category==="commercial"?25:category==="policy"?12:category==="promotion"?8:0;
     return category==="commercial"?8:category==="policy"?8:0;
   };
-  return (data||[]).filter((x:any)=>(!x.valid_from||x.valid_from<=today)&&(!x.valid_until||x.valid_until>=today)).map((x:any)=>{
-    const haystackWords=new Set(words(`${x.title} ${x.content}`));
-    let overlap=0;for(const w of msgWords)if(haystackWords.has(w))overlap+=1;
-    const score=categoryWeight(x.category)+(overlap*8)+Math.max(0,20-Math.min(20,Number(x.priority||100)/5));
-    return {...x,score,overlap,content:stripKnowledgePrices(x.content)};
-  }).sort((a:any,b:any)=>b.score-a.score||Number(a.priority||100)-Number(b.priority||100)).slice(0,8).map((x:any)=>({id:x.id,category:x.category,title:x.title,content:x.content,priority:x.priority,data:x.data||{},score:x.score,overlap:x.overlap}));
+  return (data||[])
+    .filter((x:any)=>(!x.valid_from||x.valid_from<=today)&&(!x.valid_until||x.valid_until>=today))
+    .map((x:any)=>{
+      const haystackWords=new Set(words(`${x.title} ${x.content}`));
+      let overlap=0;for(const w of msgWords)if(haystackWords.has(w))overlap+=1;
+      const score=categoryWeight(x.category)+(overlap*8)+structuredKnowledgeBonus(x.data,{...context,intent})+Math.max(0,20-Math.min(20,Number(x.priority||100)/5));
+      return {...x,score,overlap,content:stripKnowledgePrices(x.content)};
+    })
+    .sort((a:any,b:any)=>b.score-a.score||Number(a.priority||100)-Number(b.priority||100))
+    .slice(0,10)
+    .map((x:any)=>({id:x.id,category:x.category,title:x.title,content:x.content,priority:x.priority,data:x.data||{},score:x.score,overlap:x.overlap}));
 }
 
 function generalFallback(intent:string|null){
   const map:Record<string,string>={
-    greeting:"¡Hola! ¿En qué te puedo ayudar? Podés consultarme por anteojos, cristales, horarios, turnos u otra duda.",
+    greeting:"¡Hola! ¿En qué te puedo ayudar?",
     hours_location:"No tengo ese dato confirmado en la información disponible. Si querés, te lo confirma un asesor.",
     sunglasses:"Claro. ¿Qué tipo de anteojo de sol estás buscando?",
     frames:"Claro. ¿Buscás algún estilo de armazón en particular?",
-    contact_lenses:"Puedo ayudarte con la consulta de lentes de contacto. ¿Qué necesitás saber?",
+    contact_lenses:"Puedo ayudarte con lentes de contacto. ¿Qué necesitás saber?",
     payment_methods:"No tengo las condiciones de pago confirmadas en la información disponible. Puedo derivarte para que te las confirmen.",
-    appointment:"Perfecto. ¿Qué día o franja horaria te quedaría cómoda para atenderte?",
+    appointment:"¿Qué día o franja horaria te quedaría cómoda para atenderte?",
     support:"Contame brevemente qué pasó así te ayudo a derivarlo correctamente.",
     promotion:"Puedo revisar los beneficios o convenios vigentes. ¿Sobre cuál querés consultar?",
     general_product:"¿Qué producto o beneficio querés consultar?"
@@ -192,24 +209,39 @@ function generalFallback(intent:string|null){
   return map[String(intent)]||"¿En qué te puedo ayudar?";
 }
 
-async function answerGeneralQuery(args:{message:string,intent:string|null,knowledge:any[],fallback:string,pendingPrescription:boolean}){
-  const {message,intent,knowledge,fallback,pendingPrescription}=args;
+async function getAssistantConfig(supabase:any){
+  try{
+    const {data}=await supabase.from("black_ai_settings").select("config").eq("id","global").maybeSingle();
+    return {tone:String(data?.config?.tone||"friendly"),length:String(data?.config?.length||"short"),emoji:String(data?.config?.emoji||"moderate")};
+  }catch(_){return {tone:"friendly",length:"short",emoji:"moderate"};}
+}
+
+function styleInstruction(config:any){
+  const tone=config?.tone==="formal"?"profesional y sobrio":config?.tone==="direct"?"directo y práctico":"cercano, natural y profesional";
+  const length=config?.length==="long"?"Podés desarrollar un poco si aporta valor.":config?.length==="medium"?"Mantené una extensión moderada.":"Sé breve: normalmente 1 a 4 oraciones, salvo una cotización estructurada.";
+  const emoji=config?.emoji==="none"?"No uses emojis.":config?.emoji==="high"?"Podés usar algunos emojis útiles, sin exagerar.":"Usá como máximo 1 emoji cuando resulte natural; no es obligatorio.";
+  return `Tono ${tone}. ${length} ${emoji}`;
+}
+
+async function answerGeneralQuery(args:{message:string,intent:string|null,knowledge:any[],fallback:string,pendingPrescription:boolean,style:any}){
+  const {message,intent,knowledge,fallback,pendingPrescription,style}=args;
   const openAiKey=Deno.env.get("OPENAI_API_KEY")||"";
   if(!openAiKey)return fallback;
   const model=Deno.env.get("OPENAI_MODEL")||"gpt-5.6-luna";
   const prompt=`
-Sos Black AI, asistente de Black Óptica. Respondé la consulta actual en español argentino, breve y natural.
+Sos Black AI, asistente de Black Óptica. Respondé la consulta actual en español argentino.
+${styleInstruction(style)}
 
 REGLAS:
+- Respondé primero exactamente lo que preguntó el paciente.
 - NO conviertas toda consulta en una cotización con receta.
-- Horarios, ubicación, anteojos de sol, armazones, lentes de contacto, pagos, promociones, convenios, obras sociales, turnos y soporte se responden según su intención.
 - Usá como hechos SOLO el CONOCIMIENTO APROBADO de abajo.
-- Si el conocimiento contiene una institución o convenio que coincide con lo que menciona el paciente, respondé usando esa información aunque el paciente no haya dicho literalmente "convenio".
 - Si el conocimiento no contiene el dato concreto, no lo inventes.
-- Los importes dentro de Conocimiento NO son fuente autorizada de precio; fueron ocultados a propósito. Los precios deben venir del Catálogo en otra etapa.
+- Los importes dentro de Conocimiento NO son fuente autorizada de precio.
 - No inventes stock, horarios, sucursales, promociones, garantías ni tiempos.
-- Si hay una receta pendiente de confirmación pero el paciente hizo otra consulta, respondé esa consulta sin obligarlo a volver a la receta en este mismo mensaje.
-- Una sola pregunta principal como máximo.
+- Si hay una receta pendiente y el paciente cambió de tema, respondé el tema nuevo sin arrastrarlo a la receta.
+- No termines con una pregunta salvo que realmente necesites un dato para responder o continuar la acción solicitada.
+- No te presentes nuevamente si la conversación ya está en curso.
 - Devolvé SOLO el texto final.
 
 INTENCIÓN: ${intent||"other"}
@@ -221,35 +253,111 @@ ${JSON.stringify(knowledge)}
   try{
     const response=await fetch("https://api.openai.com/v1/responses",{
       method:"POST",headers:{"Authorization":`Bearer ${openAiKey}`,"Content-Type":"application/json"},
-      body:JSON.stringify({model,input:[{role:"user",content:[{type:"input_text",text:prompt}]}],reasoning:{effort:"low"},max_output_tokens:260,store:false})
+      body:JSON.stringify({model,input:[{role:"user",content:[{type:"input_text",text:prompt}]}],reasoning:{effort:"low"},max_output_tokens:300,store:false})
     });
     const payload=await response.json().catch(()=>({}));
     if(!response.ok){console.error("general reply OpenAI",response.status,payload);return fallback;}
-    return extractOutputText(payload).trim().slice(0,1200)||fallback;
+    return extractOutputText(payload).trim().slice(0,1400)||fallback;
   }catch(error){console.error("general reply",error);return fallback;}
 }
 
 function money(value:number,currency="ARS"){
-  try{return new Intl.NumberFormat("es-AR",{style:"currency",currency,maximumFractionDigits:0}).format(value)}catch(_){return `$${Math.round(value).toLocaleString("es-AR")}`;}
+  try{return new Intl.NumberFormat("es-AR",{style:"currency",currency,maximumFractionDigits:0}).format(Math.round(value))}catch(_){return `$${Math.round(value).toLocaleString("es-AR")}`;}
 }
 
-async function getPriceSnapshot(supabase:any,opticalCase:string|null){
+function recommendedDesignOrder(knowledge:any[],opticalCase:string|null){
+  for(const item of knowledge||[]){
+    if(item?.data?.role==="commercial_recommendation"&&(!item.data.optical_case||item.data.optical_case===opticalCase)&&Array.isArray(item.data.recommended_order)){
+      return item.data.recommended_order.map((x:any)=>String(x).toUpperCase()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
+function productPreferenceScore(row:any,state:any){
+  let score=0;
+  const treatment=String(row?.treatment||"none");
+  const name=normalizeText(row?.name||"");
+  const prefs=state?.preferences||{};
+  // Para el precio base de cada diseño preferimos la versión blanca/sin tratamiento.
+  if(treatment==="none")score+=40;
+  if(/organico blanco/.test(name))score+=20;
+  if(/antirreflejo/.test(name))score-=5;
+  if(/fotocrom/.test(name))score-=10;
+  if(/filtro luz azul|super blue/.test(name))score-=10;
+  if(prefs?.blue_filter===true&&["blue_filter","super_blue","photochromic_blue"].includes(treatment))score+=70;
+  if(prefs?.antireflective===true&&treatment==="antireflective")score+=70;
+  if(prefs?.photochromic===true&&["photochromic","photochromic_blue"].includes(treatment))score+=70;
+  return score;
+}
+
+async function getPriceSnapshot(supabase:any,opticalCase:string|null,knowledge:any[],state:any){
   if(!opticalCase)return null;
   const today=new Date().toISOString().slice(0,10);
   const {data,error}=await supabase.from("black_ai_products")
     .select("id,name,design,material,treatment,base_price,currency,valid_from,valid_until,supply_mode,metadata")
-    .eq("is_active",true).eq("family","lens").eq("optical_case",opticalCase).not("base_price","is",null).order("base_price",{ascending:true}).limit(80);
+    .eq("is_active",true).eq("family","lens").eq("optical_case",opticalCase).not("base_price","is",null).limit(250);
   if(error){console.error("price snapshot",error);return null;}
-  const rows=(data||[]).filter((x:any)=>{const p=Number(x.base_price);return Number.isFinite(p)&&p>0&&(!x.valid_from||x.valid_from<=today)&&(!x.valid_until||x.valid_until>=today);});
+  const rows=(data||[]).filter((x:any)=>{
+    const p=Number(x.base_price);
+    return Number.isFinite(p)&&p>0&&(!x.valid_from||x.valid_from<=today)&&(!x.valid_until||x.valid_until>=today);
+  });
   if(!rows.length)return null;
-  const unique:any[]=[];const seen=new Set<string>();
-  for(const row of rows){const key=String(row.design||row.name||"").toLowerCase();if(seen.has(key))continue;seen.add(key);unique.push(row);if(unique.length>=4)break;}
-  const min=Number(rows[0].base_price);const max=Number(rows[rows.length-1].base_price);
-  return {optical_case:opticalCase,currency:rows[0].currency||"ARS",min_price:min,max_price:max,min_label:money(min,rows[0].currency||"ARS"),max_label:money(max,rows[0].currency||"ARS"),examples:unique.map((x:any)=>({id:x.id,name:x.name,design:x.design,material:x.material,treatment:x.treatment,price:Number(x.base_price),price_label:money(Number(x.base_price),x.currency||"ARS")}))};
+
+  const order=recommendedDesignOrder(knowledge,opticalCase);
+  const designRank=(design:any)=>{
+    const d=String(design||"").toUpperCase();
+    const idx=order.indexOf(d);
+    return idx>=0?idx:100;
+  };
+
+  // Elegimos una única referencia base por diseño según criterio comercial,
+  // no simplemente el producto más barato de toda la categoría.
+  const byDesign=new Map<string,any[]>();
+  for(const row of rows){
+    const design=String(row.design||row.name||"").trim().toUpperCase();
+    if(!byDesign.has(design))byDesign.set(design,[]);
+    byDesign.get(design)!.push(row);
+  }
+
+  const examples:any[]=[];
+  const designs=[...byDesign.keys()].sort((a,b)=>designRank(a)-designRank(b)||a.localeCompare(b));
+  for(const design of designs){
+    const candidates=byDesign.get(design)||[];
+    candidates.sort((a:any,b:any)=>productPreferenceScore(b,state)-productPreferenceScore(a,state)||Number(a.base_price)-Number(b.base_price));
+    const chosen=candidates[0];
+    if(!chosen)continue;
+    examples.push({
+      id:chosen.id,
+      name:chosen.name,
+      design:chosen.design,
+      material:chosen.material,
+      treatment:chosen.treatment,
+      price:Number(chosen.base_price),
+      price_label:money(Number(chosen.base_price),chosen.currency||"ARS"),
+      commercial_rank:designRank(chosen.design),
+      reason:productPreferenceScore(chosen,state)>=70?"explicit_preference":"commercial_base"
+    });
+    if(examples.length>=6)break;
+  }
+
+  const orderedExamples=examples.sort((a:any,b:any)=>a.commercial_rank-b.commercial_rank||a.price-b.price);
+  const prices=orderedExamples.map((x:any)=>x.price).filter((x:any)=>Number.isFinite(x));
+  return {
+    optical_case:opticalCase,
+    currency:rows[0].currency||"ARS",
+    selection_mode:order.length?"knowledge_commercial_order":"catalog_design_order",
+    recommended_order:order,
+    min_price:prices.length?Math.min(...prices):null,
+    max_price:prices.length?Math.max(...prices):null,
+    min_label:prices.length?money(Math.min(...prices),rows[0].currency||"ARS"):null,
+    max_label:prices.length?money(Math.max(...prices),rows[0].currency||"ARS"):null,
+    examples:orderedExamples
+  };
 }
 
 function questionForKey(key:string|null,objective:string|null){
-  if(objective==="appointment")return "Perfecto. ¿Qué día o franja horaria te quedaría cómoda para atenderte?";
+  if(objective==="appointment")return "¿Qué día o franja horaria te quedaría cómoda para atenderte?";
   if(objective==="support")return "Contame brevemente qué pasó así te ayudo a derivarlo correctamente.";
   if(objective==="product_info")return "¿Qué producto querés consultar?";
   const questions:Record<string,string>={
@@ -260,8 +368,8 @@ function questionForKey(key:string|null,objective:string|null){
     request_axis_oi:"¿Me confirmás el eje del ojo izquierdo (OI)?",
     request_addition:"¿La receta indica una adición (ADD) para cerca?",
     clarify_optical_case:"¿Buscás lentes monofocales, multifocales, ocupacionales o bifocales?",
-    ask_main_use:"Perfecto, receta confirmada. ¿Para qué los vas a usar principalmente: lejos, lectura, computadora o uso diario?",
-    ask_previous_lens_experience:"¿Ya usaste este tipo de lentes antes?",
+    ask_main_use:"¿Para qué los vas a usar principalmente: lejos, lectura, computadora o uso diario?",
+    ask_previous_lens_experience:"¿Ya usaste multifocales antes?",
     choose_technical_family:"Con esos datos ya puedo avanzar con la evaluación técnica del lente.",
     run_technical_evaluation:"Ya tengo los datos necesarios para evaluar la receta.",
     ready_for_proposal:"Ya tengo la información técnica necesaria para armarte una propuesta."
@@ -269,25 +377,29 @@ function questionForKey(key:string|null,objective:string|null){
   return key?(questions[key]||""):"";
 }
 
-async function writeContextualReply(args:{message:string,state:any,nextKey:string|null,fallback:string,price:any,priceRequest:string,repeated:boolean,previousReply:string,knowledge:any[],justConfirmed:boolean}){
-  const {message,state,nextKey,fallback,price,priceRequest,repeated,previousReply,knowledge,justConfirmed}=args;
+async function writeContextualReply(args:{message:string,state:any,nextKey:string|null,fallback:string,price:any,priceRequest:string,repeated:boolean,previousReply:string,knowledge:any[],justConfirmed:boolean,style:any}){
+  const {message,state,nextKey,fallback,price,priceRequest,repeated,previousReply,knowledge,justConfirmed,style}=args;
   const openAiKey=Deno.env.get("OPENAI_API_KEY")||"";
   if(!openAiKey||!message.trim())return fallback;
   const model=Deno.env.get("OPENAI_MODEL")||"gpt-5.6-luna";
   const prompt=`
-Sos Black AI, asistente de Black Óptica en Argentina. Redactá UNA respuesta breve de WhatsApp, natural y profesional.
+Sos Black AI, asistente de Black Óptica en Argentina. Redactá UNA respuesta de WhatsApp natural.
+${styleInstruction(style)}
 
-REGLAS:
+REGLAS DURAS:
+- Respondé primero lo que preguntó el paciente.
+- NO afirmes nada sobre el paciente que no haya dicho explícitamente. Ejemplo: no digas "para tus primeros multifocales" si nunca dijo que sean sus primeros multifocales.
+- Diferenciá información genérica de personalización: podés decir "Smart NEW suele orientarse a primeros usuarios" solo como descripción general, nunca como hecho sobre este paciente salvo confirmación explícita.
+- NO recomiendes un diseño específico si todavía faltan datos que el PRÓXIMO PASO pide y el paciente no pidió una recomendación específica.
+- Si price_request=none, NO muestres precios ni inventes una recomendación comercial: avanzá únicamente con la PREGUNTA BASE si hace falta.
+- Si price_request=general y hay PRECIOS DEL CATÁLOGO, podés mostrar opciones. Respetá EXACTAMENTE el orden de examples y sus importes. No sustituyas un producto por otro.
+- Si price_request=exact, solo cotizá si prescription_status=confirmed y el motor ya tiene información suficiente; si no, pedí el próximo dato.
+- Los precios válidos son EXCLUSIVAMENTE los de PRECIOS DEL CATÁLOGO. Nunca uses precios escritos en CONOCIMIENTO.
+- CONOCIMIENTO define orden, estilo, explicaciones y políticas, pero no reemplaza Catálogo.
+- Si existe PREGUNTA BASE y todavía no corresponde cotizar, hacé esa pregunta; no inventes preguntas como armazón, color o presupuesto.
 - Una sola pregunta principal.
-- Si la receta acaba de ser confirmada, reconocelo brevemente y avanzá al próximo dato; NO vuelvas a pedir la receta.
-- No cotices un caso exacto mientras prescription_status no sea confirmed.
-- Respondé primero la consulta concreta y luego pedí el próximo dato útil.
 - No repitas mecánicamente la respuesta anterior.
-- Si price_request=general y hay PRECIOS DEL CATÁLOGO, podés informar "desde" usando exclusivamente esos importes.
-- Si price_request=exact y la receta está confirmada, podés usar únicamente PRECIOS DEL CATÁLOGO.
-- Nunca uses importes escritos en CONOCIMIENTO como fuente de precio.
-- CONOCIMIENTO define estilo, explicaciones, políticas y criterios comerciales aprobados.
-- No inventes promociones, stock, tiempos, garantías, características ni diagnósticos.
+- No inventes stock, tiempos, garantías, características técnicas ni diagnósticos.
 - No menciones motores, bases de datos, estados internos ni IA.
 - Devolvé SOLO el texto final.
 
@@ -305,11 +417,11 @@ RESPUESTA ANTERIOR: ${String(previousReply||"").slice(0,1000)}
   try{
     const response=await fetch("https://api.openai.com/v1/responses",{
       method:"POST",headers:{"Authorization":`Bearer ${openAiKey}`,"Content-Type":"application/json"},
-      body:JSON.stringify({model,input:[{role:"user",content:[{type:"input_text",text:prompt}]}],reasoning:{effort:"low"},max_output_tokens:260,store:false})
+      body:JSON.stringify({model,input:[{role:"user",content:[{type:"input_text",text:prompt}]}],reasoning:{effort:"low"},max_output_tokens:420,store:false})
     });
     const payload=await response.json().catch(()=>({}));
     if(!response.ok){console.error("case reply OpenAI",response.status,payload);return fallback;}
-    return extractOutputText(payload).trim().slice(0,1200)||fallback;
+    return extractOutputText(payload).trim().slice(0,1800)||fallback;
   }catch(error){console.error("case reply",error);return fallback;}
 }
 
@@ -332,6 +444,7 @@ Deno.serve(async(req)=>{
     const supabaseUrl=Deno.env.get("SUPABASE_URL")||"";const serviceKey=getServiceKey();
     if(!supabaseUrl||!serviceKey)return json({error:"Configuración de Supabase incompleta",build_id:BUILD_ID},500);
     const supabase=createClient(supabaseUrl,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
+    const style=await getAssistantConfig(supabase);
 
     const body=await req.json().catch(()=>({}));
     const phone=String(body?.phone||"").replace(/\D/g,"");const message=String(body?.message||"").trim();
@@ -344,10 +457,10 @@ Deno.serve(async(req)=>{
     const extraction=await inferFactsWithAI(message,current);
     const inferred=extraction.facts||{};
     const intent=String(inferred.intent||detectDirectIntent(message)||"other");
+    const inferredOpticalCase=inferred.optical_case??current.optical_case??null;
     const pendingPrescription=current.prescription_status==="awaiting_confirmation"||current.prescription_status==="needs_review";
     let justConfirmed=false;
 
-    // Si el paciente aclara que nunca envió receta, un estado viejo no puede secuestrar la conversación.
     if(explicitlyDeniesPrescription(message)){
       const upserted=await persistContext(supabase,current,phone,{
         prescription:{},prescription_status:"none",prescription_confirmed_at:null,prescription_source_message_id:null,prescription_analysis:{},prescription_updated_at:null,
@@ -357,13 +470,13 @@ Deno.serve(async(req)=>{
       return json({ok:true,build_id:BUILD_ID,state:upserted,reply:"Perfecto, gracias por aclararlo. Dejamos de lado la receta. ¿Qué querés consultar?",route:"prescription_state_reset"});
     }
 
-    // Primero consultamos Conocimiento. Una coincidencia clara tiene prioridad sobre un estado viejo de receta.
-    const knowledgeProbe=await getKnowledgeSnapshot(supabase,message,intent);
-    const strongKnowledgeMatch=knowledgeProbe.some((x:any)=>Number(x.overlap||0)>=2||Number(x.score||0)>=34);
+    const knowledgeProbe=await getKnowledgeSnapshot(supabase,message,intent,{optical_case:inferredOpticalCase});
+    // Una coincidencia por conocimiento requiere coincidencia textual o estructurada real;
+    // la categoría sola no puede secuestrar un mensaje ambiguo.
+    const strongKnowledgeMatch=knowledgeProbe.some((x:any)=>Number(x.overlap||0)>=1||structuredKnowledgeBonus(x.data,{intent,optical_case:inferredOpticalCase})>=30);
     const directGeneral=["greeting","hours_location","sunglasses","frames","contact_lenses","payment_methods","appointment","support","promotion","general_product"].includes(intent)
-      || (intent==="other"&&strongKnowledgeMatch);
+      || (intent==="other"&&strongKnowledgeMatch&&inferredOpticalCase==null);
 
-    // La confirmación de receta solo se procesa cuando realmente es una respuesta a esa confirmación.
     if(current.prescription_status==="awaiting_confirmation"&&isAffirmative(message)&&!directGeneral){
       justConfirmed=true;
       current.prescription_status="confirmed";
@@ -378,19 +491,17 @@ Deno.serve(async(req)=>{
       return json({ok:true,build_id:BUILD_ID,state:upserted,reply:"Gracias por avisarme. Para no cotizar con un dato incorrecto, mandame otra foto de la receta más de frente y nítida y la vuelvo a leer.",route:"prescription_correction"});
     }
 
-    // Consultas generales o coincidencias claras de Conocimiento tienen prioridad sobre el flujo de receta.
     if(directGeneral){
       const routedIntent=intent==="other"&&strongKnowledgeMatch?"general_product":intent;
-      const knowledge=knowledgeProbe;
       const fallback=generalFallback(routedIntent);
-      const reply=await answerGeneralQuery({message,intent:routedIntent,knowledge,fallback,pendingPrescription:pendingPrescription&&!justConfirmed});
+      const reply=await answerGeneralQuery({message,intent:routedIntent,knowledge:knowledgeProbe,fallback,pendingPrescription:pendingPrescription&&!justConfirmed,style});
       const upserted=await persistContext(supabase,current,phone,{
         prescription_status:current.prescription_status||"none",
         prescription_confirmed_at:current.prescription_confirmed_at||null,
         last_patient_message_at:new Date().toISOString(),
-        next_best_question_context:{...(current.next_best_question_context||{}),build_id:BUILD_ID,last_message:message.slice(0,500),last_intent:routedIntent,knowledge_ids:knowledge.map((x:any)=>x.id),knowledge_match:strongKnowledgeMatch,route:"general_query"}
+        next_best_question_context:{...(current.next_best_question_context||{}),build_id:BUILD_ID,last_message:message.slice(0,500),last_intent:routedIntent,knowledge_ids:knowledgeProbe.map((x:any)=>x.id),knowledge_match:strongKnowledgeMatch,route:"general_query"}
       });
-      return json({ok:true,build_id:BUILD_ID,state:upserted,reply,intent:routedIntent,route:"general_query",knowledge_used:knowledge.map((x:any)=>({id:x.id,title:x.title,category:x.category,score:x.score,overlap:x.overlap}))});
+      return json({ok:true,build_id:BUILD_ID,state:upserted,reply,intent:routedIntent,route:"general_query",knowledge_used:knowledgeProbe.map((x:any)=>({id:x.id,title:x.title,category:x.category,score:x.score,overlap:x.overlap,data:x.data}))});
     }
 
     if(current.prescription_status==="awaiting_confirmation"&&!justConfirmed){
@@ -402,6 +513,7 @@ Deno.serve(async(req)=>{
 
     const priceRequest=String(inferred.price_request||"none");
     const prescription=body?.prescription&&typeof body.prescription==="object"?{...(current.prescription||{}),...body.prescription}:current.prescription||{};
+    const opticalCaseChanged=Boolean(inferred.optical_case&&current.optical_case&&inferred.optical_case!==current.optical_case);
     const state:any={
       phone,
       objective:body?.objective??inferred.objective??current.objective??null,
@@ -415,13 +527,13 @@ Deno.serve(async(req)=>{
       conversation_started_at:current.conversation_started_at||new Date().toISOString(),
       last_patient_message_at:new Date().toISOString(),
       optical_case:body?.optical_case??inferred.optical_case??current.optical_case??null,
-      technical_family_key:body?.technical_family_key??current.technical_family_key??null,
-      main_use:body?.main_use??inferred.main_use??current.main_use??null,
-      previous_lens_type:body?.previous_lens_type??inferred.previous_lens_type??current.previous_lens_type??null,
+      technical_family_key:body?.technical_family_key??(opticalCaseChanged?null:current.technical_family_key??null),
+      main_use:body?.main_use??inferred.main_use??(opticalCaseChanged?null:current.main_use??null),
+      previous_lens_type:body?.previous_lens_type??inferred.previous_lens_type??(opticalCaseChanged?null:current.previous_lens_type??null),
       budget_context:body?.budget_context??inferred.budget_context??current.budget_context??null,
       urgency:body?.urgency??inferred.urgency??current.urgency??null,
       preferences:{...(current.preferences||{}),...(inferred.preferences||{}),...(body?.preferences||{})},
-      technical_result:current.technical_result||{},candidate_products:current.candidate_products||[],missing_data:current.missing_data||[],requires_human_review:Boolean(current.requires_human_review),
+      technical_result:opticalCaseChanged?{}:(current.technical_result||{}),candidate_products:opticalCaseChanged?[]:(current.candidate_products||[]),missing_data:opticalCaseChanged?[]:(current.missing_data||[]),requires_human_review:opticalCaseChanged?false:Boolean(current.requires_human_review),
       last_inbox_id:body?.inbox_id??current.last_inbox_id??null,updated_at:new Date().toISOString()
     };
 
@@ -445,20 +557,22 @@ Deno.serve(async(req)=>{
       if(error)throw error;nextKey=data;
     }
 
-    const allowPrice=priceRequest==="general"||(priceRequest==="exact"&&state.prescription_status==="confirmed");
-    const price=(allowPrice&&state.optical_case)?await getPriceSnapshot(supabase,state.optical_case):null;
-    const knowledge=knowledgeProbe.length?knowledgeProbe:await getKnowledgeSnapshot(supabase,message,intent==="other"?"prescription_lens_quote":intent);
+    const knowledge=await getKnowledgeSnapshot(supabase,message,intent==="other"?"prescription_lens_quote":intent,{optical_case:state.optical_case,supply_mode:state.technical_result?.supply_mode||null,treatment:state.preferences?.blue_filter?"blue_filter":null});
+    const allowPrice=priceRequest==="general"||(priceRequest==="exact"&&state.prescription_status==="confirmed"&&["ready_for_proposal","choose_technical_family","run_technical_evaluation"].includes(String(nextKey))===false);
+    const price=(allowPrice&&state.optical_case)?await getPriceSnapshot(supabase,state.optical_case,knowledge,state):null;
+    if(price?.examples)state.candidate_products=price.examples.map((x:any)=>x.id);
+
     const fallback=questionForKey(nextKey,state.objective);
     const previousKey=current.next_best_question_key||null;const previousContext=current.next_best_question_context||{};
     const repeated=Boolean(previousKey&&nextKey&&previousKey===nextKey);const previousReply=String(previousContext.generated_reply||"");const previousCount=Number(previousContext.repeat_count||0);const repeatCount=repeated?previousCount+1:0;
-    const reply=await writeContextualReply({message,state,nextKey,fallback,price,priceRequest,repeated,previousReply,knowledge,justConfirmed});
+    const reply=await writeContextualReply({message,state,nextKey,fallback,price,priceRequest,repeated,previousReply,knowledge,justConfirmed,style});
 
     state.next_best_question_key=nextKey;
-    state.next_best_question_context={...previousContext,build_id:BUILD_ID,suggested_question:fallback,generated_reply:reply,last_message:message.slice(0,500),last_intent:intent,inferred_facts:inferred,extraction_mode:extraction.mode,price_request:priceRequest,price_snapshot:price,knowledge_ids:knowledge.map((x:any)=>x.id),previous_question_key:previousKey,repeat_count:repeatCount,reply_mode:reply===fallback?"fallback":"openai_contextual"};
+    state.next_best_question_context={...previousContext,build_id:BUILD_ID,suggested_question:fallback,generated_reply:reply,last_message:message.slice(0,500),last_intent:intent,inferred_facts:inferred,extraction_mode:extraction.mode,price_request:priceRequest,price_snapshot:price,knowledge_ids:knowledge.map((x:any)=>x.id),previous_question_key:previousKey,repeat_count:repeatCount,reply_mode:reply===fallback?"fallback":"openai_contextual",commercial_selection_mode:price?.selection_mode||null};
 
     const {data:upserted,error:upsertError}=await supabase.from("black_ai_case_state").upsert(state,{onConflict:"phone"}).select("*").single();
     if(upsertError)throw upsertError;
-    return json({ok:true,build_id:BUILD_ID,state:upserted,next_question_key:nextKey,suggested_question:fallback,reply,intent,inferred_facts:inferred,extraction_mode:extraction.mode,price_request:priceRequest,price_snapshot:price,knowledge_used:knowledge.map((x:any)=>({id:x.id,title:x.title,category:x.category,score:x.score,overlap:x.overlap})),loop_guard:{repeated,repeat_count:repeatCount},route:"prescription_flow",reply_mode:reply===fallback?"fallback":"openai_contextual"});
+    return json({ok:true,build_id:BUILD_ID,state:upserted,next_question_key:nextKey,suggested_question:fallback,reply,intent,inferred_facts:inferred,extraction_mode:extraction.mode,price_request:priceRequest,price_snapshot:price,knowledge_used:knowledge.map((x:any)=>({id:x.id,title:x.title,category:x.category,score:x.score,overlap:x.overlap,data:x.data})),loop_guard:{repeated,repeat_count:repeatCount},route:"prescription_flow",reply_mode:reply===fallback?"fallback":"openai_contextual"});
   }catch(error){
     console.error("black-ai-case-orchestrator",error);
     return json({error:String((error as any)?.message||"Error interno"),build_id:BUILD_ID},500);
