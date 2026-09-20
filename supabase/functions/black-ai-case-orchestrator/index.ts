@@ -28,7 +28,7 @@ type CatalogProduct = {
   metadata?: any;
 };
 
-const BUILD_ID = "black-ai-case-orchestrator-20260920-enhancements1";
+const BUILD_ID = "black-ai-case-orchestrator-20260920-proactive-benefits1";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -358,6 +358,24 @@ function buildEnhancementOptions(rows: CatalogProduct[]) {
         price_label: money(Number(row.base_price), row.currency || "ARS"),
       };
     });
+}
+
+function proactiveEnhancementSuggestions(commercial: any, state: any) {
+  const options = Array.isArray(commercial?.enhancement_options) ? commercial.enhancement_options : [];
+  const prefs = normalizeCommercialPreferences(state?.preferences || {});
+  const already = new Set<string>();
+  if (prefs.antireflective) already.add("antireflective");
+  if (prefs.blue_filter) already.add("blue_filter");
+  if (prefs.photochromic) already.add("photochromic");
+  if (prefs.high_index) already.add("high_index");
+  if (prefs.polarized) already.add("polarized");
+
+  const preferredOrder = ["antireflective", "blue_filter", "photochromic", "high_index", "polarized"];
+  return preferredOrder
+    .map((key) => options.find((x: any) => x?.key === key))
+    .filter(Boolean)
+    .filter((x: any) => !already.has(String(x.key)))
+    .slice(0, 2);
 }
 
 function staleConversation(lastPatientMessageAt: unknown, hours = 8) {
@@ -758,8 +776,8 @@ function sanitizeWhatsappReply(text: string) {
     .trim();
 }
 
-async function writeContextualReply(args: { message: string; intent: string; state: any; nextKey: string | null; fallback: string; commercial: any; priceRequest: string; repeated: boolean; previousReply: string; knowledge: any[]; justConfirmed: boolean; style: any }) {
-  const { message, intent, state, nextKey, fallback, commercial, priceRequest, repeated, previousReply, knowledge, justConfirmed, style } = args;
+async function writeContextualReply(args: { message: string; intent: string; state: any; nextKey: string | null; fallback: string; commercial: any; priceRequest: string; repeated: boolean; previousReply: string; knowledge: any[]; justConfirmed: boolean; style: any; proactiveSuggestions?: any[]; proactiveAllowed?: boolean }) {
+  const { message, intent, state, nextKey, fallback, commercial, priceRequest, repeated, previousReply, knowledge, justConfirmed, style, proactiveSuggestions = [], proactiveAllowed = false } = args;
   const openAiKey = Deno.env.get("OPENAI_API_KEY") || "";
   if (!openAiKey || !message.trim()) return fallback;
   const model = Deno.env.get("OPENAI_MODEL") || "gpt-5.6-luna";
@@ -779,6 +797,10 @@ REGLAS DURAS:
 - Diferenciá filtro de luz azul y antirreflejo: son mejoras distintas. Nunca los presentes como si fueran lo mismo.
 - Si CATÁLOGO DISPONIBLE trae enhancement_options, podés ofrecer como máximo DOS mejoras relevantes del mismo diseño. Solo nombrá variantes realmente presentes en el catálogo.
 - Las mejoras son OPCIONALES salvo que el motor técnico o CONOCIMIENTO indique otra cosa. No digas que el paciente "necesita" filtro azul, antirreflejo, alto índice o fotocromático solo por inferencia.
+- Podés tomar iniciativa comercial SOLO cuando PROACTIVE_ALLOWED=true. En ese caso, después de responder lo principal, sugerí como máximo UNA mejora de PROACTIVE_SUGGESTIONS y presentala explícitamente como opcional: "Si querés, también..." / "Como mejora opcional...".
+- La iniciativa debe aportar valor y no interrumpir el tema. No la uses en salud, reclamos, objeciones, ni cuando el paciente hizo una pregunta técnica puntual.
+- No repitas la misma venta adicional en mensajes consecutivos. Si ya se ofreció una mejora, esperá una señal del paciente antes de volver a sugerir otra.
+- Si CONOCIMIENTO contiene un beneficio comercial relevante (por ejemplo garantía, cobertura, financiación o convenio), podés mencionarlo de forma optativa SOLO si encaja con la consulta y está explícitamente respaldado por CONOCIMIENTO. Nunca inventes condiciones.
 - Si el paciente pregunta "qué mejora le puedo agregar", compará brevemente las alternativas disponibles y preguntá cuál prioriza si hace falta: comodidad visual/reflejos, cambio con el sol, espesor/peso u otra necesidad.
 - Si hay una diferencia técnica sobre una mejora y CONOCIMIENTO no la explica, no inventes la ventaja: limitate a indicar que esa variante existe y su precio cuando corresponda.
 - Si strict_preferences=true y exact_match_found=false, decí que esa combinación no quedó confirmada en el catálogo y no inventes un precio.
@@ -803,6 +825,8 @@ CATÁLOGO DISPONIBLE: ${JSON.stringify(commercial || null)}
 CONOCIMIENTO APROBADO: ${JSON.stringify(knowledge)}
 PRÓXIMO PASO: ${nextKey || "sin clave"}
 PREGUNTA BASE: ${fallback || ""}
+PROACTIVE_ALLOWED: ${proactiveAllowed ? "sí" : "no"}
+PROACTIVE_SUGGESTIONS: ${JSON.stringify(proactiveSuggestions)}
 SE REPITE: ${repeated ? "sí" : "no"}
 RESPUESTA ANTERIOR: ${String(previousReply || "").slice(0, 1000)}
 `.trim();
@@ -1015,7 +1039,17 @@ Deno.serve(async (req) => {
     const previousReply = String(previousContext.generated_reply || "");
     const repeatCount = repeated ? Number(previousContext.repeat_count || 0) + 1 : 0;
 
-    const reply = await writeContextualReply({ message, intent, state, nextKey, fallback, commercial, priceRequest, repeated, previousReply, knowledge, justConfirmed, style });
+    const proactiveSuggestions = proactiveEnhancementSuggestions(commercial, state);
+    const proactiveAllowed = Boolean(
+      selectedDesign
+      && proactiveSuggestions.length
+      && previousContext?.proactive_offer_made !== true
+      && !["clinical_symptom", "support", "sales_objection", "technical_question"].includes(intent)
+      && !featureQuestion
+      && !upgradeQuestion
+    );
+
+    const reply = await writeContextualReply({ message, intent, state, nextKey, fallback, commercial, priceRequest, repeated, previousReply, knowledge, justConfirmed, style, proactiveSuggestions, proactiveAllowed });
 
     state.next_best_question_key = nextKey;
     state.next_best_question_context = {
@@ -1037,6 +1071,8 @@ Deno.serve(async (req) => {
       selected_design: selectedDesign,
       feature_question: featureQuestion,
       upgrade_question: upgradeQuestion,
+      proactive_offer_made: previousContext?.proactive_offer_made === true || proactiveAllowed,
+      proactive_suggestions: proactiveSuggestions,
     };
 
     const { data: upserted, error: upsertError } = await supabase.from("black_ai_case_state").upsert(state, { onConflict: "phone" }).select("*").single();
