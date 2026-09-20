@@ -28,7 +28,7 @@ type CatalogProduct = {
   metadata?: any;
 };
 
-const BUILD_ID = "black-ai-case-orchestrator-20260915-commercial3-singlefile";
+const BUILD_ID = "black-ai-case-orchestrator-20260920-conversation1";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -317,14 +317,27 @@ function detectDirectIntent(message: string) {
   const t = normalizeText(message);
   if (!t) return null;
   if (/^(hola|buenas|buen dia|buenas tardes|buenas noches|holi|hello)[!,. ]*$/.test(t)) return "greeting";
+
+  // Seguridad clínica: explicar óptica sí; diagnosticar síntomas no.
+  if (/\b(dolor (de|en) (ojo|ojos)|perdi(d[ao])? (la )?vision|no veo de golpe|vision borrosa de golpe|golpe en el ojo|ojo rojo con dolor|destellos repentinos|moscas volantes repentinas)\b/.test(t)) return "clinical_symptom";
+
+  // Señales comerciales explícitas.
+  if (/\b(esta muy caro|es muy caro|me parece caro|se me va|no me alcanza|fuera de (mi )?presupuesto|algo mas barato|opcion mas barata|demasiado caro|es mucho)\b/.test(t)) return "sales_objection";
+  if (/\b(me quedo con (ese|esa|el|la)|quiero ese|quiero esa|dale con (ese|esa)|avancemos|hagamoslo|lo quiero hacer|quiero hacerlo|como seguimos|reservame|lo llevo|cierro con)\b/.test(t)) return "buying_signal";
+  if (/\b(cual me recomendas|que me recomendas|cual me conviene|que me conviene|cual elegir|cual elegirias|que opcion elegir)\b/.test(t)) return "recommendation_request";
+
   if (/\b(horario|horarios|a que hora|abren|abierto|cierran|cerrado|direccion|ubicacion|donde estan|donde queda|sucursal)\b/.test(t)) return "hours_location";
-  if (/\b(anteojos? de sol|lentes? de sol|solar|solares|gafas? de sol)\b/.test(t)) return "sunglasses";
-  if (/\b(armazon|armazones|marco|marcos)\b/.test(t)) return "frames";
-  if (/\b(lentes? de contacto|contactologia|contactolog)\b/.test(t)) return "contact_lenses";
   if (/\b(cuotas?|tarjeta|transferencia|efectivo|medio[s]? de pago|formas? de pago|pagar)\b/.test(t)) return "payment_methods";
   if (/\b(black protect|promocion|promo|descuento|beneficio|convenio|obra social|mutual|ministerio)\b/.test(t)) return "promotion";
   if (/\b(turno|turnos|agenda|reservar|coordinar atencion)\b/.test(t)) return "appointment";
   if (/\b(reclamo|garantia|problema|se rompio|se quebr|devolucion|no me adapto|adaptacion)\b/.test(t)) return "support";
+
+  const opticalTerms = /\b(multifocal|multifocales|progresivo|progresivos|monofocal|monofocales|ocupacional|ocupacionales|bifocal|bifocales|antirreflejo|fotocromatico|fotocromaticos|filtro azul|alto indice|policarbonato|polarizado|polarizados|indice 1[.,](56|59|60|67|74)|cristal|cristales|lente|lentes)\b/;
+  if (opticalTerms.test(t) && /\b(que es|que son|que significa|como funciona|como funcionan|para que sirve|para que sirven|cual es la diferencia|que diferencia|diferencia entre|ventaja|ventajas|desventaja|desventajas)\b/.test(t)) return "technical_question";
+
+  if (/\b(anteojos? de sol|lentes? de sol|solar|solares|gafas? de sol)\b/.test(t)) return "sunglasses";
+  if (/\b(armazon|armazones|marco|marcos)\b/.test(t)) return "frames";
+  if (/\b(lentes? de contacto|contactologia|contactolog)\b/.test(t)) return "contact_lenses";
   if (/\b(multifocal|multifocales|progresivo|progresivos|monofocal|monofocales|ocupacional|ocupacionales|bifocal|bifocales|receta|graduacion|cristal|cristales|lente|lentes)\b/.test(t) && /\b(precio|precios|sale|salen|cuesta|cuestan|cotiz|presupuesto|valor|valores)\b/.test(t)) return "prescription_lens_quote";
   return null;
 }
@@ -333,7 +346,7 @@ function normalizeFacts(value: any) {
   const allowedObjective = ["quote", "appointment", "support", "product_info", "other"];
   const allowedCase = ["monofocal", "bifocal", "occupational", "multifocal"];
   const allowedPrice = ["general", "exact", "none"];
-  const allowedIntent = ["greeting", "prescription_lens_quote", "sunglasses", "frames", "contact_lenses", "hours_location", "payment_methods", "appointment", "support", "promotion", "general_product", "other"];
+  const allowedIntent = ["greeting", "prescription_lens_quote", "sunglasses", "frames", "contact_lenses", "hours_location", "payment_methods", "appointment", "support", "promotion", "general_product", "technical_question", "clinical_symptom", "recommendation_request", "sales_objection", "buying_signal", "other"];
   const facts: any = {};
   if (allowedObjective.includes(value?.objective)) facts.objective = value.objective;
   if (allowedCase.includes(value?.optical_case)) facts.optical_case = value.optical_case;
@@ -357,7 +370,7 @@ async function inferFactsWithAI(message: string, current: any) {
 Clasificá el mensaje de un paciente de una óptica y extraé solamente hechos explícitos.
 No asumas que toda conversación es una cotización con receta.
 
-intent: greeting | prescription_lens_quote | sunglasses | frames | contact_lenses | hours_location | payment_methods | appointment | support | promotion | general_product | other
+intent: greeting | prescription_lens_quote | sunglasses | frames | contact_lenses | hours_location | payment_methods | appointment | support | promotion | general_product | technical_question | clinical_symptom | recommendation_request | sales_objection | buying_signal | other
 objective: quote | appointment | support | product_info | other | null
 optical_case: monofocal | bifocal | occupational | multifocal | null
 price_request: general | exact | none
@@ -378,6 +391,11 @@ REGLAS:
 - No asumas filtro azul, fotocromático, marca, alto índice, material ni ninguna otra preferencia.
 - Si pregunta precio de una categoría, price_request=general.
 - price_request=exact solo para una configuración/caso personal concreto.
+- technical_question: pregunta conceptual sobre lentes, materiales, tratamientos o diseños. No requiere receta salvo que pida recomendación personalizada.
+- clinical_symptom: describe dolor, pérdida súbita de visión, golpe u otro síntoma clínico; no diagnostiques.
+- recommendation_request: pide elegir o recomendar una opción.
+- sales_objection: expresa un freno comercial, por ejemplo precio o presupuesto.
+- buying_signal: expresa una decisión concreta de avanzar con una opción.
 - Horarios, ubicación, pagos, convenios, turnos y reclamos no requieren receta.
 - No inventes receta, precio, stock ni diagnóstico.
 
@@ -463,6 +481,8 @@ function generalFallback(intent: string | null) {
     support: "Contame brevemente qué pasó así te ayudo a derivarlo correctamente.",
     promotion: "Puedo revisar los beneficios o convenios vigentes. ¿Sobre cuál querés consultar?",
     general_product: "¿Qué producto o beneficio querés consultar?",
+    technical_question: "Te lo explico de forma simple.",
+    clinical_symptom: "Esa consulta necesita evaluación profesional. Si querés, te ayudo a coordinar la atención.",
   };
   return map[String(intent)] || "¿En qué te puedo ayudar?";
 }
@@ -494,6 +514,8 @@ ${styleInstruction(style)}
 - Respondé primero exactamente lo que preguntó el paciente.
 - Usá como hechos SOLO el CONOCIMIENTO APROBADO.
 - Si falta el dato concreto, no lo inventes.
+- Si INTENCIÓN=technical_question: explicá el concepto en 1 a 3 frases, con lenguaje simple y preciso. Evitá convertir la explicación en una venta; como máximo conectá con el producto si aporta valor.
+- Si INTENCIÓN=clinical_symptom: no diagnostiques ni sugieras un lente como solución. Indicá brevemente que requiere evaluación profesional y ofrecé ayudar con la atención.
 - No arrastres al paciente a una receta si cambió de tema.
 - No termines siempre con una pregunta.
 - No te presentes nuevamente si la conversación ya está en curso.
@@ -510,7 +532,7 @@ CONOCIMIENTO APROBADO: ${JSON.stringify(knowledge)}
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) return fallback;
-    return extractOutputText(payload).trim().slice(0, 1500) || fallback;
+    return sanitizeWhatsappReply(extractOutputText(payload).trim().slice(0, 1500) || fallback);
   } catch (_) {
     return fallback;
   }
@@ -625,8 +647,8 @@ function sanitizeWhatsappReply(text: string) {
     .trim();
 }
 
-async function writeContextualReply(args: { message: string; state: any; nextKey: string | null; fallback: string; commercial: any; priceRequest: string; repeated: boolean; previousReply: string; knowledge: any[]; justConfirmed: boolean; style: any }) {
-  const { message, state, nextKey, fallback, commercial, priceRequest, repeated, previousReply, knowledge, justConfirmed, style } = args;
+async function writeContextualReply(args: { message: string; intent: string; state: any; nextKey: string | null; fallback: string; commercial: any; priceRequest: string; repeated: boolean; previousReply: string; knowledge: any[]; justConfirmed: boolean; style: any }) {
+  const { message, intent, state, nextKey, fallback, commercial, priceRequest, repeated, previousReply, knowledge, justConfirmed, style } = args;
   const openAiKey = Deno.env.get("OPENAI_API_KEY") || "";
   if (!openAiKey || !message.trim()) return fallback;
   const model = Deno.env.get("OPENAI_MODEL") || "gpt-5.6-luna";
@@ -646,9 +668,14 @@ REGLAS DURAS:
 - Los precios válidos salen exclusivamente de CATÁLOGO DISPONIBLE.
 - No uses asteriscos, doble asterisco, backticks ni Markdown. Texto plano de WhatsApp.
 - No hagas una recomendación personalizada si todavía falta información necesaria.
+- Si INTENCIÓN=recommendation_request y ya hay datos suficientes: elegí UNA opción principal y, solo si aporta valor, UNA alternativa. Explicá el motivo en una frase por opción. Si falta un dato decisivo, hacé una sola pregunta.
+- Si INTENCIÓN=sales_objection: reconocé la objeción sin discutir ni presionar. No inventes descuentos. Si el catálogo trae alternativas válidas, ofrecé una opción de menor costo o distinta configuración explicando brevemente el cambio.
+- Si INTENCIÓN=buying_signal: dejá de sobreexplicar. Confirmá brevemente la opción elegida si está identificada y proponé UN siguiente paso concreto para avanzar.
+- No repitas muletillas como "Perfecto", "Claro" o "Genial" en todos los mensajes.
 - No preguntes por todo junto. Una sola pregunta principal y solo si realmente hace falta.
 - No inventes stock, disponibilidad de marca, tiempos, garantías, beneficios ni diagnósticos.
 
+INTENCIÓN: ${intent}
 MENSAJE: ${message.slice(0, 2000)}
 CONTEXTO: ${JSON.stringify({ objective: state?.objective, optical_case: state?.optical_case, main_use: state?.main_use, previous_lens_type: state?.previous_lens_type, preferences: state?.preferences, prescription_status: state?.prescription_status })}
 RECETA ACABA DE CONFIRMARSE: ${justConfirmed ? "sí" : "no"}
@@ -726,7 +753,7 @@ Deno.serve(async (req) => {
 
     const knowledgeProbe = await getKnowledgeSnapshot(supabase, message, intent, { optical_case: inferredOpticalCase, treatment: treatmentContext(inferred.preferences) });
     const strongKnowledgeMatch = knowledgeProbe.some((x: any) => Number(x.overlap || 0) >= 1 || structuredKnowledgeBonus(x.data, { intent, optical_case: inferredOpticalCase }) >= 30);
-    const directGeneral = ["greeting", "hours_location", "sunglasses", "frames", "contact_lenses", "payment_methods", "appointment", "support", "promotion", "general_product"].includes(intent)
+    const directGeneral = ["greeting", "hours_location", "sunglasses", "frames", "contact_lenses", "payment_methods", "appointment", "support", "promotion", "general_product", "technical_question", "clinical_symptom"].includes(intent)
       || (intent === "other" && strongKnowledgeMatch && inferredOpticalCase == null);
 
     if (current.prescription_status === "awaiting_confirmation" && isAffirmative(message) && !directGeneral) {
@@ -849,7 +876,7 @@ Deno.serve(async (req) => {
     const previousReply = String(previousContext.generated_reply || "");
     const repeatCount = repeated ? Number(previousContext.repeat_count || 0) + 1 : 0;
 
-    const reply = await writeContextualReply({ message, state, nextKey, fallback, commercial, priceRequest, repeated, previousReply, knowledge, justConfirmed, style });
+    const reply = await writeContextualReply({ message, intent, state, nextKey, fallback, commercial, priceRequest, repeated, previousReply, knowledge, justConfirmed, style });
 
     state.next_best_question_key = nextKey;
     state.next_best_question_context = {
