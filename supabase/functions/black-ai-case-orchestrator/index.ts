@@ -28,7 +28,7 @@ type CatalogProduct = {
   metadata?: any;
 };
 
-const BUILD_ID = "black-ai-case-orchestrator-20260920-context2";
+const BUILD_ID = "black-ai-case-orchestrator-20260920-enhancements1";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -319,6 +319,45 @@ function isFeatureAvailabilityQuestion(message: string) {
   const t = normalizeText(message);
   return /\b(tiene|tienen|hay|viene|se puede|puede llevar|puedo pedir|trabajan)\b/.test(t)
     && /\b(filtro azul|luz azul|fotocrom|antirreflejo|alto indice|polariz|policarbonato|1[.,](56|59|60|67|74))\b/.test(t);
+}
+
+function isUpgradeQuestion(message: string) {
+  const t = normalizeText(message);
+  return /\b(mejora|mejoras|mejorarlo|mejorarla|algo mejor|opcion mejor|que le puedo agregar|que se le puede agregar|con que lo puedo mejorar|upgrade|tratamiento|tratamientos)\b/.test(t);
+}
+
+function enhancementKey(row: CatalogProduct) {
+  if (hasTreatment(row, "photochromic")) return "photochromic";
+  if (hasTreatment(row, "blue_filter")) return "blue_filter";
+  if (hasTreatment(row, "antireflective")) return "antireflective";
+  if (hasTreatment(row, "polarized")) return "polarized";
+  if (isHighIndex(row)) return "high_index";
+  return "base";
+}
+
+function buildEnhancementOptions(rows: CatalogProduct[]) {
+  const best = new Map<string, CatalogProduct>();
+  for (const row of rows || []) {
+    const price = Number(row.base_price);
+    if (!Number.isFinite(price) || price <= 0) continue;
+    const key = enhancementKey(row);
+    const prev = best.get(key);
+    if (!prev || Number(prev.base_price) > price) best.set(key, row);
+  }
+  const order = ["base", "antireflective", "blue_filter", "photochromic", "high_index", "polarized"];
+  return order
+    .filter((key) => best.has(key))
+    .map((key) => {
+      const row = best.get(key)!;
+      return {
+        key,
+        name: row.name,
+        material: row.material,
+        treatment: row.treatment,
+        price: Number(row.base_price),
+        price_label: money(Number(row.base_price), row.currency || "ARS"),
+      };
+    });
 }
 
 function staleConversation(lastPatientMessageAt: unknown, hours = 8) {
@@ -649,6 +688,7 @@ async function getCommercialSnapshot(supabase: any, state: any, knowledge: any[]
   const supplyMode = state?.technical_result?.supply_mode || null;
   const examples = filterAndRankCatalogProducts({ products: rows, preferences, recommendedOrder: order, opticalCase, family: "lens", supplyMode, max: selectedDesign ? 3 : 8 });
   const features = availableCatalogFeatures(rows);
+  const enhancementOptions = selectedDesign ? buildEnhancementOptions(rows) : [];
 
   let brandMatchCount: number | null = null;
   if (preferences.brand) {
@@ -670,6 +710,7 @@ async function getCommercialSnapshot(supabase: any, state: any, knowledge: any[]
     available_features: features.features,
     available_brands: features.brands,
     available_materials: features.materials,
+    enhancement_options: enhancementOptions,
     examples: examples.map((x: any) => ({
       id: x.id,
       name: x.name,
@@ -735,6 +776,11 @@ REGLAS DURAS:
 - Si price_request=general, podés mostrar opciones de CATÁLOGO DISPONIBLE en el orden exacto recibido.
 - Si price_request=general y ya respondiste con precios/opciones, NO agregues después una frase sobre "evaluación técnica", "familia técnica" o el PRÓXIMO PASO salvo que el paciente haya pedido una cotización personalizada con su receta.
 - Si CATÁLOGO DISPONIBLE trae selected_design, interpretá pronombres como "ese", "eso" o "el Free" dentro de ese diseño.
+- Diferenciá filtro de luz azul y antirreflejo: son mejoras distintas. Nunca los presentes como si fueran lo mismo.
+- Si CATÁLOGO DISPONIBLE trae enhancement_options, podés ofrecer como máximo DOS mejoras relevantes del mismo diseño. Solo nombrá variantes realmente presentes en el catálogo.
+- Las mejoras son OPCIONALES salvo que el motor técnico o CONOCIMIENTO indique otra cosa. No digas que el paciente "necesita" filtro azul, antirreflejo, alto índice o fotocromático solo por inferencia.
+- Si el paciente pregunta "qué mejora le puedo agregar", compará brevemente las alternativas disponibles y preguntá cuál prioriza si hace falta: comodidad visual/reflejos, cambio con el sol, espesor/peso u otra necesidad.
+- Si hay una diferencia técnica sobre una mejora y CONOCIMIENTO no la explica, no inventes la ventaja: limitate a indicar que esa variante existe y su precio cuando corresponda.
 - Si strict_preferences=true y exact_match_found=false, decí que esa combinación no quedó confirmada en el catálogo y no inventes un precio.
 - Para cada opción mostrada, agregá una descripción MUY BREVE basada exclusivamente en CONOCIMIENTO. Si Conocimiento no describe esa opción, no inventes una característica: usá solo el nombre y precio.
 - Si price_request=exact, cotizá únicamente cuando la receta esté confirmada y el flujo técnico permita avanzar.
@@ -876,6 +922,7 @@ Deno.serve(async (req) => {
     const explicitDesign = detectDesignMention(message);
     const selectedDesign = explicitDesign || String(current?.next_best_question_context?.selected_design || "").trim().toUpperCase() || null;
     const featureQuestion = isFeatureAvailabilityQuestion(message);
+    const upgradeQuestion = isUpgradeQuestion(message);
 
     const state: any = {
       phone,
@@ -955,7 +1002,7 @@ Deno.serve(async (req) => {
     const configuredProductPrice = priceRequest === "exact" && Boolean(selectedDesign) && hasConfiguredPreference;
     const allowPatientSpecificPrice = priceRequest === "exact" && state.prescription_status === "confirmed" && !["request_prescription", "complete_prescription", "request_axis_od", "request_axis_oi", "request_addition", "clarify_optical_case", "ask_main_use", "ask_previous_lens_experience", "choose_technical_family", "run_technical_evaluation"].includes(String(nextKey));
     const allowPrice = priceRequest === "general" || configuredProductPrice || allowPatientSpecificPrice;
-    const needCatalogContext = allowPrice || featureQuestion;
+    const needCatalogContext = allowPrice || featureQuestion || upgradeQuestion || Boolean(selectedDesign);
     const commercial = needCatalogContext && state.optical_case
       ? await getCommercialSnapshot(supabase, state, knowledge, { selectedDesign, strictPreferences: configuredProductPrice || featureQuestion })
       : null;
@@ -989,6 +1036,7 @@ Deno.serve(async (req) => {
       commercial_selection_mode: commercial?.selection_mode || null,
       selected_design: selectedDesign,
       feature_question: featureQuestion,
+      upgrade_question: upgradeQuestion,
     };
 
     const { data: upserted, error: upsertError } = await supabase.from("black_ai_case_state").upsert(state, { onConflict: "phone" }).select("*").single();
