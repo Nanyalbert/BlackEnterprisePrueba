@@ -28,7 +28,7 @@ type CatalogProduct = {
   metadata?: any;
 };
 
-const BUILD_ID = "black-ai-case-orchestrator-20260920-conversation1";
+const BUILD_ID = "black-ai-case-orchestrator-20260920-context2";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -302,7 +302,55 @@ function preferenceSummary(preferences: CommercialPreferences) {
 }
 
 function isAffirmative(message: string) {
-  return /^(si|sí|correcto|correcta|correctos|esta bien|estan bien|tal cual|confirmo|confirmado|ok|okay|dale|perfecto)(\b|[.! ])/i.test(normalizeText(message));
+  const t = normalizeText(message);
+  return /^(?:si(?:,?\s+)?|los\s+valores\s+)?(?:estan?\s+(?:bien|correctos?|correctas?)|esta\s+bien|correctos?|correctas?|tal cual|confirmo|confirmado|ok|okay|dale|perfecto)\b/i.test(t);
+}
+
+function detectDesignMention(message: string) {
+  const t = normalizeText(message);
+  if (/\b(?:smart\s+)?ailens\b/.test(t)) return "AILENS";
+  if (/\b(?:smart\s+)?free\b/.test(t)) return "FREE";
+  if (/\b(?:smart\s+)?new\b/.test(t)) return "NEW";
+  if (/\b(?:smart\s+)?one\b/.test(t)) return "ONE";
+  return null;
+}
+
+function isFeatureAvailabilityQuestion(message: string) {
+  const t = normalizeText(message);
+  return /\b(tiene|tienen|hay|viene|se puede|puede llevar|puedo pedir|trabajan)\b/.test(t)
+    && /\b(filtro azul|luz azul|fotocrom|antirreflejo|alto indice|polariz|policarbonato|1[.,](56|59|60|67|74))\b/.test(t);
+}
+
+function staleConversation(lastPatientMessageAt: unknown, hours = 8) {
+  if (!lastPatientMessageAt) return false;
+  const ts = new Date(String(lastPatientMessageAt)).getTime();
+  return Number.isFinite(ts) && (Date.now() - ts) > hours * 60 * 60 * 1000;
+}
+
+function resetCaseContext(current: any) {
+  current.objective = null;
+  current.stage = "discovery";
+  current.prescription = {};
+  current.prescription_status = "none";
+  current.prescription_confirmed_at = null;
+  current.prescription_source_message_id = null;
+  current.prescription_analysis = {};
+  current.prescription_updated_at = null;
+  current.optical_case = null;
+  current.technical_family_key = null;
+  current.main_use = null;
+  current.previous_lens_type = null;
+  current.budget_context = null;
+  current.urgency = null;
+  current.preferences = {};
+  current.technical_result = {};
+  current.candidate_products = [];
+  current.missing_data = [];
+  current.requires_human_review = false;
+  current.next_best_question_key = null;
+  current.next_best_question_context = {};
+  current.conversation_started_at = new Date().toISOString();
+  return current;
 }
 
 function isNegative(message: string) {
@@ -514,7 +562,7 @@ ${styleInstruction(style)}
 - Respondé primero exactamente lo que preguntó el paciente.
 - Usá como hechos SOLO el CONOCIMIENTO APROBADO.
 - Si falta el dato concreto, no lo inventes.
-- Si INTENCIÓN=technical_question: explicá el concepto en 1 a 3 frases, con lenguaje simple y preciso. Evitá convertir la explicación en una venta; como máximo conectá con el producto si aporta valor.
+- Si INTENCIÓN=technical_question: explicá el concepto en 1 a 3 frases, con lenguaje simple y preciso. No uses listas salvo que el paciente esté comparando opciones. Evitá convertir la explicación en una venta; como máximo conectá con el producto si aporta valor.
 - Si INTENCIÓN=clinical_symptom: no diagnostiques ni sugieras un lente como solución. Indicá brevemente que requiere evaluación profesional y ofrecé ayudar con la atención.
 - No arrastres al paciente a una receta si cambió de tema.
 - No termines siempre con una pregunta.
@@ -560,7 +608,7 @@ function treatmentContext(preferences: any) {
   return preferences?.treatment || null;
 }
 
-async function getCommercialSnapshot(supabase: any, state: any, knowledge: any[]) {
+async function getCommercialSnapshot(supabase: any, state: any, knowledge: any[], options: any = {}) {
   const opticalCase = state?.optical_case || null;
   if (!opticalCase) return null;
 
@@ -576,11 +624,30 @@ async function getCommercialSnapshot(supabase: any, state: any, knowledge: any[]
     return null;
   }
 
-  const rows = data || [];
+  let rows = data || [];
   const preferences = normalizeCommercialPreferences(state?.preferences || {});
+  const selectedDesign = String(options?.selectedDesign || "").trim().toUpperCase();
+  if (selectedDesign) rows = rows.filter((row: any) => String(row.design || "").trim().toUpperCase() === selectedDesign);
+
+  if (options?.strictPreferences) {
+    rows = rows.filter((row: any) => {
+      if (preferences.blue_filter === true && !hasTreatment(row, "blue_filter")) return false;
+      if (preferences.photochromic === true && !hasTreatment(row, "photochromic")) return false;
+      if (preferences.antireflective === true && !hasTreatment(row, "antireflective")) return false;
+      if (preferences.polarized === true && !hasTreatment(row, "polarized")) return false;
+      if (preferences.high_index === true && !isHighIndex(row)) return false;
+      if (preferences.material && !searchableProductText(row).includes(normalizeText(preferences.material))) return false;
+      if (preferences.brand) {
+        const brand = normalizeText(preferences.brand);
+        if (!normalizeText(productBrand(row)).includes(brand) && !searchableProductText(row).includes(brand)) return false;
+      }
+      return true;
+    });
+  }
+
   const order = recommendedDesignOrder(knowledge, opticalCase);
   const supplyMode = state?.technical_result?.supply_mode || null;
-  const examples = filterAndRankCatalogProducts({ products: rows, preferences, recommendedOrder: order, opticalCase, family: "lens", supplyMode, max: 8 });
+  const examples = filterAndRankCatalogProducts({ products: rows, preferences, recommendedOrder: order, opticalCase, family: "lens", supplyMode, max: selectedDesign ? 3 : 8 });
   const features = availableCatalogFeatures(rows);
 
   let brandMatchCount: number | null = null;
@@ -597,6 +664,9 @@ async function getCommercialSnapshot(supabase: any, state: any, knowledge: any[]
     preferences,
     preference_summary: preferenceSummary(preferences),
     requested_brand_found: brandMatchCount === null ? null : brandMatchCount > 0,
+    selected_design: selectedDesign || null,
+    strict_preferences: Boolean(options?.strictPreferences),
+    exact_match_found: examples.length > 0,
     available_features: features.features,
     available_brands: features.brands,
     available_materials: features.materials,
@@ -663,6 +733,9 @@ REGLAS DURAS:
 - Si el paciente expresó marca/material/tratamiento, respetá esa preferencia. Si requested_brand_found=false, no afirmes que esa marca está disponible.
 - Si price_request=none, no muestres precios.
 - Si price_request=general, podés mostrar opciones de CATÁLOGO DISPONIBLE en el orden exacto recibido.
+- Si price_request=general y ya respondiste con precios/opciones, NO agregues después una frase sobre "evaluación técnica", "familia técnica" o el PRÓXIMO PASO salvo que el paciente haya pedido una cotización personalizada con su receta.
+- Si CATÁLOGO DISPONIBLE trae selected_design, interpretá pronombres como "ese", "eso" o "el Free" dentro de ese diseño.
+- Si strict_preferences=true y exact_match_found=false, decí que esa combinación no quedó confirmada en el catálogo y no inventes un precio.
 - Para cada opción mostrada, agregá una descripción MUY BREVE basada exclusivamente en CONOCIMIENTO. Si Conocimiento no describe esa opción, no inventes una característica: usá solo el nombre y precio.
 - Si price_request=exact, cotizá únicamente cuando la receta esté confirmada y el flujo técnico permita avanzar.
 - Los precios válidos salen exclusivamente de CATÁLOGO DISPONIBLE.
@@ -733,7 +806,12 @@ Deno.serve(async (req) => {
 
     const { data: existing, error: readError } = await supabase.from("black_ai_case_state").select("*").eq("phone", phone).maybeSingle();
     if (readError) throw readError;
-    const current = existing || { phone, stage: "discovery", prescription: {}, prescription_status: "none", preferences: {}, technical_result: {}, candidate_products: [], next_best_question_context: {} };
+    let current = existing || { phone, stage: "discovery", prescription: {}, prescription_status: "none", preferences: {}, technical_result: {}, candidate_products: [], next_best_question_context: {} };
+
+    // Un saludo tras varias horas inicia un caso conversacional nuevo y evita arrastrar receta/estado viejos.
+    if (detectDirectIntent(message) === "greeting" && staleConversation(current.last_patient_message_at, 8)) {
+      current = resetCaseContext({ ...current });
+    }
 
     const extraction = await inferFactsWithAI(message, current);
     const inferred = extraction.facts || {};
@@ -795,6 +873,9 @@ Deno.serve(async (req) => {
     const prescription = body?.prescription && typeof body.prescription === "object" ? { ...(current.prescription || {}), ...body.prescription } : current.prescription || {};
     const opticalCaseChanged = Boolean(inferred.optical_case && current.optical_case && inferred.optical_case !== current.optical_case);
     const mergedPreferences = mergeCommercialPreferences(current.preferences, inferred.preferences, body?.preferences);
+    const explicitDesign = detectDesignMention(message);
+    const selectedDesign = explicitDesign || String(current?.next_best_question_context?.selected_design || "").trim().toUpperCase() || null;
+    const featureQuestion = isFeatureAvailabilityQuestion(message);
 
     const state: any = {
       phone,
@@ -865,8 +946,19 @@ Deno.serve(async (req) => {
       treatment: treatmentContext(state.preferences),
     });
 
-    const allowPrice = priceRequest === "general" || (priceRequest === "exact" && state.prescription_status === "confirmed" && !["request_prescription", "complete_prescription", "request_axis_od", "request_axis_oi", "request_addition", "clarify_optical_case", "ask_main_use", "ask_previous_lens_experience", "choose_technical_family", "run_technical_evaluation"].includes(String(nextKey)));
-    const commercial = allowPrice && state.optical_case ? await getCommercialSnapshot(supabase, state, knowledge) : null;
+    const hasConfiguredPreference = Boolean(
+      treatmentContext(state.preferences)
+      || state.preferences?.brand
+      || state.preferences?.material
+      || state.preferences?.high_index
+    );
+    const configuredProductPrice = priceRequest === "exact" && Boolean(selectedDesign) && hasConfiguredPreference;
+    const allowPatientSpecificPrice = priceRequest === "exact" && state.prescription_status === "confirmed" && !["request_prescription", "complete_prescription", "request_axis_od", "request_axis_oi", "request_addition", "clarify_optical_case", "ask_main_use", "ask_previous_lens_experience", "choose_technical_family", "run_technical_evaluation"].includes(String(nextKey));
+    const allowPrice = priceRequest === "general" || configuredProductPrice || allowPatientSpecificPrice;
+    const needCatalogContext = allowPrice || featureQuestion;
+    const commercial = needCatalogContext && state.optical_case
+      ? await getCommercialSnapshot(supabase, state, knowledge, { selectedDesign, strictPreferences: configuredProductPrice || featureQuestion })
+      : null;
     if (commercial?.examples) state.candidate_products = commercial.examples.map((x: any) => x.id);
 
     const fallback = questionForKey(nextKey, state.objective);
@@ -895,6 +987,8 @@ Deno.serve(async (req) => {
       repeat_count: repeatCount,
       reply_mode: reply === fallback ? "fallback" : "openai_contextual",
       commercial_selection_mode: commercial?.selection_mode || null,
+      selected_design: selectedDesign,
+      feature_question: featureQuestion,
     };
 
     const { data: upserted, error: upsertError } = await supabase.from("black_ai_case_state").upsert(state, { onConflict: "phone" }).select("*").single();
