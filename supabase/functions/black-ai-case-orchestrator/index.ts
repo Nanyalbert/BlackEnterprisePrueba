@@ -28,7 +28,7 @@ type CatalogProduct = {
   metadata?: any;
 };
 
-const BUILD_ID = "black-ai-case-orchestrator-20260920-proactive-benefits1";
+const BUILD_ID = "black-ai-case-orchestrator-20260923-context-answers1";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -412,6 +412,29 @@ function resetCaseContext(current: any) {
 
 function isNegative(message: string) {
   return /^(no|incorrecto|incorrecta|esta mal|estan mal|no esta bien|hay un error)(\b|[.! ])/i.test(normalizeText(message));
+}
+
+function contextualAnswerFromPreviousQuestion(message: string, previousQuestionKey: string | null) {
+  const t = normalizeText(message);
+  if (!previousQuestionKey || !t) return {};
+
+  if (previousQuestionKey === "ask_previous_lens_experience") {
+    if (/^(no|nunca|jamas)\b/.test(t) || /\b(primera vez|nunca use|nunca tuve|nunca lleve)\b/.test(t)) {
+      return { previous_lens_type: "first_time" };
+    }
+    if (/^(si|sí)\b/.test(message.trim()) || /\b(ya use|ya tuve|ya llevo|uso multifocal|use multifocal|tuve multifocal)\b/.test(t)) {
+      return { previous_lens_type: "experienced" };
+    }
+  }
+
+  if (previousQuestionKey === "ask_main_use") {
+    if (/\b(uso diario|todo el dia|diario)\b/.test(t)) return { main_use: "uso diario" };
+    if (/\b(computadora|pc|pantalla|oficina)\b/.test(t)) return { main_use: "computadora" };
+    if (/\b(lectura|leer|cerca)\b/.test(t)) return { main_use: "lectura" };
+    if (/\b(lejos|manejar|conducir)\b/.test(t)) return { main_use: "lejos" };
+  }
+
+  return {};
 }
 
 function explicitlyDeniesPrescription(message: string) {
@@ -814,6 +837,8 @@ REGLAS DURAS:
 - Si INTENCIÓN=buying_signal: dejá de sobreexplicar. Confirmá brevemente la opción elegida si está identificada y proponé UN siguiente paso concreto para avanzar.
 - No repitas muletillas como "Perfecto", "Claro" o "Genial" en todos los mensajes.
 - No preguntes por todo junto. Una sola pregunta principal y solo si realmente hace falta.
+- Si el paciente acaba de responder de forma clara una pregunta anterior con "sí", "no", "primera vez", "uso diario", etc., tomá esa respuesta como válida y NO vuelvas a hacer la misma pregunta.
+- Si SE REPITE=sí, evitá repetir literalmente la misma pregunta; usá el contexto y avanzá si la respuesta del paciente ya resolvió el dato.
 - No inventes stock, disponibilidad de marca, tiempos, garantías, beneficios ni diagnósticos.
 
 INTENCIÓN: ${intent}
@@ -885,6 +910,9 @@ Deno.serve(async (req) => {
 
     const extraction = await inferFactsWithAI(message, current);
     const inferred = extraction.facts || {};
+    const contextualFacts = contextualAnswerFromPreviousQuestion(message, current.next_best_question_key || null);
+    if (!inferred.previous_lens_type && contextualFacts.previous_lens_type) inferred.previous_lens_type = contextualFacts.previous_lens_type;
+    if (!inferred.main_use && contextualFacts.main_use) inferred.main_use = contextualFacts.main_use;
     const intent = String(inferred.intent || detectDirectIntent(message) || "other");
     const inferredOpticalCase = inferred.optical_case ?? current.optical_case ?? null;
     const pendingPrescription = current.prescription_status === "awaiting_confirmation" || current.prescription_status === "needs_review";
