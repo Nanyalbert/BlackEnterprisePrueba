@@ -28,7 +28,7 @@ type CatalogProduct = {
   metadata?: any;
 };
 
-const BUILD_ID = "black-ai-case-orchestrator-20260923-context-answers1";
+const BUILD_ID = "black-ai-case-orchestrator-20260923-stage-polish1";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -315,6 +315,37 @@ function detectDesignMention(message: string) {
   return null;
 }
 
+function resolveDesignReference(message: string, previousCommercial: any) {
+  const explicit = detectDesignMention(message);
+  if (explicit) return explicit;
+
+  const examples = Array.isArray(previousCommercial?.examples) ? previousCommercial.examples : [];
+  if (!examples.length) return null;
+  const t = normalizeText(message);
+
+  let index: number | null = null;
+  if (/\b(el|la)?\s*primer[oa]?\b|\bprimera opcion\b/.test(t)) index = 0;
+  else if (/\b(el|la)?\s*segund[oa]?\b|\bsegunda opcion\b/.test(t)) index = 1;
+  else if (/\b(el|la)?\s*tercer[oa]?\b|\btercera opcion\b/.test(t)) index = 2;
+  else if (/\b(el|la)?\s*cuart[oa]?\b|\bcuarta opcion\b/.test(t)) index = 3;
+  else if (/\bmas barato|mas economico|economica|economico\b/.test(t)) {
+    let best = 0;
+    for (let i = 1; i < examples.length; i++) {
+      if (Number(examples[i]?.price || Infinity) < Number(examples[best]?.price || Infinity)) best = i;
+    }
+    index = best;
+  } else if (/\bmas premium|mas completo|tope de gama\b/.test(t)) {
+    let best = 0;
+    for (let i = 1; i < examples.length; i++) {
+      if (Number(examples[i]?.price || 0) > Number(examples[best]?.price || 0)) best = i;
+    }
+    index = best;
+  }
+
+  if (index === null || !examples[index]) return null;
+  return String(examples[index]?.design || "").trim().toUpperCase() || null;
+}
+
 function isFeatureAvailabilityQuestion(message: string) {
   const t = normalizeText(message);
   return /\b(tiene|tienen|hay|viene|se puede|puede llevar|puedo pedir|trabajan)\b/.test(t)
@@ -451,7 +482,7 @@ function detectDirectIntent(message: string) {
 
   // Señales comerciales explícitas.
   if (/\b(esta muy caro|es muy caro|me parece caro|se me va|no me alcanza|fuera de (mi )?presupuesto|algo mas barato|opcion mas barata|demasiado caro|es mucho)\b/.test(t)) return "sales_objection";
-  if (/\b(me quedo con (ese|esa|el|la)|quiero ese|quiero esa|dale con (ese|esa)|avancemos|hagamoslo|lo quiero hacer|quiero hacerlo|como seguimos|reservame|lo llevo|cierro con)\b/.test(t)) return "buying_signal";
+  if (/\b(me quedo con (ese|esa|el|la|el primero|el segundo|el tercero|el cuarto)|quiero (ese|esa|el primero|el segundo|el tercero|el cuarto)|dale con (ese|esa|el primero|el segundo|el tercero|el cuarto)|avancemos|hagamoslo|lo quiero hacer|quiero hacerlo|como seguimos|reservame|lo llevo|cierro con)\b/.test(t)) return "buying_signal";
   if (/\b(cual me recomendas|que me recomendas|cual me conviene|que me conviene|cual elegir|cual elegirias|que opcion elegir)\b/.test(t)) return "recommendation_request";
 
   if (/\b(horario|horarios|a que hora|abren|abierto|cierran|cerrado|direccion|ubicacion|donde estan|donde queda|sucursal)\b/.test(t)) return "hours_location";
@@ -833,8 +864,9 @@ REGLAS DURAS:
 - No uses asteriscos, doble asterisco, backticks ni Markdown. Texto plano de WhatsApp.
 - No hagas una recomendación personalizada si todavía falta información necesaria.
 - Si INTENCIÓN=recommendation_request y ya hay datos suficientes: elegí UNA opción principal y, solo si aporta valor, UNA alternativa. Explicá el motivo en una frase por opción. Si falta un dato decisivo, hacé una sola pregunta.
-- Si INTENCIÓN=sales_objection: reconocé la objeción sin discutir ni presionar. No inventes descuentos. Si el catálogo trae alternativas válidas, ofrecé una opción de menor costo o distinta configuración explicando brevemente el cambio.
-- Si INTENCIÓN=buying_signal: dejá de sobreexplicar. Confirmá brevemente la opción elegida si está identificada y proponé UN siguiente paso concreto para avanzar.
+- Si INTENCIÓN=sales_objection: reconocé la objeción sin discutir ni presionar. No inventes descuentos. Usá las opciones ya mostradas en CATÁLOGO DISPONIBLE para ofrecer una alternativa real de menor costo o distinta configuración, sin reiniciar la conversación.
+- Si INTENCIÓN=recommendation_request: tené en cuenta las opciones que ya vio el paciente; no vuelvas a listar todo desde cero.
+- Si INTENCIÓN=buying_signal: dejá de sobreexplicar. Si el paciente dice "el segundo", "el más barato", "ese", etc., usá selected_design/CATÁLOGO DISPONIBLE para resolver a qué opción se refiere. Confirmá brevemente la opción elegida y proponé UN siguiente paso concreto para avanzar.
 - No repitas muletillas como "Perfecto", "Claro" o "Genial" en todos los mensajes.
 - No preguntes por todo junto. Una sola pregunta principal y solo si realmente hace falta.
 - Si el paciente acaba de responder de forma clara una pregunta anterior con "sí", "no", "primera vez", "uso diario", etc., tomá esa respuesta como válida y NO vuelvas a hacer la misma pregunta.
@@ -971,7 +1003,8 @@ Deno.serve(async (req) => {
     const prescription = body?.prescription && typeof body.prescription === "object" ? { ...(current.prescription || {}), ...body.prescription } : current.prescription || {};
     const opticalCaseChanged = Boolean(inferred.optical_case && current.optical_case && inferred.optical_case !== current.optical_case);
     const mergedPreferences = mergeCommercialPreferences(current.preferences, inferred.preferences, body?.preferences);
-    const explicitDesign = detectDesignMention(message);
+    const previousCommercialSnapshot = current?.next_best_question_context?.commercial_snapshot || null;
+    const explicitDesign = resolveDesignReference(message, previousCommercialSnapshot);
     const selectedDesign = explicitDesign || String(current?.next_best_question_context?.selected_design || "").trim().toUpperCase() || null;
     const featureQuestion = isFeatureAvailabilityQuestion(message);
     const upgradeQuestion = isUpgradeQuestion(message);
@@ -1058,7 +1091,15 @@ Deno.serve(async (req) => {
     const commercial = needCatalogContext && state.optical_case
       ? await getCommercialSnapshot(supabase, state, knowledge, { selectedDesign, strictPreferences: configuredProductPrice || featureQuestion })
       : null;
-    if (commercial?.examples) state.candidate_products = commercial.examples.map((x: any) => x.id);
+
+    // En objeciones, recomendaciones y señales de compra, conservar las opciones ya mostradas
+    // aunque el mensaje actual no vuelva a pedir precio.
+    const continuityCommercial = commercial || (
+      ["sales_objection", "recommendation_request", "buying_signal"].includes(intent)
+        ? previousCommercialSnapshot
+        : null
+    );
+    if (continuityCommercial?.examples) state.candidate_products = continuityCommercial.examples.map((x: any) => x.id);
 
     const fallback = questionForKey(nextKey, state.objective);
     const previousKey = current.next_best_question_key || null;
@@ -1067,17 +1108,22 @@ Deno.serve(async (req) => {
     const previousReply = String(previousContext.generated_reply || "");
     const repeatCount = repeated ? Number(previousContext.repeat_count || 0) + 1 : 0;
 
-    const proactiveSuggestions = proactiveEnhancementSuggestions(commercial, state);
+    const proactiveSuggestions = proactiveEnhancementSuggestions(continuityCommercial, state);
+    const sameDesignAsPreviousOffer = Boolean(
+      selectedDesign
+      && previousContext?.proactive_offer_design
+      && String(previousContext.proactive_offer_design).toUpperCase() === String(selectedDesign).toUpperCase()
+    );
     const proactiveAllowed = Boolean(
       selectedDesign
       && proactiveSuggestions.length
-      && previousContext?.proactive_offer_made !== true
+      && !(previousContext?.proactive_offer_made === true && sameDesignAsPreviousOffer)
       && !["clinical_symptom", "support", "sales_objection", "technical_question"].includes(intent)
       && !featureQuestion
       && !upgradeQuestion
     );
 
-    const reply = await writeContextualReply({ message, intent, state, nextKey, fallback, commercial, priceRequest, repeated, previousReply, knowledge, justConfirmed, style, proactiveSuggestions, proactiveAllowed });
+    const reply = await writeContextualReply({ message, intent, state, nextKey, fallback, commercial: continuityCommercial, priceRequest, repeated, previousReply, knowledge, justConfirmed, style, proactiveSuggestions, proactiveAllowed });
 
     state.next_best_question_key = nextKey;
     state.next_best_question_context = {
@@ -1090,7 +1136,7 @@ Deno.serve(async (req) => {
       inferred_facts: inferred,
       extraction_mode: extraction.mode,
       price_request: priceRequest,
-      commercial_snapshot: commercial,
+      commercial_snapshot: continuityCommercial,
       knowledge_ids: knowledge.map((x: any) => x.id),
       previous_question_key: previousKey,
       repeat_count: repeatCount,
@@ -1099,7 +1145,8 @@ Deno.serve(async (req) => {
       selected_design: selectedDesign,
       feature_question: featureQuestion,
       upgrade_question: upgradeQuestion,
-      proactive_offer_made: previousContext?.proactive_offer_made === true || proactiveAllowed,
+      proactive_offer_made: sameDesignAsPreviousOffer ? (previousContext?.proactive_offer_made === true || proactiveAllowed) : proactiveAllowed,
+      proactive_offer_design: proactiveAllowed ? selectedDesign : (sameDesignAsPreviousOffer ? previousContext?.proactive_offer_design : null),
       proactive_suggestions: proactiveSuggestions,
     };
 
