@@ -28,7 +28,7 @@ type CatalogProduct = {
   metadata?: any;
 };
 
-const BUILD_ID = "black-ai-case-orchestrator-20260923-stage-polish1";
+const BUILD_ID = "black-ai-case-orchestrator-20260926-quote-structure1";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -699,7 +699,31 @@ CONOCIMIENTO APROBADO: ${JSON.stringify(knowledge)}
 
 function money(value: number, currency = "ARS") {
   try { return new Intl.NumberFormat("es-AR", { style: "currency", currency, maximumFractionDigits: 0 }).format(Math.round(value)); }
-  catch (_) { return `$${Math.round(value).toLocaleString("es-AR")}`; }
+  catch (_) { return `${Math.round(value).toLocaleString("es-AR")}`; }
+}
+
+function productMaterialLabel(row: any) {
+  const material = String(row?.material || "").trim();
+  if (material) return material;
+  const name = String(row?.name || "");
+  const match = name.match(/\b(1[.,](?:49|50|56|59|60|61|67|70|74))\b/);
+  if (match) return match[1].replace(",", ".");
+  if (/organico blanco/i.test(name)) return "Orgánico blanco";
+  if (/policarbonato/i.test(name)) return "Policarbonato";
+  return null;
+}
+
+function quoteKnowledgeFlags(knowledge: any[]) {
+  const text = normalizeText((knowledge || []).map((x: any) => `${x?.title || ""} ${x?.content || ""}`).join(" "));
+  return {
+    mentions_brands: /varilux|essilor|todas las marcas|marcas del mercado/.test(text),
+    mentions_digital_line: /tallado digital|linea de tallado digital/.test(text),
+    mentions_adaptation_guarantee: /garantia de adaptacion|ajustes.*sin cargo/.test(text),
+    mentions_antireflective: /antirreflejo/.test(text),
+    mentions_blue_filter: /filtro.*azul|luz azul/.test(text),
+    mentions_photochromic: /fotocrom/.test(text),
+    mentions_frames: /armazon|armazones/.test(text),
+  };
 }
 
 function recommendedDesignOrder(knowledge: any[], opticalCase: string | null) {
@@ -768,6 +792,8 @@ async function getCommercialSnapshot(supabase: any, state: any, knowledge: any[]
     brandMatchCount = rows.filter((row: any) => normalizeText(productBrand(row)).includes(target) || searchableProductText(row).includes(target)).length;
   }
 
+  const knowledgeFlags = quoteKnowledgeFlags(knowledge);
+
   return {
     optical_case: opticalCase,
     currency: examples[0]?.currency || rows[0]?.currency || "ARS",
@@ -783,11 +809,13 @@ async function getCommercialSnapshot(supabase: any, state: any, knowledge: any[]
     available_brands: features.brands,
     available_materials: features.materials,
     enhancement_options: enhancementOptions,
+    quote_knowledge_flags: knowledgeFlags,
     examples: examples.map((x: any) => ({
       id: x.id,
       name: x.name,
       design: x.design,
       material: x.material,
+      material_label: productMaterialLabel(x),
       treatment: x.treatment,
       supply_mode: x.supply_mode,
       brand: x.detected_brand || null,
@@ -846,6 +874,13 @@ REGLAS DURAS:
 - Si el paciente expresó marca/material/tratamiento, respetá esa preferencia. Si requested_brand_found=false, no afirmes que esa marca está disponible.
 - Si price_request=none, no muestres precios.
 - Si price_request=general, podés mostrar opciones de CATÁLOGO DISPONIBLE en el orden exacto recibido.
+- En una cotización general de multifocales, respetá la estructura comercial cargada en CONOCIMIENTO. Si quote_knowledge_flags lo respalda:
+  1) abrí con una frase breve sobre marcas/tallado digital;
+  2) mostrà ONE → NEW → FREE → AILENS con descripción, MATERIAL/ÍNDICE y precio "Desde";
+  3) cerrá con mejoras opcionales disponibles como antirreflejo, filtro de luz azul y fotocromático, sin inventar precios que no estén en CATÁLOGO;
+  4) mencioná garantía de adaptación si está respaldada por CONOCIMIENTO.
+- No ocultes el material del producto. Si cada ejemplo trae material_label, incluilo en la línea de la opción para que quede claro qué material/índice corresponde al precio mostrado.
+- Si el catálogo no confirma el precio de una mejora, decí "consultar" o "te lo cotizo según la variante", pero NO uses un importe viejo de Conocimiento.
 - Si price_request=general y ya respondiste con precios/opciones, NO agregues después una frase sobre "evaluación técnica", "familia técnica" o el PRÓXIMO PASO salvo que el paciente haya pedido una cotización personalizada con su receta.
 - Si CATÁLOGO DISPONIBLE trae selected_design, interpretá pronombres como "ese", "eso" o "el Free" dentro de ese diseño.
 - Diferenciá filtro de luz azul y antirreflejo: son mejoras distintas. Nunca los presentes como si fueran lo mismo.
