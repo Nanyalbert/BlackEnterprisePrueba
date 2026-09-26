@@ -28,7 +28,7 @@ type CatalogProduct = {
   metadata?: any;
 };
 
-const BUILD_ID = "black-ai-case-orchestrator-20260926-soft-rx-flow1";
+const BUILD_ID = "black-ai-case-orchestrator-20260926-advisory-quote1";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -726,6 +726,56 @@ function quoteKnowledgeFlags(knowledge: any[]) {
   };
 }
 
+function commercialTierForProduct(row: any) {
+  const text = searchableProductText(row);
+  const treatment = normalizeText(row?.treatment);
+  if (isHighIndex(row)) return "aesthetic_high_index";
+  if (hasTreatment(row, "photochromic")) return "photochromic";
+  if (hasTreatment(row, "blue_filter")) return "blue_filter";
+  if (hasTreatment(row, "antireflective")) return "antireflective";
+  if (!treatment || treatment === "none" || /organico blanco|blanco/.test(text)) return "base_untreated";
+  return "other";
+}
+
+function buildCommercialLadder(rows: CatalogProduct[]) {
+  const buckets = new Map<string, CatalogProduct[]>();
+  for (const row of rows || []) {
+    const key = commercialTierForProduct(row);
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key)!.push(row);
+  }
+
+  const choose = (key: string) => {
+    const items = buckets.get(key) || [];
+    return items
+      .filter((x) => Number.isFinite(Number(x.base_price)) && Number(x.base_price) > 0)
+      .sort((a, b) => Number(a.base_price) - Number(b.base_price))[0] || null;
+  };
+
+  const defs: Array<[string,string,string]> = [
+    ["base_untreated","económica","Sin tratamiento adicional"],
+    ["antireflective","confort","Con antirreflejo"],
+    ["blue_filter","protección","Con filtro de luz azul"],
+    ["photochromic","versatilidad","Fotocromático"],
+    ["aesthetic_high_index","estética","Mayor índice / alternativa estética"],
+  ];
+
+  return defs.map(([key,label,description]) => {
+    const row = choose(key);
+    if (!row) return null;
+    return {
+      key,
+      label,
+      description,
+      name: row.name,
+      design: row.design,
+      material: productMaterialLabel(row),
+      price: Number(row.base_price),
+      price_label: money(Number(row.base_price), row.currency || "ARS"),
+    };
+  }).filter(Boolean);
+}
+
 function recommendedDesignOrder(knowledge: any[], opticalCase: string | null) {
   for (const item of knowledge || []) {
     if (item?.data?.role === "commercial_recommendation" && (!item.data.optical_case || item.data.optical_case === opticalCase) && Array.isArray(item.data.recommended_order)) {
@@ -793,6 +843,7 @@ async function getCommercialSnapshot(supabase: any, state: any, knowledge: any[]
   }
 
   const knowledgeFlags = quoteKnowledgeFlags(knowledge);
+  const commercialLadder = buildCommercialLadder(rows);
 
   return {
     optical_case: opticalCase,
@@ -810,6 +861,7 @@ async function getCommercialSnapshot(supabase: any, state: any, knowledge: any[]
     available_materials: features.materials,
     enhancement_options: enhancementOptions,
     quote_knowledge_flags: knowledgeFlags,
+    commercial_ladder: commercialLadder,
     examples: examples.map((x: any) => ({
       id: x.id,
       name: x.name,
@@ -876,9 +928,13 @@ REGLAS DURAS:
 - Si price_request=general, podés mostrar opciones de CATÁLOGO DISPONIBLE en el orden exacto recibido.
 - En una cotización general de multifocales, respetá la estructura comercial cargada en CONOCIMIENTO. Si quote_knowledge_flags lo respalda:
   1) si mentions_brands=true, DEBÉS aclarar que trabajan con otras marcas y mencionar únicamente ejemplos que aparezcan en CONOCIMIENTO (por ejemplo Varilux/Essilor si están allí); si mentions_digital_line=true, podés sumar la línea propia de tallado digital;
-  2) mostrà ONE → NEW → FREE → AILENS con descripción, MATERIAL/ÍNDICE y precio "Desde";
-  3) cerrá con mejoras opcionales disponibles como antirreflejo, filtro de luz azul y fotocromático, sin inventar precios que no estén en CATÁLOGO;
-  4) mencioná garantía de adaptación si está respaldada por CONOCIMIENTO.
+  2) si ya tenés datos suficientes de uso/experiencia para orientar, abrí con UNA recomendación breve ("Por lo que me contás, miraría primero..."), pero igualmente cotizá TODAS las opciones ONE → NEW → FREE → AILENS;
+  3) mostrà ONE → NEW → FREE → AILENS con descripción, MATERIAL/ÍNDICE y precio "Desde";
+  4) después contextualizá el nivel de producto: si commercial_ladder trae base_untreated, aclarà que hay alternativas más económicas sin tratamiento adicional; si trae antireflective/blue_filter/photochromic, presentalas como mejoras opcionales; si trae aesthetic_high_index, podés mencionar que existe una alternativa de mayor índice orientada a una terminación estética más fina, sin decir que es necesaria;
+  5) cerrá con garantía de adaptación si está respaldada por CONOCIMIENTO.
+- El paciente tiene que entender QUÉ está comparando: diseño multifocal por un lado (ONE/NEW/FREE/AILENS) y material/tratamiento por otro. No mezcles una mejora de tratamiento con una mejora de diseño como si fueran la misma cosa.
+- Cuando muestres "Desde", explicá brevemente que corresponde a la configuración/material indicado y que tratamientos o materiales superiores pueden modificar el valor.
+- No listes cinco tratamientos si no aporta valor: recomendá primero 1 o 2 mejoras razonables y aclarà que existen más alternativas si quiere comparar.
 - La receta NO debe ser una barrera para dar precios orientativos "Desde". Si SOFT_PRESCRIPTION_PROMPT=sí, después de orientar al paciente agregá UNA sola frase natural: "Si me pasás tu receta, te lo puedo cotizar con mayor precisión." No frenes la respuesta esperando la receta.
 - Si PRESCRIPTION_DECLINED=sí, no vuelvas a pedir la receta en esa etapa. Continuá asesorando con valores orientativos, usos, experiencia y preferencias. Solo retomá la receta si el paciente pide una cotización exacta/personalizada o decide enviarla.
 - Esta misma lógica aplica a otros lentes graduados: podés orientar sin receta con precios generales disponibles, pero para compatibilidad exacta, graduación, Stock/R.E./Laboratorio o una propuesta personalizada necesitás la receta.
@@ -903,7 +959,7 @@ REGLAS DURAS:
 - No hagas una recomendación personalizada si todavía falta información necesaria.
 - Si INTENCIÓN=recommendation_request y ya hay datos suficientes: elegí UNA opción principal y, solo si aporta valor, UNA alternativa. Explicá el motivo en una frase por opción. Si falta un dato decisivo, hacé una sola pregunta.
 - Si INTENCIÓN=sales_objection: reconocé la objeción sin discutir ni presionar. No inventes descuentos. Usá las opciones ya mostradas en CATÁLOGO DISPONIBLE para ofrecer una alternativa real de menor costo o distinta configuración, sin reiniciar la conversación.
-- Si INTENCIÓN=recommendation_request: tené en cuenta las opciones que ya vio el paciente; no vuelvas a listar todo desde cero.
+- Si INTENCIÓN=recommendation_request: tené en cuenta las opciones que ya vio el paciente. Si además pidió "precio de todos" o "todas las opciones", hacé ambas cosas: recomendá una principal en una frase y luego mostrà la tabla/listado completo con descripciones breves.
 - Si INTENCIÓN=buying_signal: dejá de sobreexplicar. Si el paciente dice "el segundo", "el más barato", "ese", etc., usá selected_design/CATÁLOGO DISPONIBLE para resolver a qué opción se refiere. Confirmá brevemente la opción elegida y proponé UN siguiente paso concreto para avanzar.
 - No repitas muletillas como "Perfecto", "Claro" o "Genial" en todos los mensajes.
 - No preguntes por todo junto. Una sola pregunta principal y solo si realmente hace falta.
