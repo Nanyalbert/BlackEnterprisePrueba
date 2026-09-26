@@ -28,7 +28,7 @@ type CatalogProduct = {
   metadata?: any;
 };
 
-const BUILD_ID = "black-ai-case-orchestrator-20260926-quote-structure1";
+const BUILD_ID = "black-ai-case-orchestrator-20260926-soft-rx-flow1";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -858,8 +858,8 @@ function sanitizeWhatsappReply(text: string) {
     .trim();
 }
 
-async function writeContextualReply(args: { message: string; intent: string; state: any; nextKey: string | null; fallback: string; commercial: any; priceRequest: string; repeated: boolean; previousReply: string; knowledge: any[]; justConfirmed: boolean; style: any; proactiveSuggestions?: any[]; proactiveAllowed?: boolean }) {
-  const { message, intent, state, nextKey, fallback, commercial, priceRequest, repeated, previousReply, knowledge, justConfirmed, style, proactiveSuggestions = [], proactiveAllowed = false } = args;
+async function writeContextualReply(args: { message: string; intent: string; state: any; nextKey: string | null; fallback: string; commercial: any; priceRequest: string; repeated: boolean; previousReply: string; knowledge: any[]; justConfirmed: boolean; style: any; proactiveSuggestions?: any[]; proactiveAllowed?: boolean; softPrescriptionPrompt?: boolean; prescriptionDeclined?: boolean }) {
+  const { message, intent, state, nextKey, fallback, commercial, priceRequest, repeated, previousReply, knowledge, justConfirmed, style, proactiveSuggestions = [], proactiveAllowed = false, softPrescriptionPrompt = false, prescriptionDeclined = false } = args;
   const openAiKey = Deno.env.get("OPENAI_API_KEY") || "";
   if (!openAiKey || !message.trim()) return fallback;
   const model = Deno.env.get("OPENAI_MODEL") || "gpt-5.6-luna";
@@ -875,10 +875,13 @@ REGLAS DURAS:
 - Si price_request=none, no muestres precios.
 - Si price_request=general, podés mostrar opciones de CATÁLOGO DISPONIBLE en el orden exacto recibido.
 - En una cotización general de multifocales, respetá la estructura comercial cargada en CONOCIMIENTO. Si quote_knowledge_flags lo respalda:
-  1) abrí con una frase breve sobre marcas/tallado digital;
+  1) si mentions_brands=true, DEBÉS aclarar que trabajan con otras marcas y mencionar únicamente ejemplos que aparezcan en CONOCIMIENTO (por ejemplo Varilux/Essilor si están allí); si mentions_digital_line=true, podés sumar la línea propia de tallado digital;
   2) mostrà ONE → NEW → FREE → AILENS con descripción, MATERIAL/ÍNDICE y precio "Desde";
   3) cerrá con mejoras opcionales disponibles como antirreflejo, filtro de luz azul y fotocromático, sin inventar precios que no estén en CATÁLOGO;
   4) mencioná garantía de adaptación si está respaldada por CONOCIMIENTO.
+- La receta NO debe ser una barrera para dar precios orientativos "Desde". Si SOFT_PRESCRIPTION_PROMPT=sí, después de orientar al paciente agregá UNA sola frase natural: "Si me pasás tu receta, te lo puedo cotizar con mayor precisión." No frenes la respuesta esperando la receta.
+- Si PRESCRIPTION_DECLINED=sí, no vuelvas a pedir la receta en esa etapa. Continuá asesorando con valores orientativos, usos, experiencia y preferencias. Solo retomá la receta si el paciente pide una cotización exacta/personalizada o decide enviarla.
+- Esta misma lógica aplica a otros lentes graduados: podés orientar sin receta con precios generales disponibles, pero para compatibilidad exacta, graduación, Stock/R.E./Laboratorio o una propuesta personalizada necesitás la receta.
 - No ocultes el material del producto. Si cada ejemplo trae material_label, incluilo en la línea de la opción para que quede claro qué material/índice corresponde al precio mostrado.
 - Si el catálogo no confirma el precio de una mejora, decí "consultar" o "te lo cotizo según la variante", pero NO uses un importe viejo de Conocimiento.
 - Si price_request=general y ya respondiste con precios/opciones, NO agregues después una frase sobre "evaluación técnica", "familia técnica" o el PRÓXIMO PASO salvo que el paciente haya pedido una cotización personalizada con su receta.
@@ -919,6 +922,8 @@ PRÓXIMO PASO: ${nextKey || "sin clave"}
 PREGUNTA BASE: ${fallback || ""}
 PROACTIVE_ALLOWED: ${proactiveAllowed ? "sí" : "no"}
 PROACTIVE_SUGGESTIONS: ${JSON.stringify(proactiveSuggestions)}
+SOFT_PRESCRIPTION_PROMPT: ${softPrescriptionPrompt ? "sí" : "no"}
+PRESCRIPTION_DECLINED: ${prescriptionDeclined ? "sí" : "no"}
 SE REPITE: ${repeated ? "sí" : "no"}
 RESPUESTA ANTERIOR: ${String(previousReply || "").slice(0, 1000)}
 `.trim();
@@ -985,13 +990,26 @@ Deno.serve(async (req) => {
     const pendingPrescription = current.prescription_status === "awaiting_confirmation" || current.prescription_status === "needs_review";
     let justConfirmed = false;
 
+    let prescriptionDeclinedNow = false;
     if (explicitlyDeniesPrescription(message)) {
-      const upserted = await persistContext(supabase, current, phone, {
-        prescription: {}, prescription_status: "none", prescription_confirmed_at: null, prescription_source_message_id: null, prescription_analysis: {}, prescription_updated_at: null,
-        technical_result: {}, candidate_products: [], missing_data: [], technical_family_key: null, requires_human_review: false, stage: "discovery", last_patient_message_at: new Date().toISOString(),
-        next_best_question_key: null, next_best_question_context: { build_id: BUILD_ID, last_message: message.slice(0, 500), route: "prescription_state_reset", reason: "patient_denied_having_sent_prescription" },
-      });
-      return json({ ok: true, build_id: BUILD_ID, state: upserted, reply: "Perfecto, gracias por aclararlo. Dejamos de lado la receta. ¿Qué querés consultar?", route: "prescription_state_reset" });
+      prescriptionDeclinedNow = true;
+      current.prescription = {};
+      current.prescription_status = "none";
+      current.prescription_confirmed_at = null;
+      current.prescription_source_message_id = null;
+      current.prescription_analysis = {};
+      current.prescription_updated_at = null;
+      current.technical_result = {};
+      current.candidate_products = [];
+      current.missing_data = [];
+      current.technical_family_key = null;
+      current.requires_human_review = false;
+      current.stage = "discovery";
+      current.next_best_question_context = {
+        ...(current.next_best_question_context || {}),
+        prescription_declined: true,
+        prescription_declined_at: new Date().toISOString(),
+      };
     }
 
     const knowledgeProbe = await getKnowledgeSnapshot(supabase, message, intent, { optical_case: inferredOpticalCase, treatment: treatmentContext(inferred.preferences) });
@@ -1107,6 +1125,18 @@ Deno.serve(async (req) => {
       nextKey = data;
     }
 
+    const prescriptionDeclined = Boolean(
+      prescriptionDeclinedNow
+      || current?.next_best_question_context?.prescription_declined === true
+    );
+
+    // La receta mejora la precisión, pero no debe bloquear una orientación general.
+    if (nextKey === "request_prescription" && prescriptionDeclined) {
+      if (!state.main_use && state.optical_case) nextKey = "ask_main_use";
+      else if (state.optical_case === "multifocal" && !state.previous_lens_type) nextKey = "ask_previous_lens_experience";
+      else nextKey = "general_quote_without_prescription";
+    }
+
     const knowledge = await getKnowledgeSnapshot(supabase, message, intent === "other" ? "prescription_lens_quote" : intent, {
       optical_case: state.optical_case,
       supply_mode: state.technical_result?.supply_mode || null,
@@ -1122,6 +1152,12 @@ Deno.serve(async (req) => {
     const configuredProductPrice = priceRequest === "exact" && Boolean(selectedDesign) && hasConfiguredPreference;
     const allowPatientSpecificPrice = priceRequest === "exact" && state.prescription_status === "confirmed" && !["request_prescription", "complete_prescription", "request_axis_od", "request_axis_oi", "request_addition", "clarify_optical_case", "ask_main_use", "ask_previous_lens_experience", "choose_technical_family", "run_technical_evaluation"].includes(String(nextKey));
     const allowPrice = priceRequest === "general" || configuredProductPrice || allowPatientSpecificPrice;
+    const softPrescriptionPrompt = Boolean(
+      state.optical_case
+      && state.prescription_status !== "confirmed"
+      && !prescriptionDeclined
+      && ["prescription_lens_quote", "recommendation_request", "other"].includes(intent)
+    );
     const needCatalogContext = allowPrice || featureQuestion || upgradeQuestion || Boolean(selectedDesign);
     const commercial = needCatalogContext && state.optical_case
       ? await getCommercialSnapshot(supabase, state, knowledge, { selectedDesign, strictPreferences: configuredProductPrice || featureQuestion })
@@ -1158,7 +1194,7 @@ Deno.serve(async (req) => {
       && !upgradeQuestion
     );
 
-    const reply = await writeContextualReply({ message, intent, state, nextKey, fallback, commercial: continuityCommercial, priceRequest, repeated, previousReply, knowledge, justConfirmed, style, proactiveSuggestions, proactiveAllowed });
+    const reply = await writeContextualReply({ message, intent, state, nextKey, fallback, commercial: continuityCommercial, priceRequest, repeated, previousReply, knowledge, justConfirmed, style, proactiveSuggestions, proactiveAllowed, softPrescriptionPrompt, prescriptionDeclined });
 
     state.next_best_question_key = nextKey;
     state.next_best_question_context = {
@@ -1183,6 +1219,8 @@ Deno.serve(async (req) => {
       proactive_offer_made: sameDesignAsPreviousOffer ? (previousContext?.proactive_offer_made === true || proactiveAllowed) : proactiveAllowed,
       proactive_offer_design: proactiveAllowed ? selectedDesign : (sameDesignAsPreviousOffer ? previousContext?.proactive_offer_design : null),
       proactive_suggestions: proactiveSuggestions,
+      prescription_declined: prescriptionDeclined,
+      soft_prescription_prompt: softPrescriptionPrompt,
     };
 
     const { data: upserted, error: upsertError } = await supabase.from("black_ai_case_state").upsert(state, { onConflict: "phone" }).select("*").single();
