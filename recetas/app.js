@@ -1,4 +1,4 @@
-import { asNumber, emptyPrescription, parseDetailedPrescription, suggestAdd, validatePrescription } from "./parser.js";
+import { asNumber, emptyPrescription, suggestAdd, validatePrescription } from "./parser.js";
 
 if (new URLSearchParams(location.search).has("embedded")) document.body.classList.add("embedded");
 const supabaseClient = window.parent?.BlackPortal?.getSupabase?.() || window.BlackPortal?.getSupabase?.();
@@ -125,50 +125,6 @@ function invalidate() {
   render();
 }
 
-function applyText(text, fromScan = false) {
-  state.aiDraft = false;
-  const parsed = parseDetailedPrescription(text);
-  state.rx = parsed.far;
-  state.near = parsed.near || emptyPrescription();
-  state.nearEnabled = Boolean(parsed.near?.od.sphere || parsed.near?.oi.sphere);
-  if (fromScan) state.type = parsed.far.add || state.nearEnabled ? "both" : null;
-  syncInputs();
-  invalidate();
-  return Boolean(parsed.far.od.sphere && parsed.far.oi.sphere);
-}
-
-let ocrScriptPromise;
-function getTesseract() {
-  if (window.Tesseract?.createWorker) return Promise.resolve(window.Tesseract);
-  if (!ocrScriptPromise) {
-    ocrScriptPromise = new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = "https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js";
-      script.onload = () => window.Tesseract?.createWorker ? resolve(window.Tesseract) : reject(new Error("OCR no disponible"));
-      script.onerror = () => reject(new Error("No se pudo cargar el motor de lectura"));
-      document.head.append(script);
-    }).catch(error => { ocrScriptPromise = null; throw error; });
-  }
-  return ocrScriptPromise;
-}
-
-async function recognize(image) {
-  const Tesseract = await getTesseract();
-  const worker = await Tesseract.createWorker("spa+eng", 1, {
-    logger: event => {
-      if (event.status === "recognizing text") {
-        setStatus(`Leyendo la receta… ${Math.round((event.progress || 0) * 100)}%`);
-      }
-    },
-  });
-  try {
-    const result = await worker.recognize(image);
-    return { text: result.data.text.trim(), confidence: result.data.confidence || 0 };
-  } finally {
-    await worker.terminate();
-  }
-}
-
 async function readPdf(file) {
   const pdfjs = await import("https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/build/pdf.mjs");
   pdfjs.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/build/pdf.worker.mjs";
@@ -183,9 +139,7 @@ async function readPdf(file) {
     canvas.width = Math.round(scaled.width);
     canvas.height = Math.round(scaled.height);
     await page.render({ canvas, canvasContext: canvas.getContext("2d"), viewport: scaled }).promise;
-    const content = await page.getTextContent();
-    const text = content.items.map(item => `${item.str || ""}${item.hasEOL ? "\n" : " "}`).join("").trim();
-    return { preview: canvas.toDataURL("image/png"), canvas, text, pages: pdf.numPages };
+    return { preview: canvas.toDataURL("image/png"), pages: pdf.numPages };
   } finally {
     await loading.destroy();
   }
@@ -222,39 +176,22 @@ async function handleFile(file) {
   state.near = emptyPrescription();
   state.nearEnabled = false;
   syncInputs();
-  $("rawText").value = "";
-  $("rawDetails").hidden = true;
   setStatus("Preparando el archivo…");
   try {
-    let text, pages = 1, confidence = 100;
+    let pages = 1;
     if (pdf) {
       const pdfResult = await readPdf(file);
       showPreview(pdfResult.preview);
       state.aiSource = pdfResult.preview;
       pages = pdfResult.pages;
-      text = pdfResult.text;
-      const parsed = parseDetailedPrescription(text).far;
-      if (!parsed.od.sphere || !parsed.oi.sphere) {
-        const result = await recognize(pdfResult.canvas);
-        text = result.text;
-        confidence = result.confidence;
-      }
     } else {
       showPreview(URL.createObjectURL(file));
       state.aiSource = file;
-      const result = await recognize(file);
-      text = result.text;
-      confidence = result.confidence;
     }
-    $("rawText").value = text;
-    $("rawDetails").hidden = !text;
-    const found = confidence >= 50 && applyText(text, true);
-    const pageNote = pages > 1 ? " Se analizó solo la primera página del PDF." : "";
-    if (!found) setStatus("La lectura automática no es confiable para esta foto. Ampliá la receta y cargá los valores a mano; verificá lejos y cerca por separado." + pageNote);
-    else setStatus("Lectura preliminar lista. Verificá signos, eje y tipo de receta con el original." + pageNote);
+    setStatus("Receta cargada. Tocá «Interpretar receta» para leerla con Black AI, o completá los valores a mano." + (pages > 1 ? " Se usará solo la primera página del PDF." : ""));
   } catch (error) {
     console.error("Lectura de receta:", error);
-    setStatus("No se pudo completar la lectura automática. La imagen sigue disponible para cargar los valores a mano.");
+    setStatus("No se pudo abrir este archivo. Elegí otra imagen o un PDF válido.");
   } finally {
     setBusy(false);
   }
@@ -298,23 +235,14 @@ async function interpretWithAI() {
   }
 }
 
-function optionsFor(rx, type) {
-  const stronger = [rx.od, rx.oi].some(eye =>
-    Math.abs(asNumber(eye.sphere) || 0) >= 4 || Math.abs(asNumber(eye.cylinder) || 0) >= 2);
+function optionsFor(_rx, type) {
   if (type === "both") return [
-    { name: "Smart ONE", tier: "Esencial", benefit: "Lejos y cerca en un mismo anteojo", reason: "La ADD permite evaluar un multifocal para alternar distancias." },
-    { name: "Smart NEW", tier: "Equilibrado", benefit: "Transición entre distancias", reason: "Para alternar lectura, conversación y visión lejana." },
-    { name: "Smart FREE", tier: "Mayor comodidad", benefit: "Libertad en el uso cotidiano", reason: "Comparar diseño, amplitud de campos y adaptación." },
-    { name: "Smart AILENS", tier: "Personalizado", benefit: "Diseño ajustado a medidas", reason: "Requiere confirmar parámetros de montaje y disponibilidad." },
+    { name: "Multifocal", tier: "Diseño a evaluar", benefit: "Un anteojo para varias distancias", reason: "La elección depende de las tareas, la adaptación y los rangos del producto." },
+    { name: "Bifocal", tier: "Diseño a evaluar", benefit: "Zonas de lejos y cerca", reason: "Comparar preferencia del paciente y disponibilidad antes de cotizar." },
+    { name: "Dos monofocales", tier: "Alternativa", benefit: "Un anteojo para lejos y otro para cerca", reason: "Evaluar si prefiere separar usos y cambios de anteojo." },
   ];
   const location = type === "near" ? "cerca" : "lejos";
-  return [
-    { name: `Orgánico blanco · ${location}`, tier: "Esencial", benefit: `Corrección monofocal para ${location}`, reason: "Base para comparar alternativas de materiales y tratamientos." },
-    { name: `Antirreflejo · ${location}`, tier: "Confort", benefit: "Menos reflejos en el cristal", reason: "Misma corrección con tratamiento antirreflejo." },
-    stronger
-      ? { name: "Índice y espesor a evaluar", tier: "Estética", benefit: "Posible menor espesor y peso", reason: "Confirmar material, diámetro y armazón con el laboratorio." }
-      : { name: `Filtro azul · ${location}`, tier: "Opcional", benefit: "Tratamiento a elección del paciente", reason: "Ofrecer por preferencia, sin prometer reducción de fatiga visual." },
-  ];
+  return [{ name: `Monofocal para ${location}`, tier: "Diseño a evaluar", benefit: `Corrección para ${location}`, reason: "El material, tratamiento y artículo se eligen con el catálogo y la graduación verificada." }];
 }
 
 function signed(value) {
@@ -324,7 +252,7 @@ function signed(value) {
 
 async function copySummary() {
   const type = state.type === "near" ? "Solo cerca" : state.type === "both" ? "Lejos y cerca" : "Solo lejos";
-  const lines = ["Opciones para conversar en Black Óptica", `Receta: ${type}`];
+  const lines = ["Categorías a evaluar en Black Óptica", `Receta: ${type}`];
   for (const key of ["od", "oi"]) {
     const eye = state.rx[key];
     lines.push(`${key.toUpperCase()}: ESF ${signed(eye.sphere)} / CIL ${signed(eye.cylinder || "0")} / EJE ${eye.axis || "—"}°`);
@@ -336,7 +264,7 @@ async function copySummary() {
       lines.push(`Cerca ${key.toUpperCase()}: ESF ${signed(eye.sphere)} / CIL ${signed(eye.cylinder || "0")} / EJE ${eye.axis || "—"}°`);
     }
   }
-  lines.push("", ...state.options.map(option => `• ${option.name}: ${option.benefit}.`), "", "Sujeto a verificación de receta, medidas, stock y disponibilidad del laboratorio.");
+  lines.push("", ...state.options.map(option => `• ${option.name}: ${option.benefit}.`), "", "Categorías orientativas; no representan artículos compatibles ni una cotización. Verificar rangos, medidas, stock y laboratorio.");
   try {
     await navigator.clipboard.writeText(lines.join("\n"));
     $("copyButton").textContent = "Copiado";
@@ -403,18 +331,12 @@ $("exampleButton").addEventListener("click", () => {
   invalidate();
   setStatus("Ejemplo cargado. Podés reemplazar los valores.");
 });
-$("reparseButton").addEventListener("click", () => {
-  const found = applyText($("rawText").value);
-  setStatus(found ? "Texto aplicado. Verificá los valores con la receta." : "No identifiqué ambos ojos. Completá los valores a mano.");
-});
 $("clearButton").addEventListener("click", () => {
   if (state.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(state.previewUrl);
   state.previewUrl = null;
   state.aiSource = null;
   state.aiDraft = false;
   $("preview").removeAttribute("src");
-  $("rawText").value = "";
-  $("rawDetails").hidden = true;
   state.rx = emptyPrescription();
   state.near = emptyPrescription();
   state.nearEnabled = false;

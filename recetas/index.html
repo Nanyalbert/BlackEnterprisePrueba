@@ -7,7 +7,11 @@
   <meta name="description" content="Asistente interno de Black Óptica para revisar recetas y comparar opciones de cristales.">
   <title>Black Recetas | Black Óptica</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./black-os.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="../assets/js/supabase-config.js"></script>
   <script type="module" src="./app.js"></script>
@@ -15,12 +19,12 @@
 <body>
 <main class="app-shell">
   <header class="topbar">
-    <div class="brand"><span class="brand-mark">B</span><div><strong>BLACK</strong><small>RECETAS</small></div></div>
+    <div class="brand"><img class="brand-logo" src="../assets/img/Logo---Black.png" alt=""><div><strong>Black Óptica</strong><small>RECETAS</small></div></div>
     <span class="internal-label">BLACK ÓPTICA / INTERNO</span>
   </header>
   <div class="workspace">
     <div class="intro">
-      <div><p class="eyebrow">ASISTENTE DE MOSTRADOR</p><h1>Una receta. <em>Mejores opciones.</em></h1><p>Interpretá la graduación y compará cristales según lo que necesita el paciente.</p></div>
+      <div><p class="eyebrow">BLACK OS / ASISTENTE DE MOSTRADOR</p><h1>Una receta. <em>Mejores opciones.</em></h1><p>Interpretá la graduación y compará cristales según lo que necesita el paciente.</p></div>
       <div class="privacy"><span>PRIVACIDAD</span>La lectura básica queda en este dispositivo. Si elegís IA, la imagen se envía al servicio de interpretación.</div>
     </div>
     <div class="columns">
@@ -29,14 +33,14 @@
         <div class="upload" id="dropZone">
           <img id="preview" alt="Receta cargada para revisar" hidden>
           <div class="upload-empty" id="uploadEmpty">
-            <span class="upload-icon" aria-hidden="true">↥</span>
+            <span class="upload-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V3m0 0 5 5m-5-5L7 8M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>
             <strong>Cargá la receta</strong>
             <span>Arrastrá una imagen o elegí cómo cargarla</span>
             <div class="upload-buttons">
-              <label class="upload-action"><span aria-hidden="true">▣</span> Tomar foto
+              <label class="upload-action"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="3.5"/></svg> Tomar foto
                 <input id="cameraInput" aria-label="Tomar foto de receta" type="file" accept="image/*" capture="environment">
               </label>
-              <label class="upload-secondary"><span aria-hidden="true">▤</span> Elegir archivo
+              <label class="upload-secondary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6m-6 4h6"/></svg> Elegir archivo
                 <input id="fileInput" aria-label="Elegir imagen o PDF desde archivos" type="file">
               </label>
             </div>
@@ -44,27 +48,22 @@
           </div>
         </div>
         <div class="source-actions" id="sourceActions" hidden>
-          <button type="button" class="subtle-button" id="zoomButton">Ampliar receta ↗</button>
+          <button type="button" class="subtle-button" id="zoomButton"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5M8 10.5h5m-2.5-2.5v5"/></svg>Ampliar receta</button>
           <label class="subtle-button">Otra foto <input id="cameraAgain" type="file" accept="image/*" capture="environment" aria-label="Tomar otra foto"></label>
           <label class="subtle-button">Otro archivo <input id="fileAgain" type="file" aria-label="Elegir otro archivo"></label>
           <button type="button" class="subtle-button" id="clearButton">Limpiar</button>
         </div>
         <div class="ai-panel" id="aiPanel" hidden>
-          <strong>Interpretación con Black AI</strong>
+          <strong><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 2.1 6.9L21 11l-6.9 2.1L12 20l-2.1-6.9L3 11l6.9-2.1zM19 18l.7 1.3L21 20l-1.3.7L19 22l-.7-1.3L17 20l1.3-.7z"/></svg> Interpretación con Black AI</strong>
           <p>Envía esta imagen a la función de Supabase de Black OS y a OpenAI para leer la letra manuscrita. Revisá cada valor antes de usarlo.</p>
-          <div class="ai-controls"><button type="button" id="aiButton">Interpretar con Black AI</button></div>
+          <div class="ai-controls"><button type="button" id="aiButton">Interpretar receta <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 14 0m-6-6 6 6-6 6"/></svg></button></div>
         </div>
         <p role="status" class="scan-status" id="scanStatus" hidden></p>
-        <details class="raw-text" id="rawDetails" hidden>
-          <summary>Ver o corregir el texto reconocido</summary>
-          <textarea id="rawText" aria-label="Texto reconocido de la receta" spellcheck="false"></textarea>
-          <button type="button" id="reparseButton" class="reparse-button">Aplicar texto corregido</button>
-        </details>
         <div class="manual-actions">
-          <button type="button" class="subtle-button manual-link" id="manualButton">Ingresar datos a mano <span aria-hidden="true">↗</span></button>
-          <button type="button" class="subtle-button manual-link" id="exampleButton">Ver un ejemplo <span aria-hidden="true">↗</span></button>
+          <button type="button" class="subtle-button manual-link" id="manualButton">Ingresar datos a mano <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m13 5 6 6M4 20l4.5-1 11-11a2 2 0 0 0-3-3l-11 11L4 20z"/></svg></button>
+          <button type="button" class="subtle-button manual-link" id="exampleButton">Ver un ejemplo <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
         </div>
-        <div class="source-hint"><strong>Revisión obligatoria</strong><p>En recetas manuscritas el OCR puede fallar por completo. Ampliá la foto y completá los valores a mano; no uses el texto transcripto como receta.</p></div>
+        <div class="source-hint"><strong>Revisión obligatoria</strong><p>La IA propone una lectura, pero el vendedor debe cotejar signos, cilindros, ejes y distancia con la receta antes de cotizar.</p></div>
       </section>
 
       <section class="panel data-panel" aria-labelledby="data-heading">
@@ -112,19 +111,19 @@
         <div class="add-row" id="addRow" hidden><label for="add">ADICIÓN / ADD <span>necesaria para lejos y cerca</span></label><input id="add" inputmode="decimal" placeholder="+0.00"></div>
         <p class="type-note" id="typeNote" hidden></p>
         <ul class="issues" id="issues" hidden></ul>
-        <button type="button" class="confirm" id="confirmButton" disabled>Confirmar y ver opciones <span aria-hidden="true">→</span></button>
+        <button type="button" class="confirm" id="confirmButton" disabled>Confirmar y ver opciones <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
       </section>
     </div>
 
     <section id="results" class="results" aria-live="polite">
-      <div class="results-heading"><div><p class="eyebrow">03 / SELECCIÓN</p><h2>Opciones para el paciente</h2></div><button type="button" class="copy" id="copyButton" hidden>Copiar resumen</button></div>
+      <div class="results-heading"><div><p class="eyebrow">03 / ORIENTACIÓN</p><h2>Categorías a evaluar</h2></div><button type="button" class="copy" id="copyButton" hidden>Copiar resumen</button></div>
       <div class="result-context" id="resultContext" hidden></div>
       <div class="option-grid" id="optionGrid" hidden></div>
       <div class="empty-results" id="emptyResults"><p>Elegí el tipo de receta, verificá ambos ojos y confirmá para ver las alternativas.</p></div>
-      <p class="result-foot" id="resultFoot" hidden>Opciones orientativas. Confirmar diseño, rango de fabricación, medidas de montaje, armazón, disponibilidad y precio vigente antes de cotizar.</p>
+      <p class="result-foot" id="resultFoot" hidden>Estas categorías no son artículos compatibles ni una cotización. El catálogo administrable y sus rangos de fabricación se incorporarán en la próxima etapa.</p>
     </section>
   </div>
 </main>
-<dialog id="imageDialog" class="image-dialog" aria-label="Receta ampliada"><button type="button" id="closeDialog" aria-label="Cerrar receta ampliada">Cerrar ×</button><img id="dialogImage" alt="Receta ampliada"></dialog>
+<dialog id="imageDialog" class="image-dialog" aria-label="Receta ampliada"><button type="button" id="closeDialog" aria-label="Cerrar receta ampliada">Cerrar <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5 5 19"/></svg></button><img id="dialogImage" alt="Receta ampliada"></dialog>
 </body>
 </html>
