@@ -405,7 +405,8 @@ function ensureCrmNav(){
     <a href="crm-clientes.html#campanas">Campañas</a>
     <a href="seguimiento-presupuestos.html">Presupuestos</a>
     <a href="automatizaciones-postventa.html">Automatizaciones</a>
-    <a class="active" href="black-ai.html">IA</a>`;
+    <a class="active" href="black-ai.html">IA</a>
+    <a href="recetas/index.html">Recetas</a>`;
   document.body.appendChild(nav);
 }
 
@@ -443,3 +444,4 @@ renderAll();
 renderEvolutionStatus();
 ensureCrmNav();
 initSupabaseSettings().then(ok=>{if(ok)checkOpenAiRuntime();});
+

@@ -15,13 +15,15 @@ const TITLES = {
   usuarios: 'Usuarios',
   'crm-clientes': 'CRM Black',
   administracion: 'Administración',
-  'crm-oftalmologos': 'CRM Oftalmólogos'
+  'crm-oftalmologos': 'CRM Oftalmólogos',
+  recetas: 'Recetas'
 };
 
 const MODULE_VIEWS = [
   'crm-clientes',
   'administracion',
-  'crm-oftalmologos'
+  'crm-oftalmologos',
+  'recetas'
 ];
 
 function isMobileLayout() {
@@ -350,3 +352,4 @@ window.addEventListener('resize',()=>{
     else restoreSidebarPreference();
   }, 80);
 });
+

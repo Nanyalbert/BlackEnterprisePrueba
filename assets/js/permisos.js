@@ -43,6 +43,10 @@
         ['stats','Ver estadísticas']
       ]
     },
+    recetas: {
+      label:'Recetas', icon:'RX',
+      permissions:[['view','Ver y cargar recetas'],['interpret','Interpretar con Black AI'],['copy','Copiar alternativas']]
+    },
     turnos: {
       label:'Turnos',
       icon:'TUR',
@@ -273,3 +277,4 @@
   bindSave();
   if(typeof renderUsers==='function') renderUsers();
 })();
+
