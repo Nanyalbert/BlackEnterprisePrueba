@@ -1,5 +1,5 @@
 import { asNumber, emptyPrescription, suggestAdd, validatePrescription } from "./parser.js";
-import { normalizePair, nearFromAdd, validProduct, evaluateProduct, scoreProduct, explainOffer } from "./recommendations.js";
+import { normalizePair, nearFromAdd, validProduct, evaluateProduct, scoreProduct, explainOffer, selectThreeOffers } from "./recommendations.js";
 
 if (new URLSearchParams(location.search).has("embedded")) document.body.classList.add("embedded");
 const supabaseClient = window.parent?.BlackPortal?.getSupabase?.() || window.BlackPortal?.getSupabase?.();
@@ -10,7 +10,7 @@ const $ = id => document.getElementById(id);
 const fileInputs = ["cameraInput", "fileInput", "cameraAgain", "fileAgain"].map($);
 const fields = ["od-sphere", "od-cylinder", "od-axis", "oi-sphere", "oi-cylinder", "oi-axis", "add",
   "near-od-sphere", "near-od-cylinder", "near-od-axis", "near-oi-sphere", "near-oi-cylinder", "near-oi-axis"];
-const state = { rx: emptyPrescription(), near: emptyPrescription(), nearEnabled: false, type: null, busy: false, confirmed: false, previewUrl: null, aiSource: null, aiDraft: false, options: [], recommendations: [], offerStatus: "", evaluating: false, offerRun: 0 };
+const state = { rx: emptyPrescription(), near: emptyPrescription(), nearEnabled: false, type: null, busy: false, confirmed: false, previewUrl: null, aiSource: null, aiDraft: false, recommendations: [], alternatives: [], offerStatus: "", evaluating: false, offerRun: 0 };
 const sample = {
   od: { sphere: "-2.00", cylinder: "-0.75", axis: "180" },
   oi: { sphere: "-1.75", cylinder: "-0.50", axis: "175" },
@@ -104,7 +104,7 @@ function render() {
   $("evaluateButton").disabled = state.evaluating || !$("mainUse").value || !$("mainPriority").value || (state.type === "both" && !$("glassesFormat").value);
   $("evaluateButton").textContent = state.evaluating ? "Buscando en el catálogo…" : "Buscar artículos compatibles";
   if (!state.evaluating) $("evaluateButton").insertAdjacentHTML("beforeend", ' <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>');
-  $("copyButton").hidden = !state.recommendations.length;
+  $("copyButton").hidden = !state.recommendations.some(slot => slot.offer);
   $("resultContext").hidden = !state.confirmed;
   $("offerStatus").hidden = !state.offerStatus;
   $("offerStatus").textContent = state.offerStatus;
@@ -114,20 +114,36 @@ function render() {
   if (state.confirmed) {
     const typeLabel = state.type === "near" ? "solo cerca" : state.type === "both" ? "lejos y cerca" : "solo lejos";
     $("resultContext").textContent = `Receta: ${typeLabel}`;
-    $("optionGrid").replaceChildren(...state.recommendations.map((option, index) => {
+    $("optionGrid").replaceChildren(...state.recommendations.map(({ tier, offer: option }, index) => {
       const article = document.createElement("article");
-      article.className = "option";
+      article.className = `option${index === 1 ? " recommended" : ""}${!option ? " missing" : ""}`;
       article.innerHTML = `<div class="option-top"><span>${String(index + 1).padStart(2, "0")}</span><span class="tier"></span></div><h3></h3><strong></strong><p></p><div class="product-meta"></div><a class="catalog-link" target="_top">Encontrar en catálogo ↗</a>`;
-      article.querySelector(".tier").textContent = index ? "Alternativa compatible" : "Ofrecé primero";
-      article.querySelector("h3").textContent = option.name;
-      article.querySelector("strong").textContent = option.benefit;
-      article.querySelector("p").textContent = option.reason;
+      article.querySelector(".tier").textContent = tier;
+      article.querySelector("h3").textContent = option?.name || "Pendiente de configuración";
+      article.querySelector("strong").textContent = option?.benefit || "No hay un tercer artículo verificado";
+      article.querySelector("p").textContent = option?.reason || "El administrador debe completar una ficha técnica compatible; consultá al laboratorio antes de ofrecerlo.";
+      if (!option) { article.querySelector(".catalog-link").remove(); return article; }
       article.querySelector(".catalog-link").href = `../black-ai.html?catalogo=${encodeURIComponent(option.search || option.sku || option.name)}`;
+      if (option.secondSearch) {
+        const second = article.querySelector(".catalog-link").cloneNode();
+        second.textContent = "Encontrar artículo de cerca ↗";
+        second.href = `../black-ai.html?catalogo=${encodeURIComponent(option.secondSearch)}`;
+        article.append(second);
+      }
       for (const detail of [option.sku ? `Código: ${option.sku}` : "Buscar por nombre", option.material, option.supplier, option.mode]) {
         if (!detail) continue;
         const span = document.createElement("span"); span.textContent = detail; article.querySelector(".product-meta").append(span);
       }
       return article;
+    }));
+    $("economicAlternatives").hidden = !state.alternatives.length;
+    $("alternativeList").replaceChildren(...state.alternatives.map(item => {
+      const li = document.createElement("li");
+      const link = document.createElement("a");
+      link.textContent = `${item.name} · ${item.sku || "buscar por nombre"}`;
+      link.href = `../black-ai.html?catalogo=${encodeURIComponent(item.search || item.sku || item.name)}`;
+      link.target = "_top";
+      li.append(link); return li;
     }));
   }
 }
@@ -136,8 +152,8 @@ function invalidate() {
   state.offerRun++;
   state.evaluating = false;
   state.confirmed = false;
-  state.options = [];
   state.recommendations = [];
+  state.alternatives = [];
   state.offerStatus = "";
   render();
 }
@@ -262,8 +278,14 @@ async function findOffers() {
   state.offerStatus = "Consultando las fichas técnicas de Black AI…";
   render();
   try {
-    const { data, error } = await supabaseClient.from("black_ai_products").select("*").eq("is_active", true).limit(1000);
-    if (error) throw new Error(error.message);
+    const data = [];
+    for (let offset = 0; ; offset += 500) {
+      const page = await supabaseClient.from("black_ai_products").select("*").eq("is_active", true).order("id").range(offset, offset + 499);
+      if (page.error) throw new Error(page.error.message);
+      data.push(...(page.data || []));
+      if (!page.data || page.data.length < 500) break;
+      if (data.length >= 5000) throw new Error("El catálogo excede el límite de lectura; consultá al administrador.");
+    }
     if (run !== state.offerRun) return;
     const dateParts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/Argentina/Buenos_Aires", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date()).map(part => [part.type, part.value]));
     const today = `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
@@ -290,7 +312,7 @@ async function findOffers() {
         return { product, evaluation, kind, transposed: pair.transposed, score: scoreProduct(product, answers),
           name: product.name, sku: product.sku, supplier: product.supplier, material: product.material,
           mode: evaluation.mode === "range_extended" ? "Rango extendido" : evaluation.mode === "stock" ? "Stock técnico" : "Confirmar fabricación",
-          benefit: kind === "both" ? "Un anteojo para lejos y cerca" : `Monofocal para ${kind === "near" ? "cerca" : "lejos"}`,
+          benefit: kind === "both" ? "Un anteojo para lejos y cerca" : opticalCase === "occupational" ? "Trabajo a distancias próximas e intermedias" : `Monofocal para ${kind === "near" ? "cerca" : "lejos"}`,
           reason: explainOffer(product, answers, evaluation, kind) };
       }));
       return results.filter(Boolean).sort((a, b) => a.score - b.score || Number(a.product.base_price || Infinity) - Number(b.product.base_price || Infinity));
@@ -298,29 +320,40 @@ async function findOffers() {
     let offers = [];
     if (state.type === "both") {
       if (answers.format !== "two") {
-        const groups = await Promise.all([compatible("multifocal", state.rx, "both", state.rx.add), compatible("bifocal", state.rx, "both", state.rx.add)]);
-        offers.push(...groups.flat());
+        offers.push(...await compatible(answers.format === "bifocal" ? "bifocal" : "multifocal", state.rx, "both", state.rx.add));
       }
       if (answers.format !== "one") {
         const nearRx = state.nearEnabled ? state.near : nearFromAdd(state.rx, state.rx.add);
         const [far, near] = await Promise.all([compatible("monofocal", state.rx, "far"), compatible("monofocal", nearRx, "near")]);
-        if (far[0] && near[0]) offers.push({
-          name: "Dos monofocales", benefit: `${far[0].name} (lejos) + ${near[0].name} (cerca)`,
-          reason: `Ambos artículos cumplen los rangos cargados para sus respectivos usos. Permiten separar el anteojo de lejos del de cerca. Confirmá las dos fichas antes de cotizar.`,
-          sku: [far[0].sku, near[0].sku].filter(Boolean).join(" + "), material: "Dos artículos", mode: "Confirmar ambos", score: Math.min(far[0].score, near[0].score) + (answers.format === "two" ? -100 : 15),
-          transposed: far[0].transposed || near[0].transposed, search: far[0].sku || far[0].name,
-        });
+        if (answers.format === "two") {
+          const farPicks = selectThreeOffers(far, "far", answers).slots.map(slot => slot.offer).filter(Boolean);
+          const nearPicks = selectThreeOffers(near, "near", answers).slots.map(slot => slot.offer).filter(Boolean);
+          offers = farPicks.slice(0, Math.min(3, nearPicks.length)).map((distance, index) => ({
+            kind: "two", product: { name: `Dos anteojos ${index + 1}`, metadata: { scanner: { rank: 95 - index * 20 } } },
+            name: `${distance.name} + ${nearPicks[index].name}`,
+            benefit: "Un anteojo de lejos y otro de cerca",
+            reason: `Lejos: ${distance.reason} Cerca: ${nearPicks[index].reason}`,
+            sku: [distance.sku, nearPicks[index].sku].filter(Boolean).join(" + "),
+            material: "Dos artículos", mode: "Confirmar ambos", search: distance.sku || distance.name,
+            secondSearch: nearPicks[index].sku || nearPicks[index].name,
+            transposed: distance.transposed || nearPicks[index].transposed,
+          }));
+        }
       }
     } else {
       offers = await compatible("monofocal", state.rx, state.type === "near" ? "near" : "far");
+      if (state.type === "near" && answers.use === "screen") {
+        offers.push(...await compatible("occupational", state.rx, "near"));
+      }
     }
     if (run !== state.offerRun) return;
-    offers.sort((a, b) => a.score - b.score);
-    state.recommendations = offers.slice(0, 3);
-    state.options = state.recommendations.map(item => ({ name: item.name, benefit: item.benefit }));
-    const transposed = state.recommendations.some(item => item.transposed);
+    const selection = selectThreeOffers(offers, state.type, answers);
+    state.recommendations = selection.slots;
+    state.alternatives = selection.alternatives;
+    const transposed = offers.some(item => item.transposed);
+    const missing = selection.slots.filter(slot => !slot.offer).length;
     state.offerStatus = offers.length
-      ? `${offers.length} propuesta${offers.length === 1 ? "" : "s"} técnicamente compatible${offers.length === 1 ? "" : "s"}. ${transposed ? "Se convirtió el cilindro positivo para cotejar la matriz en cilindro negativo; revisá la equivalencia antes de cotizar. " : ""}Verificá stock, diámetro y precio vigente en el sistema.`
+      ? `${offers.length} artículo${offers.length === 1 ? "" : "s"} compatible${offers.length === 1 ? "" : "s"} en las fichas. ${missing ? `Faltan ${missing} propuesta${missing === 1 ? "" : "s"} verificadas para completar las tres. ` : ""}${transposed ? "Se transpuso el cilindro positivo para cotejar la matriz; revisá la equivalencia. " : ""}Verificá stock, diámetro y precio vigente.`
       : "No hay un artículo verificablemente compatible con las fichas actuales. Consultá al laboratorio o completá los rangos técnicos; no ofrezcas un producto por suposición.";
   } catch (error) {
     if (run === state.offerRun) state.offerStatus = `No se pudo consultar el catálogo: ${error.message || "error de conexión"}. No se puede indicar un artículo hasta verificarlo.`;
@@ -336,19 +369,19 @@ function signed(value) {
 
 async function copySummary() {
   const type = state.type === "near" ? "Solo cerca" : state.type === "both" ? "Lejos y cerca" : "Solo lejos";
-  const lines = ["Categorías a evaluar en Black Óptica", `Receta: ${type}`];
+  const lines = ["Propuestas de Black Óptica", `Receta: ${type}`];
   for (const key of ["od", "oi"]) {
     const eye = state.rx[key];
-    lines.push(`${key.toUpperCase()}: ESF ${signed(eye.sphere)} / CIL ${signed(eye.cylinder || "0")} / EJE ${eye.axis || "—"}°`);
+    lines.push(`${key.toUpperCase()}: ESF ${signed(eye.sphere)} / CIL ${signed(eye.cylinder)} / EJE ${eye.axis || "—"}°`);
   }
   if (state.type === "both") lines.push(`ADD: ${signed(state.rx.add)}`);
   if (state.type === "both" && state.nearEnabled) {
     for (const key of ["od", "oi"]) {
       const eye = state.near[key];
-      lines.push(`Cerca ${key.toUpperCase()}: ESF ${signed(eye.sphere)} / CIL ${signed(eye.cylinder || "0")} / EJE ${eye.axis || "—"}°`);
+      lines.push(`Cerca ${key.toUpperCase()}: ESF ${signed(eye.sphere)} / CIL ${signed(eye.cylinder)} / EJE ${eye.axis || "—"}°`);
     }
   }
-  lines.push("", ...state.options.map(option => `• ${option.name}: ${option.benefit}.`), "", "Categorías orientativas; no representan artículos compatibles ni una cotización. Verificar rangos, medidas, stock y laboratorio.");
+  lines.push("", ...state.recommendations.map(slot => slot.offer ? `• ${slot.tier}: ${slot.offer.name} (${slot.offer.sku || "sin código"}). ${slot.offer.reason}` : `• ${slot.tier}: pendiente de ficha técnica.`), "", "Compatibilidad según fichas cargadas. Verificar medidas, stock, precio y laboratorio antes de cotizar.");
   try {
     await navigator.clipboard.writeText(lines.join("\n"));
     $("copyButton").textContent = "Copiado";
@@ -400,7 +433,7 @@ $("confirmButton").addEventListener("click", () => {
   if (validatePrescription(state.rx, state.type).length) return;
   state.offerRun++;
   state.recommendations = [];
-  state.options = [];
+  state.alternatives = [];
   state.offerStatus = "Respondé las preguntas para ver qué artículo ofrecer y por qué.";
   state.confirmed = true;
   render();
@@ -410,7 +443,7 @@ for (const id of ["mainUse", "mainPriority", "glassesFormat"]) $(id).addEventLis
   state.offerRun++;
   state.evaluating = false;
   state.recommendations = [];
-  state.options = [];
+  state.alternatives = [];
   state.offerStatus = state.confirmed ? "Actualizaste las respuestas. Volvé a buscar artículos compatibles." : "";
   render();
 });

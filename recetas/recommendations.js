@@ -1,6 +1,6 @@
 import { asNumber } from "./parser.js";
 
-const CASES = new Set(["monofocal", "multifocal", "bifocal"]);
+const CASES = new Set(["monofocal", "multifocal", "bifocal", "occupational"]);
 const isQuarter = value => Math.abs(value * 4 - Math.round(value * 4)) < 1e-8;
 
 export function normalizeEye(eye) {
@@ -46,6 +46,8 @@ export function evaluateProduct(product, pair, add, matrixResult = null) {
       return { status: "review", reason: "La combinación requiere confirmación del laboratorio." };
     if (!["stock", "range_extended"].includes(matrixResult.final_supply_mode))
       return { status: "review", reason: "Modalidad técnica sin confirmar." };
+    if (product.supply_mode === "stock" && matrixResult.final_supply_mode !== "stock")
+      return { status: "review", reason: "La ficha indica solo stock y la receta requiere rango extendido." };
     return { status: "compatible", mode: matrixResult.final_supply_mode, reason: "Ambos ojos figuran en la matriz técnica." };
   }
   if (product.sphere_min == null || product.sphere_max == null ||
@@ -57,6 +59,64 @@ export function evaluateProduct(product, pair, add, matrixResult = null) {
       : eye.cylinder >= Number(product.cylinder_min) && eye.cylinder <= Number(product.cylinder_max));
   if (!fits(pair.od) || !fits(pair.oi)) return { status: "out", reason: "Un ojo queda fuera de los rangos cargados." };
   return { status: "compatible", mode: product.supply_mode || "laboratory", reason: "Ambos ojos están dentro de los rangos cargados." };
+}
+
+const labels = ["Premium", "Recomendado", "Acceso"];
+const plain = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+// El administrador puede fijar la familia comercial y el orden en metadata.scanner.
+// Esas preferencias nunca reemplazan el filtro previo de compatibilidad técnica.
+export function commercialFamily(offer, context) {
+  const product = offer.product || {};
+  const configured = plain(product.metadata?.scanner?.family);
+  if (configured) return configured;
+  const name = plain(`${product.name} ${product.design} ${product.treatment}`);
+  if (offer.kind === "two") return "dos anteojos";
+  if (context === "both") {
+    if (product.optical_case === "bifocal") return "bifocal";
+    if (/ailens|free|premium|personaliz/.test(name)) return "multifocal premium";
+    if (/new|intermedi|digital/.test(name)) return "multifocal intermedio";
+    return "multifocal base";
+  }
+  if (context === "near" && (product.optical_case === "occupational" || /ocupacional|occupational|office|intermedia/.test(name))) return "ocupacional";
+  if (/black[\s_-]*blue|1[.,]67/.test(name)) return "black blue 1.67";
+  if (/super[\s_-]*blue/.test(name)) return "super blue";
+  if (/blue/.test(name) && /antirreflejo|antireflective|anti.?refle|\bar\b/.test(name)) return "blue ar";
+  if (/antirreflejo|antireflective|anti.?refle|\bar\b/.test(name)) return "organico ar";
+  return "organico blanco";
+}
+
+function commercialValue(offer, context, answers) {
+  const product = offer.product || {};
+  const rawRank = product.metadata?.scanner?.rank;
+  const configured = Number(rawRank);
+  if (rawRank !== null && rawRank !== undefined && rawRank !== "" && Number.isFinite(configured) && configured >= 0 && configured <= 100) return configured;
+  const family = commercialFamily(offer, context);
+  const values = context === "both"
+    ? { "multifocal premium": 95, "multifocal intermedio": 75, "multifocal base": 55, bifocal: 35, "dos anteojos": 45 }
+    : { "black blue 1.67": 95, "super blue": 75, "blue ar": 55, "organico ar": 30, "organico blanco": 10, ocupacional: answers.use === "screen" ? 88 : 25 };
+  return values[family] ?? 40;
+}
+
+export function selectThreeOffers(offers, context, answers = {}) {
+  const ranked = [...offers].sort((a, b) => commercialValue(b, context, answers) - commercialValue(a, context, answers) ||
+    Number(a.product?.technical_priority ?? 100) - Number(b.product?.technical_priority ?? 100) ||
+    String(a.sku || a.name).localeCompare(String(b.sku || b.name)));
+  const chosen = [], families = new Set();
+  for (const offer of ranked) {
+    const family = commercialFamily(offer, context);
+    if (families.has(family)) continue;
+    chosen.push(offer); families.add(family);
+    if (chosen.length === 3) break;
+  }
+  for (const offer of ranked) {
+    if (chosen.length === 3) break;
+    if (!chosen.includes(offer)) chosen.push(offer);
+  }
+  return {
+    slots: labels.map((tier, index) => ({ tier, offer: chosen[index] || null })),
+    alternatives: ranked.filter(offer => !chosen.includes(offer)),
+  };
 }
 
 export function scoreProduct(product, answers) {

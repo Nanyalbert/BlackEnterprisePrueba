@@ -93,10 +93,10 @@ export function validatePrescription(rx, type) {
   const issues = [];
   for (const [key, eye] of [["OD", rx.od], ["OI", rx.oi]]) {
     const sphere = asNumber(eye.sphere);
-    const cylinder = eye.cylinder.trim() ? asNumber(eye.cylinder) : 0;
+    const cylinder = asNumber(eye.cylinder);
     const axis = eye.axis.trim() ? asNumber(eye.axis) : null;
     if (sphere === null || Math.abs(sphere) > 30) issues.push(`${key}: revisá la esfera.`);
-    if (cylinder === null || Math.abs(cylinder) > 12) issues.push(`${key}: revisá el cilindro.`);
+    if (cylinder === null || Math.abs(cylinder) > 12) issues.push(`${key}: confirmá el cilindro (escribí 0 si no hay).`);
     if (cylinder !== null && cylinder !== 0 && (axis === null || axis < 1 || axis > 180 || !Number.isInteger(axis))) {
       issues.push(`${key}: falta un eje entre 1° y 180°.`);
     }
