@@ -52,3 +52,15 @@ body.embedded .workspace{padding-top:25px}body.embedded .intro{padding:30px 34px
   .results{padding:20px 17px;margin-top:14px;border-radius:15px}.results-heading{gap:12px;align-items:flex-start}.results h2{font-size:21px}.result-heading-caption{font-size:10px}.copy{min-height:34px;padding:0 9px;font-size:9px;white-space:nowrap}.seller-questions{padding:17px}.question-grid{grid-template-columns:1fr}.question-grid select{font-size:11px}.evaluate-button{width:100%}.option-grid{gap:11px}.option{padding:18px}.option-top{margin-bottom:13px}.option h3{font-size:16px}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+/* Keep form labels and controls on a consistent vertical rhythm. */
+.question-head{display:flex;flex-direction:column;gap:5px}
+.question-head span{font-size:12px}
+.question-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.question-grid label{display:flex;flex-direction:column;gap:8px;font-size:11px}
+.question-grid select{width:100%;font-size:12px}
+.catalog-banner-text span,.panel-head p,.source-hint p,.ai-panel p,.astig-hint,.near-section>p,.type-note,.result-heading-caption,.empty-results p{font-size:12px}
+.option h3{font-size:19px}.option strong,.option p{font-size:12px}.option .product-meta span,.option .catalog-link{font-size:10px}
+.result-foot{font-size:11px}
+@media(max-width:880px){.question-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.question-grid{grid-template-columns:1fr}.question-head span{font-size:11px}.option h3{font-size:17px}.catalog-banner-text span,.panel-head p,.source-hint p,.ai-panel p,.astig-hint,.near-section>p,.type-note,.result-heading-caption,.empty-results p{font-size:11px}}
