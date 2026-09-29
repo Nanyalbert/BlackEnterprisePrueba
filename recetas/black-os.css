@@ -64,3 +64,9 @@ body.embedded .workspace{padding-top:25px}body.embedded .intro{padding:30px 34px
 .result-foot{font-size:11px}
 @media(max-width:880px){.question-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:620px){.question-grid{grid-template-columns:1fr}.question-head span{font-size:11px}.option h3{font-size:17px}.catalog-banner-text span,.panel-head p,.source-hint p,.ai-panel p,.astig-hint,.near-section>p,.type-note,.result-heading-caption,.empty-results p{font-size:11px}}
+@media(max-width:620px){
+  .usage-choices{flex-direction:column;gap:7px}
+  .usage-choices label{min-height:58px;align-items:flex-start;justify-content:center;text-align:left;padding:9px 14px;gap:3px}
+  .usage-choices strong{font-size:12px}
+  .usage-choices small,.usage-choices label.selected small{font-size:10px}
+}
