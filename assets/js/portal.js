@@ -16,14 +16,16 @@ const TITLES = {
   'crm-clientes': 'CRM Black',
   administracion: 'Administración',
   'crm-oftalmologos': 'CRM Oftalmólogos',
-  recetas: 'Recetas'
+  recetas: 'Recetas',
+  catalogo: 'Catálogo de cristales'
 };
 
 const MODULE_VIEWS = [
   'crm-clientes',
   'administracion',
   'crm-oftalmologos',
-  'recetas'
+  'recetas',
+  'catalogo'
 ];
 
 function isMobileLayout() {
@@ -334,6 +336,13 @@ async function bootPortal(){
     const userName=document.getElementById('user-name'); const userAvatar=document.getElementById('user-avatar'); const greeting=document.getElementById('greeting');
     if(userName)userName.textContent=displayName||email; if(userAvatar)userAvatar.textContent=initials(displayName||email); if(greeting)greeting.textContent=displayName?`Bienvenido, ${displayName}`:'Bienvenido';
     let initialView='inicio'; try{const savedView=sessionStorage.getItem(VIEW_STORAGE_KEY);if(savedView&&document.getElementById('view-'+savedView))initialView=savedView;}catch(error){}
+    const params=new URLSearchParams(window.location.search);
+    const requestedView=params.get('view');
+    if(requestedView&&document.getElementById('view-'+requestedView))initialView=requestedView;
+    if(initialView==='catalogo'&&params.has('catalogo')){
+      const frame=document.getElementById('catalogo-frame');
+      if(frame)frame.src=`black-ai.html?catalogo=${encodeURIComponent(params.get('catalogo')||'')}`;
+    }
     showView(initialView);
   }catch(error){console.error(error);window.location.replace('index.html');}
 }
@@ -352,4 +361,3 @@ window.addEventListener('resize',()=>{
     else restoreSidebarPreference();
   }, 80);
 });
-

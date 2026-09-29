@@ -7,6 +7,17 @@ if (!supabaseClient) location.replace("../index.html");
 else supabaseClient.auth.getSession().then(({ data }) => { if (!data.session) location.replace("../index.html"); });
 
 const $ = id => document.getElementById(id);
+async function showCatalogAccess() {
+  if (!supabaseClient) return;
+  const { data: session } = await supabaseClient.auth.getSession();
+  const userId = session?.session?.user?.id;
+  if (!userId) return;
+  const { data, error } = await supabaseClient.from("black_ai_scanner_admins").select("user_id").eq("user_id", userId).maybeSingle();
+  $("adminStatus").textContent = error
+    ? "La edición administrativa espera la activación de permisos en Supabase."
+    : data ? "Tu cuenta puede editar fichas técnicas y prioridades comerciales." : "Podés consultar el catálogo; la edición requiere permiso de administrador.";
+}
+void showCatalogAccess();
 const fileInputs = ["cameraInput", "fileInput", "cameraAgain", "fileAgain"].map($);
 const fields = ["od-sphere", "od-cylinder", "od-axis", "oi-sphere", "oi-cylinder", "oi-axis", "add",
   "near-od-sphere", "near-od-cylinder", "near-od-axis", "near-oi-sphere", "near-oi-cylinder", "near-oi-axis"];
@@ -125,11 +136,11 @@ function render() {
       article.querySelector("strong").textContent = option?.benefit || "No hay un tercer artículo verificado";
       article.querySelector("p").textContent = option?.reason || "El administrador debe completar una ficha técnica compatible; consultá al laboratorio antes de ofrecerlo.";
       if (!option) { article.querySelector(".catalog-link").remove(); return article; }
-      article.querySelector(".catalog-link").href = `../black-ai.html?catalogo=${encodeURIComponent(option.search || option.sku || option.name)}`;
+      article.querySelector(".catalog-link").href = `../menu.html?view=catalogo&catalogo=${encodeURIComponent(option.search || option.sku || option.name)}`;
       if (option.secondSearch) {
         const second = article.querySelector(".catalog-link").cloneNode();
         second.textContent = "Encontrar artículo de cerca ↗";
-        second.href = `../black-ai.html?catalogo=${encodeURIComponent(option.secondSearch)}`;
+        second.href = `../menu.html?view=catalogo&catalogo=${encodeURIComponent(option.secondSearch)}`;
         article.append(second);
       }
       for (const detail of [option.sku ? `Código: ${option.sku}` : "Buscar por nombre", option.material, option.supplier, option.mode]) {
@@ -143,7 +154,7 @@ function render() {
       const li = document.createElement("li");
       const link = document.createElement("a");
       link.textContent = `${item.name} · ${item.sku || "buscar por nombre"}`;
-      link.href = `../black-ai.html?catalogo=${encodeURIComponent(item.search || item.sku || item.name)}`;
+      link.href = `../menu.html?view=catalogo&catalogo=${encodeURIComponent(item.search || item.sku || item.name)}`;
       link.target = "_top";
       li.append(link); return li;
     }));
