@@ -109,6 +109,8 @@ function render() {
   $("offerStatus").hidden = !state.offerStatus;
   $("offerStatus").textContent = state.offerStatus;
   $("optionGrid").hidden = !state.recommendations.length;
+  $("economicAlternatives").hidden = !state.confirmed || !state.alternatives.length;
+  if (!state.confirmed) $("economicAlternatives").open = false;
   $("resultFoot").hidden = !state.recommendations.length;
   $("emptyResults").hidden = state.confirmed;
   if (state.confirmed) {
@@ -275,6 +277,7 @@ async function findOffers() {
   const answers = { use: $("mainUse").value, priority: $("mainPriority").value, format: $("glassesFormat").value };
   state.evaluating = true;
   state.recommendations = [];
+  state.alternatives = [];
   state.offerStatus = "Consultando las fichas técnicas de Black AI…";
   render();
   try {
