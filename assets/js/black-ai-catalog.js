@@ -1,6 +1,6 @@
 (()=>{
   const VERSION='20260913-4';
-  const state={client:null,items:[],settings:{},search:'',caseFilter:'all',modeFilter:'all',treatmentFilter:'all',activeFilter:'active',loaded:false};
+  const state={client:null,items:[],settings:{},search:new URLSearchParams(location.search).get('catalogo')||'',caseFilter:'all',modeFilter:'all',treatmentFilter:'all',activeFilter:'active',loaded:false};
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=v=>Number(v||0).toLocaleString('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0});
   const label=v=>({monofocal:'Monofocal',bifocal:'Bifocal',occupational:'Ocupacional',multifocal:'Multifocal',stock:'Stock',range_extended:'R.E',laboratory:'Laboratorio',antireflective:'Antirreflejo',blue_filter:'Filtro Blue',super_blue:'Super Blue',photochromic:'Fotocromático',photochromic_blue:'Fotocromático Blue',black_blue_4k:'Black Blue 4K',none:'Sin tratamiento'}[v]||v||'—');
@@ -23,14 +23,14 @@
     const panel=document.getElementById('tab-catalogo');if(!panel)return;panel.innerHTML='<div class="catalog-loading">Leyendo productos desde Supabase…</div>';
     state.client=resolveClient();if(!state.client){panel.innerHTML='<div class="catalog-error">Supabase no está disponible.</div>';return}
     const [{data:products,error},{data:settings}]=await Promise.all([
-      state.client.from('black_ai_products').select('id,name,base_price,optical_case,supply_mode,material,treatment,design,is_active,imported_at,updated_at,sphere_min,sphere_max,cylinder_min,cylinder_max,cylinder_abs_max,addition_min,addition_max,metadata').order('name',{ascending:true}),
+      state.client.from('black_ai_products').select('id,name,sku,base_price,optical_case,supply_mode,material,treatment,design,is_active,imported_at,updated_at,sphere_min,sphere_max,cylinder_min,cylinder_max,cylinder_abs_max,addition_min,addition_max,metadata').order('name',{ascending:true}),
       state.client.from('black_ai_settings').select('config').eq('id','global').maybeSingle()
     ]);
     if(error){panel.innerHTML=`<div class="catalog-error">${esc(error.message)}</div>`;return}
     state.items=products||[];state.settings=settings?.config||{};state.loaded=true;render();
   }
 
-  function filtered(){const q=state.search.trim().toLowerCase();return state.items.filter(x=>{if(state.activeFilter==='active'&&!x.is_active)return false;if(state.activeFilter==='inactive'&&x.is_active)return false;if(state.caseFilter!=='all'&&x.optical_case!==state.caseFilter)return false;if(state.modeFilter!=='all'&&x.supply_mode!==state.modeFilter)return false;if(state.treatmentFilter!=='all'&&x.treatment!==state.treatmentFilter)return false;if(q&&!`${x.name||''} ${x.material||''} ${x.treatment||''} ${x.design||''}`.toLowerCase().includes(q))return false;return true})}
+  function filtered(){const q=state.search.trim().toLowerCase();return state.items.filter(x=>{if(state.activeFilter==='active'&&!x.is_active)return false;if(state.activeFilter==='inactive'&&x.is_active)return false;if(state.caseFilter!=='all'&&x.optical_case!==state.caseFilter)return false;if(state.modeFilter!=='all'&&x.supply_mode!==state.modeFilter)return false;if(state.treatmentFilter!=='all'&&x.treatment!==state.treatmentFilter)return false;if(q&&!`${x.sku||''} ${x.name||''} ${x.material||''} ${x.treatment||''} ${x.design||''}`.toLowerCase().includes(q))return false;return true})}
   const unique=key=>[...new Set(state.items.map(x=>x[key]).filter(Boolean))].sort();
   const lastUpdate=()=>state.items.map(x=>x.imported_at||x.updated_at).filter(Boolean).sort().at(-1)||null;
   const technicalReady=x=>[x.sphere_min,x.sphere_max,x.cylinder_min,x.cylinder_max,x.cylinder_abs_max,x.addition_min,x.addition_max].some(v=>v!==null&&v!==undefined);
@@ -64,5 +64,5 @@
     document.body.appendChild(wrap);const close=()=>wrap.remove();wrap.querySelector('.catalog-detail-close').onclick=close;wrap.onclick=e=>{if(e.target===wrap)close()};wrap.querySelector('[data-toggle-product]')?.addEventListener('click',async e=>{await setActive(x,!x.is_active,e.currentTarget);close()});wrap.querySelector('[data-save-pricing]')?.addEventListener('click',async e=>{const btn=e.currentTarget;btn.disabled=true;btn.textContent='Guardando…';if(await saveProductPricing(x,wrap)){close();render()}else{btn.disabled=false;btn.textContent='Guardar configuración comercial'}})
   }
 
-  ensureShell();window.BlackAiCatalog={activate,reload:async()=>{state.loaded=false;await load()}};
+  ensureShell();if(new URLSearchParams(location.search).has('catalogo'))setTimeout(activate,150);window.BlackAiCatalog={activate,reload:async()=>{state.loaded=false;await load()}};
 })();

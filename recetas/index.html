@@ -11,10 +11,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css?v=2">
-  <link rel="stylesheet" href="./black-os.css?v=2">
+  <link rel="stylesheet" href="./black-os.css?v=3">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="../assets/js/supabase-config.js"></script>
-  <script type="module" src="./app.js?v=2"></script>
+  <script type="module" src="./app.js?v=3"></script>
 </head>
 <body>
 <main class="app-shell">
@@ -116,11 +116,21 @@
     </div>
 
     <section id="results" class="results" aria-live="polite">
-      <div class="results-heading"><div><p class="eyebrow">03 / ORIENTACIÓN</p><h2>Categorías a evaluar</h2></div><button type="button" class="copy" id="copyButton" hidden>Copiar resumen</button></div>
+      <div class="results-heading"><div><p class="eyebrow">03 / PROPUESTA PARA EL VENDEDOR</p><h2>Qué ofrecer y por qué</h2></div><button type="button" class="copy" id="copyButton" hidden>Copiar resumen</button></div>
+      <div class="seller-questions" id="sellerQuestions" hidden>
+        <div class="question-head"><strong>Completá el uso del paciente</strong><span>Dos respuestas para elegir entre los artículos técnicamente aptos.</span></div>
+        <div class="question-grid">
+          <label>Uso principal<select id="mainUse"><option value="">Seleccionar uso</option><option value="driving">Lejos / conducir</option><option value="reading">Lectura</option><option value="screen">Pantallas / trabajo</option><option value="mixed">Varias distancias</option></select></label>
+          <label>Qué prioriza<select id="mainPriority"><option value="">Seleccionar prioridad</option><option value="budget">Precio accesible</option><option value="comfort">Comodidad y diseño</option></select></label>
+          <label id="formatQuestion" hidden>Preferencia de anteojos<select id="glassesFormat"><option value="">Seleccionar preferencia</option><option value="one">Un anteojo para todo</option><option value="two">Uno de lejos y otro de cerca</option><option value="undecided">Quiere comparar ambas</option></select></label>
+        </div>
+        <button class="evaluate-button" id="evaluateButton" type="button">Buscar artículos compatibles <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
+      </div>
       <div class="result-context" id="resultContext" hidden></div>
+      <p class="offer-status" id="offerStatus" role="status" hidden></p>
       <div class="option-grid" id="optionGrid" hidden></div>
-      <div class="empty-results" id="emptyResults"><p>Elegí el tipo de receta, verificá ambos ojos y confirmá para ver las alternativas.</p></div>
-      <p class="result-foot" id="resultFoot" hidden>Estas categorías no son artículos compatibles ni una cotización. El catálogo administrable y sus rangos de fabricación se incorporarán en la próxima etapa.</p>
+      <div class="empty-results" id="emptyResults"><p>Primero verificá la graduación y confirmala. Después elegí el uso del paciente para buscar artículos en el catálogo de Black AI.</p></div>
+      <p class="result-foot" id="resultFoot" hidden>Compatibilidad orientativa según fichas cargadas. Confirmar laboratorio, diámetro, medidas, stock y precio vigente antes de cotizar.</p>
     </section>
   </div>
 </main>
