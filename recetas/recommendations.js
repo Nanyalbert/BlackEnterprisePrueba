@@ -134,5 +134,11 @@ export function explainOffer(product, answers, evaluation, kind) {
   const format = kind === "both" ? "Cubre lejos y cerca en un anteojo. " : kind === "two" ? "Se propone como anteojo separado. " : "";
   const mode = evaluation.mode === "stock" ? "Figura en stock técnico." : evaluation.mode === "range_extended" ? "Figura en rango extendido." : "Requiere confirmar fabricación y disponibilidad.";
   const approved = typeof product.metadata?.sales_reason === "string" ? product.metadata.sales_reason.trim().slice(0, 180) : "";
-  return `${format}Ambos ojos cumplen los rangos cargados para este diseño; responde al uso de ${use}. ${mode}${approved ? ` ${approved}` : ""}`;
+  const features = plain(`${product.name} ${product.design} ${product.treatment} ${product.material}`);
+  const details = [];
+  if (product.optical_case === "occupational") details.push("Diseño para distancias próximas e intermedias; explicá que no reemplaza un anteojo de lejos.");
+  if (/antirreflejo|antireflective|anti.?refle/.test(features)) details.push("Su tratamiento antirreflejo reduce reflejos de la superficie del cristal.");
+  if (/1[.,]67/.test(features)) details.push("El índice 1.67 puede reducir espesor según la graduación y el armazón.");
+  if (/blue/.test(features)) details.push("Incluye filtro de luz azul como característica del producto.");
+  return `${format}Ambos ojos cumplen los rangos cargados para ${use}. ${details.join(" ")} ${mode}${approved ? ` ${approved}` : ""}`.replace(/\s+/g, " ").trim();
 }

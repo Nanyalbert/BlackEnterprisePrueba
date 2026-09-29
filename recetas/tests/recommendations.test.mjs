@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizePair, nearFromAdd, evaluateProduct, validProduct, selectThreeOffers } from "../recommendations.js";
+import { normalizePair, nearFromAdd, evaluateProduct, validProduct, selectThreeOffers, explainOffer } from "../recommendations.js";
 
 const source = { od: { sphere: "+1.50", cylinder: "+0.25", axis: "10" }, oi: { sphere: "+1.50", cylinder: "+0.25", axis: "170" } };
 const pair = normalizePair(source);
@@ -67,4 +67,11 @@ test("sin tres fichas se mantienen tres lugares sin inventar artículos", () => 
 test("matriz extendida no habilita artículo marcado solo stock", () => {
   const product = { ...minmax, technical_family_key: "organic_standard_149_156", supply_mode: "stock" };
   assert.equal(evaluateProduct(product, pair, 2, { status: "resolved", final_supply_mode: "range_extended" }).status, "review");
+});
+
+test("el argumento de venta usa rasgos comprobables sin prometer efectos médicos", () => {
+  const message = explainOffer({ name: "Black Blue 1.67", treatment: "antireflective", optical_case: "monofocal" }, { use: "screen" }, { mode: "stock" }, "near");
+  assert.match(message, /índice 1\.67 puede reducir espesor/);
+  assert.match(message, /tratamiento antirreflejo reduce reflejos/);
+  assert.doesNotMatch(message, /fatiga|protege|salud/i);
 });
