@@ -5,6 +5,8 @@
   const DB_VERSION=1;
   const STORAGE_KEY='blackos_supplier_actions_v1';
   const adminData={sales:[]};
+  let remoteActions={};
+  let actionsSource='local';
   const charts={};
 
   const safe=v=>String(v??'').trim();
@@ -108,8 +110,44 @@
   function currentPeriod(){return document.getElementById('supplier-period-select')?.value||'';}
   function loadActions(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');}catch{return {};}}
   function saveActions(all){localStorage.setItem(STORAGE_KEY,JSON.stringify(all));}
-  function getAction(provider){const all=loadActions();return all[currentPeriod()]?.[provider]||{paid:0,replenished:0,note:''};}
-  function patchAction(provider,patch){const all=loadActions();const period=currentPeriod();all[period]||={};all[period][provider]={paid:0,replenished:0,note:'',...(all[period][provider]||{}),...patch};saveActions(all);render();}
+  function getAction(provider){
+    const period=currentPeriod();
+    if(remoteActions?.[period]?.[provider]) return remoteActions[period][provider];
+    const all=loadActions();
+    return all[period]?.[provider]||{paid:0,replenished:0,note:''};
+  }
+  async function loadRemoteActions(period){
+    remoteActions[period]={};
+    const client=window.BlackPortal?.getSupabase?.();
+    if(!client||!period){actionsSource='local';return;}
+    const {data,error}=await client.from('supplier_period_actions').select('provider,paid,replenished,note').eq('period',period);
+    if(error){
+      const m=String(error.message||error);
+      if(/does not exist|schema cache|PGRST205|42P01/i.test(m)){actionsSource='local';return;}
+      console.warn('No se pudieron leer acciones de proveedores:',error);actionsSource='local';return;
+    }
+    (data||[]).forEach(row=>{remoteActions[period][row.provider]={paid:num(row.paid),replenished:num(row.replenished),note:row.note||''}});
+    actionsSource='supabase';
+  }
+  async function patchAction(provider,patch){
+    const period=currentPeriod();
+    const current=getAction(provider);
+    const next={paid:0,replenished:0,note:'',...current,...patch};
+    const client=window.BlackPortal?.getSupabase?.();
+    if(client&&period){
+      const {data,error}=await client.from('supplier_period_actions').upsert({
+        period,provider,paid:num(next.paid),replenished:num(next.replenished),note:next.note||null
+      },{onConflict:'period,provider'}).select('provider,paid,replenished,note').single();
+      if(!error&&data){
+        remoteActions[period]||={};
+        remoteActions[period][provider]={paid:num(data.paid),replenished:num(data.replenished),note:data.note||''};
+        actionsSource='supabase';render();return;
+      }
+      const m=String(error?.message||error||'');
+      if(!/does not exist|schema cache|PGRST205|42P01/i.test(m)) console.warn('No se pudo guardar la acción del proveedor:',error);
+    }
+    const all=loadActions();all[period]||={};all[period][provider]=next;saveActions(all);actionsSource='local';render();
+  }
 
   function aggregateSuppliers(){
     const rows=cleanRows(adminData.sales).filter(r=>safe(valueOf(r,'provider')));
@@ -176,7 +214,11 @@
   async function loadPeriod(period){
     adminData.sales=[];
     if(period){const rec=await dbGet(`${period}|sales`);adminData.sales=rec?.rows||[];try{sessionStorage.setItem('blackos_admin_period',period);}catch{}}
-    const state=document.getElementById('supplier-source-state');if(state)state.textContent=period?`${periodName(period)} · ${adminData.sales.length} filas de Ventas guardadas.`:'No hay períodos guardados todavía.';
+    await loadRemoteActions(period);
+    const state=document.getElementById('supplier-source-state');
+    if(state) state.textContent=period
+      ? `${periodName(period)} · ${adminData.sales.length} filas de Ventas guardadas · ${actionsSource==='supabase'?'pagos compartidos':'pagos locales'}.`
+      : 'No hay períodos guardados todavía.';
     render();
   }
 
