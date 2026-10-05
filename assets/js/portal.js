@@ -231,10 +231,11 @@ function initAdministrationSubmenu(){
   const proveedoresNav = document.getElementById('proveedores-nav');
 
   const setAdminSource = (source, title) => {
-    if(!adminFrame.src.endsWith(source)) adminFrame.src = source;
+    const cleanSource=source.split('?')[0];
+    if(!adminFrame.src.includes('/'+cleanSource)) adminFrame.src = source;
     showView('administracion');
     wrap.classList.add('open');
-    proveedoresNav?.classList.toggle('active', source === 'proveedores.html');
+    proveedoresNav?.classList.toggle('active', cleanSource === 'proveedores.html');
     if(topbarTitle) topbarTitle.textContent = title;
   };
 
@@ -247,7 +248,7 @@ function initAdministrationSubmenu(){
   proveedoresNav?.addEventListener('click', event => {
     event.preventDefault();
     event.stopPropagation();
-    setAdminSource('proveedores.html','Administración / Proveedores');
+    setAdminSource('proveedores.html?v=20261005-suppliers-1','Administración / Proveedores');
   });
 
   const adminCard = document.getElementById('administracion-card');
