@@ -17,7 +17,8 @@ const TITLES = {
   administracion: 'Administración',
   'crm-oftalmologos': 'CRM Oftalmólogos',
   recetas: 'Recetas',
-  catalogo: 'Catálogo de cristales'
+  catalogo: 'Catálogo de cristales',
+  marketing: 'Marketing'
 };
 
 const MODULE_VIEWS = [
@@ -25,7 +26,8 @@ const MODULE_VIEWS = [
   'administracion',
   'crm-oftalmologos',
   'recetas',
-  'catalogo'
+  'catalogo',
+  'marketing'
 ];
 
 function isMobileLayout() {
@@ -254,9 +256,9 @@ function initAdministrationSubmenu(){
 
 initAdministrationSubmenu();
 
-const APP_LABELS = {'crm-black':'CRM Black', administracion:'Administración', 'crm-oftalmologos':'CRM Oftalmólogos'};
+const APP_LABELS = {'crm-black':'CRM Black', administracion:'Administración', 'crm-oftalmologos':'CRM Oftalmólogos', marketing:'Marketing'};
 let usersData = [
-  {id:1,nombre:'Leandro',email:'leandro@blackoptica.ar',apps:['crm-black','administracion','crm-oftalmologos'],superAdmin:true,activo:true},
+  {id:1,nombre:'Leandro',email:'leandro@blackoptica.ar',apps:['crm-black','administracion','crm-oftalmologos','marketing'],superAdmin:true,activo:true},
   {id:2,nombre:'Recepción Óptica',email:'recepcion@blackoptica.ar',apps:['administracion'],superAdmin:false,activo:true},
   {id:3,nombre:'Dr. Gómez',email:'gomez@ejemplo.com',apps:['crm-oftalmologos'],superAdmin:false,activo:true}
 ];
