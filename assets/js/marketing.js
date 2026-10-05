@@ -139,7 +139,7 @@
       else counts.pending++;
     });
     el.innerHTML=`<div class="mk-keydate-overview-head"><div><span class="mk-kicker">PRÓXIMOS 30 DÍAS</span><strong>${counts.total} fechas relevantes</strong></div><div class="mk-keydate-overview-stats"><span><b>${counts.ready}</b> listas</span><span><b>${counts.pending}</b> en proceso</span><span><b>${counts.unstarted}</b> sin trabajar</span></div></div>${upcoming.length?`<div class="mk-keydate-overview-list">${upcoming.slice(0,6).map(x=>{const s=keyDateStatus(x);return `<button type="button" data-key-overview="${esc(x.date)}"><span>${esc(fmtDate(x.date))}</span><strong>${esc(x.title)}</strong><em class="${esc(s)}">${esc(keyDateStatusLabel(s))}</em></button>`}).join('')}</div>`:'<div class="mk-empty">No hay fechas clave dentro de los próximos 30 días.</div>'}`;
-    $('[data-key-overview]',el).forEach(b=>b.onclick=()=>openKeyDate(b.dataset.keyOverview));
+    $$('[data-key-overview]',el).forEach(b=>b.onclick=()=>openKeyDate(b.dataset.keyOverview));
   }
 
   async function fetchTable(name,query='*',order=null){
@@ -167,7 +167,8 @@
       if(error||!session){location.replace('index.html');return;}
       state.session=session;
       await loadAll();
-      state.ready=true;state.setupError=null;$('#mk-setup')?.classList.add('hidden');setSync('Sincronizado');bindStatic();renderAll();
+      state.ready=true;state.setupError=null;$('#mk-setup')?.classList.add('hidden');setSync('Sincronizado');bindStatic();
+      try{renderAll()}catch(renderError){console.error('Marketing render error',renderError);setSync('Error de interfaz')}
     }catch(error){
       console.error(error);showSetup(humanError(error));bindStatic();
     }
@@ -295,11 +296,11 @@
     const rows=filteredContents();
     el.innerHTML=heads+dates.map(d=>{const iso=C.toISODate(d);const items=rows.filter(x=>x.publish_date===iso);const keyDates=KEY_DATES_2026.filter(x=>x.date===iso);const prepDates=KEY_DATES_2026.filter(x=>keyDatePrepISO(x)===iso&&x.date>=today);const outside=month&&d.getMonth()!==state.calendarAnchor.getMonth();return `<div class="mk-day ${outside?'outside':''} ${iso===today?'today':''} ${(keyDates.length||prepDates.length)?'has-keydate':''}" data-date="${iso}"><div class="mk-day-top"><button class="mk-day-num mk-link" data-create-date="${iso}"><span class="mk-day-weekday">${new Intl.DateTimeFormat('es-AR',{weekday:'short'}).format(d)}</span><span>${d.getDate()}</span> +</button>${(keyDates.length||prepDates.length)?`<span class="mk-keydate-count" title="Hitos de planificación">${keyDates.length+prepDates.length}</span>`:''}</div>${prepDates.map(k=>`<button type="button" class="mk-prep-card ${esc(keyDatePriority(k))}" data-key-date="${esc(k.date)}"><strong>Preparar · ${esc(k.title)}</strong><small>${esc(keyDateStatusLabel(keyDateStatus(k)))} · faltan ${keyDateLeadDays(k)} días</small></button>`).join('')}${keyDates.map(k=>`<button type="button" class="mk-keydate-card ${esc(k.kind)}" data-key-date="${esc(k.date)}"><strong>${esc(k.title)}</strong><small>${esc(keyDateStatusLabel(keyDateStatus(k)))} · ${esc(k.description)}</small></button>`).join('')}${items.map(x=>`<div class="mk-cal-card ${esc(executionClass(x))}" draggable="true" data-content-id="${x.id}" style="--type-color:${esc(optionColor('content_type',x.content_type_id))}"><div class="mk-cal-card-head"><strong>${esc(x.title)}</strong><span class="mk-exec-dot ${esc(executionClass(x))}" title="${esc(executionLabel(x))}"></span></div><small>${esc(optionLabel('production_status',x.status_id))} · ${esc(executionLabel(x))}</small><div class="mk-cal-quick"><button type="button" data-exec-done="${x.id}" title="Marcar realizado">✓</button><button type="button" data-exec-notdone="${x.id}" title="Marcar no realizado">×</button></div></div>`).join('')}</div>`}).join('');
     bindContentCards(el);
-    $('[data-create-date]',el).forEach(x=>x.onclick=e=>{e.stopPropagation();openContent({publish_date:x.dataset.createDate,status_id:'scheduled'})});
-    $('[data-key-date]',el).forEach(x=>x.onclick=e=>{e.stopPropagation();openKeyDate(x.dataset.keyDate)});
-    $('[data-exec-done]',el).forEach(b=>b.onclick=async e=>{e.stopPropagation();await patchContent(b.dataset.execDone,{execution_status:'done',executed_at:nowISO(),status_id:'published'})});
-    $('[data-exec-notdone]',el).forEach(b=>b.onclick=async e=>{e.stopPropagation();await patchContent(b.dataset.execNotdone,{execution_status:'not_done',executed_at:null})});
-    $('.mk-day',el).forEach(day=>{day.ondragover=e=>e.preventDefault();day.ondrop=async e=>{e.preventDefault();const id=e.dataTransfer.getData('text/content-id');if(id)await patchContent(id,{publish_date:day.dataset.date,status_id:state.contents.find(x=>x.id===id)?.status_id==='idea'?'scheduled':state.contents.find(x=>x.id===id)?.status_id})}});
+    $$('[data-create-date]',el).forEach(x=>x.onclick=e=>{e.stopPropagation();openContent({publish_date:x.dataset.createDate,status_id:'scheduled'})});
+    $$('[data-key-date]',el).forEach(x=>x.onclick=e=>{e.stopPropagation();openKeyDate(x.dataset.keyDate)});
+    $$('[data-exec-done]',el).forEach(b=>b.onclick=async e=>{e.stopPropagation();await patchContent(b.dataset.execDone,{execution_status:'done',executed_at:nowISO(),status_id:'published'})});
+    $$('[data-exec-notdone]',el).forEach(b=>b.onclick=async e=>{e.stopPropagation();await patchContent(b.dataset.execNotdone,{execution_status:'not_done',executed_at:null})});
+    $$('.mk-day',el).forEach(day=>{day.ondragover=e=>e.preventDefault();day.ondrop=async e=>{e.preventDefault();const id=e.dataTransfer.getData('text/content-id');if(id)await patchContent(id,{publish_date:day.dataset.date,status_id:state.contents.find(x=>x.id===id)?.status_id==='idea'?'scheduled':state.contents.find(x=>x.id===id)?.status_id})}});
   }
 
   function renderDashboard(){
@@ -316,7 +317,7 @@
     state.stories.filter(x=>x.valid_until&&x.valid_until.slice(0,10)<today&&!x.archived_at).slice(0,2).forEach(x=>alerts.push(`<div class="mk-item"><strong class="mk-danger-text">Historia vencida</strong><span class="mk-item-sub">${esc(x.title)}</span></div>`));
     $('#mk-alerts').innerHTML=alerts.join('')||'<div class="mk-empty">No hay alertas operativas.</div>';
     bindContentCards($('#mk-alerts'));
-    $('[data-key-date-alert]',$('#mk-alerts')).forEach(x=>x.onclick=()=>openKeyDate(x.dataset.keyDateAlert));
+    $$('[data-key-date-alert]',$('#mk-alerts')).forEach(x=>x.onclick=()=>openKeyDate(x.dataset.keyDateAlert));
     renderBudgetSummary();renderSuggestionsHome();
   }
   function renderBudgetSummary(){
@@ -371,7 +372,7 @@
     const syncExecutionUI=value=>{
       const hidden=$('#mk-execution-status'),current=$('#mk-execution-current'),dateWrap=$('#mk-execution-date-wrap'),dateInput=$('#mk-executed-at');
       if(hidden)hidden.value=value;
-      $('.mk-execution-option').forEach(b=>b.classList.toggle('selected',b.dataset.executionValue===value));
+      $$('.mk-execution-option').forEach(b=>b.classList.toggle('selected',b.dataset.executionValue===value));
       if(current){
         current.className=`mk-execution-current ${value}`;
         current.textContent=value==='done'?'✓ Realizado':value==='not_done'?'✕ No realizado':'● Pendiente';
@@ -379,7 +380,7 @@
       dateWrap?.classList.toggle('hidden',value!=='done');
       if(value!=='done'&&dateInput)dateInput.value='';
     };
-    $('.mk-execution-option').forEach(b=>b.onclick=()=>syncExecutionUI(b.dataset.executionValue));
+    $$('.mk-execution-option').forEach(b=>b.onclick=()=>syncExecutionUI(b.dataset.executionValue));
     $('#mk-content-form').onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),payload=Object.fromEntries(fd.entries());['parent_id','branch_id','product_label','promotion_label','audience_zone','recording_date','review_date','publish_date','objective','responsible','channel','destination','execution_note','executed_at'].forEach(k=>{if(payload[k]==='')payload[k]=null});if(payload.executed_at)payload.executed_at=new Date(payload.executed_at).toISOString();if(payload.execution_status==='done'){payload.executed_at=payload.executed_at||nowISO();if(!['published','analyzed'].includes(payload.status_id))payload.status_id='published'}else if(payload.execution_status!=='done')payload.executed_at=null;payload.updated_by=state.session.user.id;if(!existing)payload.created_by=state.session.user.id;setSync('Guardando…');let result;if(existing)result=await state.client.from(tables.contents).update(payload).eq('id',x.id).select().single();else result=await state.client.from(tables.contents).insert(payload).select().single();if(result.error){alert(result.error.message);return}if(existing){const i=state.contents.findIndex(c=>c.id===x.id);state.contents[i]=result.data}else state.contents.push(result.data);closeModal();fillFilters();renderAll();toast('Guardado')};
     if(existing){$('#mk-content-archive').onclick=async()=>patchContent(x.id,{archived_at:x.archived_at?null:nowISO()});$('#mk-content-duplicate').onclick=async()=>{const clone={...x};['id','created_at','updated_at','created_by','updated_by'].forEach(k=>delete clone[k]);clone.stable_id=`${x.stable_id}-COPY-${Date.now().toString().slice(-5)}`;clone.title=`${x.title} · copia`;clone.parent_id=x.parent_id||x.id;clone.status_id='idea';clone.publish_date=null;clone.archived_at=null;clone.execution_status='pending';clone.executed_at=null;clone.execution_note=null;const {data,error}=await state.client.from(tables.contents).insert(clone).select().single();if(error){alert(error.message);return}state.contents.push(data);closeModal();renderAll();openContent(data)};loadAudit('marketing_contents',x.id)}
   }
