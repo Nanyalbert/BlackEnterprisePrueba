@@ -1,6 +1,5 @@
 // Black OS — Permisos granulares de usuarios
 (() => {
-  const STORAGE_KEY = 'blackos_user_permissions_v1';
   const BRANCHES = [
     {id:'all',label:'Todas las sucursales'},
     {id:'general-paz',label:'General Paz'},
@@ -84,29 +83,13 @@
     full: '*'
   };
 
-  function loadSaved(){
-    try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||{}}catch(e){return {}}
-  }
-  function saveSaved(data){
-    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}catch(e){}
-  }
-
-  const saved = loadSaved();
-
   function normalizeUser(user){
     if(!user) return user;
-    const savedUser=saved[user.email];
-    if(savedUser){
-      user.permissions=savedUser.permissions||{};
-      user.branchScope=savedUser.branchScope||['all'];
-      user.apps=Object.entries(user.permissions).filter(([,cfg])=>cfg?.level&&cfg.level!=='none').map(([id])=>id);
-    } else {
-      user.permissions=user.permissions||{};
-      (user.apps||[]).forEach(app=>{
-        if(!user.permissions[app]) user.permissions[app]={level:'full',items:'*'};
-      });
-      user.branchScope=user.branchScope||['all'];
-    }
+    user.permissions=user.permissions||{};
+    (user.apps||[]).forEach(app=>{
+      if(!user.permissions[app]) user.permissions[app]={level:'full',items:'*'};
+    });
+    user.branchScope=Array.isArray(user.branchScope)&&user.branchScope.length?user.branchScope:['all'];
     return user;
   }
 
@@ -267,27 +250,16 @@
     };
   }
 
-  function bindSave(){
-    const form=document.getElementById('user-form');if(!form)return;
-    form.addEventListener('submit',()=>{
-      const email=document.getElementById('modal-email')?.value.trim();
-      if(!email||!document.getElementById('permission-editor')) return;
-      const config=collectPermissionConfig();
-      setTimeout(()=>{
-        const user=usersData.find(x=>x.email===email);if(!user)return;
-        user.permissions=config.permissions;user.branchScope=config.branchScope;
-        user.apps=Object.entries(config.permissions).filter(([,cfg])=>cfg.level!=='none').map(([id])=>id);
-        saved[email]={permissions:user.permissions,branchScope:user.branchScope};
-        saveSaved(saved);
-        renderUsers();
-      },0);
-    });
-  }
+  window.BlackUserPermissions={
+    collect:collectPermissionConfig,
+    modules:MODULES,
+    branches:BRANCHES,
+    normalizeUser
+  };
 
   injectStyles();
   patchRenderUsers();
   patchModal();
-  bindSave();
   if(typeof renderUsers==='function') renderUsers();
 })();
 
