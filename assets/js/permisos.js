@@ -47,6 +47,19 @@
       label:'Recetas', icon:'RX',
       permissions:[['view','Ver y cargar recetas'],['interpret','Interpretar con Black AI'],['copy','Copiar alternativas']]
     },
+    marketing: {
+      label:'Marketing',
+      icon:'MKT',
+      permissions:[
+        ['view','Ver planificación y calendario'],
+        ['create_edit','Crear y editar contenido'],
+        ['production','Gestionar producción e historias'],
+        ['ads','Planificar publicidad y presupuestos'],
+        ['results','Cargar y analizar resultados'],
+        ['import','Importar y actualizar ideas'],
+        ['settings','Administrar categorías y colores']
+      ]
+    },
     turnos: {
       label:'Turnos',
       icon:'TUR',
@@ -177,8 +190,8 @@
     const boxes=[...card.querySelectorAll('[data-permission-module]')];
     if(preset==='full') boxes.forEach(b=>b.checked=true);
     else if(preset==='none') boxes.forEach(b=>b.checked=false);
-    else if(preset==='read') boxes.forEach(b=>b.checked=/view|summary|sales|cash|bank|social|suppliers|stats/.test(b.value));
-    else if(preset==='operator') boxes.forEach(b=>b.checked=!['automation','export','profit_cost','upload','professionals','availability','branches','public_booking','manage'].includes(b.value));
+    else if(preset==='read') boxes.forEach(b=>b.checked=/view|summary|sales|cash|bank|social|suppliers|stats|results/.test(b.value));
+    else if(preset==='operator') boxes.forEach(b=>b.checked=!['automation','export','profit_cost','upload','professionals','availability','branches','public_booking','manage','import','settings'].includes(b.value));
     if(!module) return;
   }
 
