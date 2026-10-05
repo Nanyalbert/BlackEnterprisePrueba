@@ -167,7 +167,7 @@
       if(error||!session){location.replace('index.html');return;}
       state.session=session;
       await loadAll();
-      state.ready=true;setSync('Sincronizado');bindStatic();renderAll();
+      state.ready=true;state.setupError=null;$('#mk-setup')?.classList.add('hidden');setSync('Sincronizado');bindStatic();renderAll();
     }catch(error){
       console.error(error);showSetup(humanError(error));bindStatic();
     }
