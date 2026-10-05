@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/base.css">
-<link rel="stylesheet" href="assets/css/marketing.css?v=20261005-3">
+<link rel="stylesheet" href="assets/css/marketing.css?v=20261005-4">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="assets/js/supabase-config.js"></script>
 </head>
@@ -22,8 +22,8 @@
     </div>
     <div class="mk-header-actions">
       <span class="mk-sync" id="mk-sync">Inicializando…</span>
-      <button class="mk-btn primary" id="mk-new-content" type="button">+ Nueva idea</button>
-      <button class="mk-btn secondary" id="mk-import-open" type="button">Importar plan</button>
+      <button class="mk-btn primary" id="mk-new-content" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Nueva idea</span></button>
+      <button class="mk-btn secondary" id="mk-import-open" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg><span>Importar plan</span></button>
     </div>
   </header>
 
@@ -134,12 +134,12 @@
 
 <div class="mk-modal-backdrop hidden" id="mk-modal-backdrop">
   <div class="mk-modal" role="dialog" aria-modal="true" aria-labelledby="mk-modal-title">
-    <div class="mk-modal-head"><div><span class="mk-kicker" id="mk-modal-kicker">MARKETING</span><h2 id="mk-modal-title">Editar</h2></div><button class="mk-modal-close" id="mk-modal-close" aria-label="Cerrar">×</button></div>
+    <div class="mk-modal-head"><div><span class="mk-kicker" id="mk-modal-kicker">MARKETING</span><h2 id="mk-modal-title">Editar</h2></div><button class="mk-modal-close" id="mk-modal-close" aria-label="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div id="mk-modal-body"></div>
   </div>
 </div>
 
 <script src="assets/js/marketing-core.js?v=20261004-1"></script>
-<script src="assets/js/marketing.js?v=20261005-3"></script>
+<script src="assets/js/marketing.js?v=20261005-4"></script>
 </body>
 </html>
