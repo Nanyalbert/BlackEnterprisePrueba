@@ -336,6 +336,15 @@
     return null;
   }
   async function buildImportPreview(source,meta={}){
+    // Refrescar las entidades reconciliables antes de clasificar NEW/UPDATE.
+    // Evita que una importación previa parcial o cambios en otra sesión dejen
+    // state.* desactualizado y hagan que la preview marque como NEW un stable_id existente.
+    const [contents,stories,references]=await Promise.all([
+      fetchTable(tables.contents),
+      fetchTable(tables.stories),
+      fetchTable(tables.references)
+    ]);
+    Object.assign(state,{contents,stories,references});
     const rows=canonicalRows(source);const seen=new Set();const preview=rows.map(row=>{const issues=[];if(!row.stable_id)issues.push('Falta ID');if(seen.has(row.stable_id))issues.push('ID duplicado en lote');seen.add(row.stable_id);const existing=existingForRow(row),hash=C.fastHash(row.payload);let action=issues.length?'review':existing?(existing.source_hash===hash?'duplicate':'update'):'new';return {...row,existing,source_hash:hash,action,issues}});
     const summary=preview.reduce((a,r)=>(a[r.action]=(a[r.action]||0)+1,a),{});const sourceMeta=source.source||meta||{};
     const batchInsert=await state.client.from('marketing_import_batches').insert({source_name:sourceMeta.name||meta.name||'Importación manual',source_version:sourceMeta.version||meta.version||null,source_hash:sourceMeta.sha256||C.fastHash(source),status:'preview',summary,source_meta:sourceMeta}).select().single();if(batchInsert.error)throw batchInsert.error;
@@ -357,20 +366,136 @@
     const p={stable_id:item.stable_id,title:item.title||item.name||'Sin título',content_type_id:item.content_type_id||item.type_key||'other',theme_id:item.theme_id||item.theme_key||'general',format_id:item.format_id||item.format_key||'reel_video',objective:item.objective||null,branch_id:item.branch_id||item.branch_key||null,responsible:item.responsible||null,brief:item.brief||null,hook:item.hook||null,development:item.development||null,script:item.script||null,material:item.material||null,cta:item.cta||null,channel:item.channel||null,destination:item.destination||null,publish_date:item.publish_date||item.proposed_date||null,status_id:item.status_id||item.production_status||'idea',ad_decision_id:item.ad_decision_id||item.ad_decision||'organic',ad_status_id:item.ad_status_id||item.ad_status||'not_activated',notes:item.notes||null,source_name:'Importación JSON/CSV',source_version:item.source_version||null,source_hash:C.fastHash(item),source_payload:item,needs_review:!!item.needs_review,updated_by:state.session.user.id};if(existing){p.publish_date=existing.publish_date||p.publish_date;p.status_id=existing.status_id||p.status_id;p.ad_decision_id=existing.ad_decision_id||p.ad_decision_id;p.responsible=existing.responsible||p.responsible;p.results=existing.results||{};p.attachments=existing.attachments||[]}else p.created_by=state.session.user.id;return p;
   }
   async function applyCurrentImport(){
-    const current=state.currentImport;if(!current)return;const rows=current.preview.filter(r=>['new','update'].includes(r.action));setSync(`Importando ${rows.length}…`);let applied=0;
+    const current=state.currentImport;if(!current)return;
+    const rows=current.preview.filter(r=>['new','update'].includes(r.action));
+    setSync(`Importando ${rows.length}…`);
+    let applied=0;
+
+    const lookupByStableId=async(table,stableId)=>{
+      const {data,error}=await state.client.from(table).select('*').eq('stable_id',stableId).maybeSingle();
+      if(error)throw error;
+      return data||null;
+    };
+
     for(const r of rows){
       let result=null;
-      if(r.entity_kind==='content'){
-        const payload=(current.source.schema_version==='black-marketing-import-v1')?mapCanonicalContent(r.payload,r.existing):mapGenericContent(r.payload,r.existing);
-        result=r.existing?await state.client.from(tables.contents).update(payload).eq('id',r.existing.id).select('id').single():await state.client.from(tables.contents).insert(payload).select('id').single();
-      }else if(r.entity_kind==='story'){
-        const p={stable_id:r.payload.stable_id,title:r.payload.title,objective:r.payload.objective||null,notes:`Ejemplos: ${r.payload.examples||''}\nMaterial/frecuencia: ${r.payload.material_frequency||''}`,status_id:'idea',source_version:current.source.source?.version||null,source_payload:r.payload,updated_by:state.session.user.id};result=r.existing?await state.client.from(tables.stories).update(p).eq('id',r.existing.id).select('id').single():await state.client.from(tables.stories).insert({...p,created_by:state.session.user.id}).select('id').single();if(!result.error&&result.data?.id&&!state.frames.some(f=>f.sequence_id===result.data.id)){await state.client.from(tables.frames).insert({sequence_id:result.data.id,sort_order:10,text_content:r.payload.examples||null,material:r.payload.material_frequency||null,created_by:state.session.user.id})}
-      }else if(r.entity_kind==='reference'){
-        const p={stable_id:r.payload.stable_id,title:r.payload.title,content:r.payload.content||'',tags:r.payload.tags||[],source_version:current.source.source?.version||null,source_hash:C.fastHash(r.payload),needs_review:!!r.payload.needs_review,updated_by:state.session.user.id};result=r.existing?await state.client.from(tables.references).update(p).eq('id',r.existing.id).select('id').single():await state.client.from(tables.references).insert({...p,created_by:state.session.user.id}).select('id').single();
+      try{
+        if(r.entity_kind==='content'){
+          // La preview es informativa. La verdad final se consulta justo antes de escribir:
+          // si el stable_id apareció entre preview y apply, upsert actualiza en vez de duplicar.
+          const existingNow=await lookupByStableId(tables.contents,r.stable_id);
+          const payload=(current.source.schema_version==='black-marketing-import-v1')
+            ? mapCanonicalContent(r.payload,existingNow)
+            : mapGenericContent(r.payload,existingNow);
+          result=await state.client
+            .from(tables.contents)
+            .upsert(payload,{onConflict:'stable_id'})
+            .select('id')
+            .single();
+        }else if(r.entity_kind==='story'){
+          const existingNow=await lookupByStableId(tables.stories,r.stable_id);
+          const p={
+            stable_id:r.payload.stable_id,
+            title:r.payload.title,
+            objective:r.payload.objective||null,
+            notes:`Ejemplos: ${r.payload.examples||''}\nMaterial/frecuencia: ${r.payload.material_frequency||''}`,
+            status_id:existingNow?.status_id||'idea',
+            source_version:current.source.source?.version||null,
+            source_payload:r.payload,
+            updated_by:state.session.user.id
+          };
+          if(existingNow){
+            p.content_id=existingNow.content_id||null;
+            p.branch_id=existingNow.branch_id||null;
+            p.cta=existingNow.cta||null;
+            p.channel=existingNow.channel||'stories';
+            p.destination=existingNow.destination||null;
+            p.valid_from=existingNow.valid_from||null;
+            p.valid_until=existingNow.valid_until||null;
+            p.highlight_id=existingNow.highlight_id||null;
+            p.archived_at=existingNow.archived_at||null;
+          }else{
+            p.created_by=state.session.user.id;
+          }
+          result=await state.client
+            .from(tables.stories)
+            .upsert(p,{onConflict:'stable_id'})
+            .select('id')
+            .single();
+
+          if(!result.error&&result.data?.id){
+            const {data:frameRows,error:frameLookupError}=await state.client
+              .from(tables.frames)
+              .select('id')
+              .eq('sequence_id',result.data.id)
+              .limit(1);
+            if(frameLookupError)throw frameLookupError;
+            if(!(frameRows||[]).length){
+              const {error:frameInsertError}=await state.client.from(tables.frames).insert({
+                sequence_id:result.data.id,
+                sort_order:10,
+                text_content:r.payload.examples||null,
+                material:r.payload.material_frequency||null,
+                created_by:state.session.user.id
+              });
+              if(frameInsertError)throw frameInsertError;
+            }
+          }
+        }else if(r.entity_kind==='reference'){
+          const existingNow=await lookupByStableId(tables.references,r.stable_id);
+          const p={
+            stable_id:r.payload.stable_id,
+            title:r.payload.title,
+            content:r.payload.content||'',
+            tags:r.payload.tags||[],
+            source_version:current.source.source?.version||null,
+            source_hash:C.fastHash(r.payload),
+            needs_review:!!r.payload.needs_review,
+            updated_by:state.session.user.id
+          };
+          if(!existingNow)p.created_by=state.session.user.id;
+          result=await state.client
+            .from(tables.references)
+            .upsert(p,{onConflict:'stable_id'})
+            .select('id')
+            .single();
+        }
+      }catch(error){
+        result={error};
       }
-      if(result?.error){await state.client.from('marketing_import_batches').update({status:'failed',summary:{error:result.error.message,applied}}).eq('id',current.batch.id);alert(`Importación detenida en ${r.stable_id}: ${result.error.message}`);return}applied++;await state.client.from('marketing_import_rows').update({action:'applied',applied_at:nowISO()}).eq('batch_id',current.batch.id).eq('entity_kind',r.entity_kind).eq('stable_id',r.stable_id);
+
+      if(result?.error){
+        await state.client.from('marketing_import_batches').update({
+          status:'failed',
+          summary:{...current.batch.summary,error:result.error.message||String(result.error),applied}
+        }).eq('id',current.batch.id);
+        // Refrescar estado local después de una aplicación parcial para que un reintento
+        // no vuelva a clasificar registros ya escritos como nuevos.
+        try{await loadAll();}catch(_){}
+        alert(`Importación detenida en ${r.stable_id}: ${result.error.message||result.error}`);
+        setSync('Error de importación');
+        return;
+      }
+
+      applied++;
+      await state.client.from('marketing_import_rows').update({
+        action:'applied',
+        applied_at:nowISO()
+      }).eq('batch_id',current.batch.id).eq('entity_kind',r.entity_kind).eq('stable_id',r.stable_id);
     }
-    await state.client.from('marketing_import_batches').update({status:'applied',applied_at:nowISO(),summary:{...current.batch.summary,applied}}).eq('id',current.batch.id);await loadAll();state.currentImport=null;closeModal();fillFilters();renderAll();toast(`Importación aplicada · ${applied} cambios`)
+
+    await state.client.from('marketing_import_batches').update({
+      status:'applied',
+      applied_at:nowISO(),
+      summary:{...current.batch.summary,applied}
+    }).eq('id',current.batch.id);
+
+    await loadAll();
+    state.currentImport=null;
+    closeModal();
+    fillFilters();
+    renderAll();
+    toast(`Importación aplicada · ${applied} cambios`);
   }
 
   async function handleImportFile(event){const file=event.target.files?.[0];if(!file)return;try{const text=await file.text();let source;if(file.name.toLowerCase().endsWith('.json')){const data=JSON.parse(text);source=Array.isArray(data)?{content_items:data}:{...data};if(!source.content_items)throw new Error('El JSON debe incluir content_items o ser un array de contenidos.')}else{const rows=C.csvRows(text);source={content_items:rows.map(r=>({...r,stable_id:r.stable_id||r.id,title:r.title||r.titulo})),source:{name:file.name,version:'manual'}}}source.schema_version=source.schema_version||'manual-import-v1';source.story_templates=source.story_templates||[];source.reference_notes=source.reference_notes||[];source.brand_references=source.brand_references||[];const current=await buildImportPreview(source,{name:file.name,version:'manual'});showImportPreview(current)}catch(error){alert(`No se pudo previsualizar: ${error.message}`)}finally{event.target.value=''}}
