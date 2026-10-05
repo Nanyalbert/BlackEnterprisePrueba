@@ -45,6 +45,7 @@ on public.supplier_period_actions
 for select to authenticated
 using (
   coalesce((auth.jwt() -> 'app_metadata' ->> 'black_os_super_admin')::boolean, false)
+  or lower(coalesce(auth.jwt() ->> 'email','')) = 'leandro@blackoptica.ar'
   or (auth.jwt() -> 'app_metadata' -> 'black_os_apps') ? 'administracion'
 );
 
@@ -54,10 +55,12 @@ on public.supplier_period_actions
 for all to authenticated
 using (
   coalesce((auth.jwt() -> 'app_metadata' ->> 'black_os_super_admin')::boolean, false)
+  or lower(coalesce(auth.jwt() ->> 'email','')) = 'leandro@blackoptica.ar'
   or (auth.jwt() -> 'app_metadata' -> 'black_os_apps') ? 'administracion'
 )
 with check (
   coalesce((auth.jwt() -> 'app_metadata' ->> 'black_os_super_admin')::boolean, false)
+  or lower(coalesce(auth.jwt() ->> 'email','')) = 'leandro@blackoptica.ar'
   or (auth.jwt() -> 'app_metadata' -> 'black_os_apps') ? 'administracion'
 );
 
