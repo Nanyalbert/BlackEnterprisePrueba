@@ -142,6 +142,10 @@ const viewLinks = document.querySelectorAll('.nav-item[data-view]');
 const appCards = document.querySelectorAll('.app-card[data-view]');
 
 function showView(viewName) {
+  if(typeof userCanOpen==='function' && !userCanOpen(viewName)){
+    viewName='inicio';
+    try{sessionStorage.removeItem(VIEW_STORAGE_KEY)}catch(error){}
+  }
   const target = document.getElementById('view-' + viewName);
   if (!target) return;
 
@@ -256,29 +260,111 @@ function initAdministrationSubmenu(){
 
 initAdministrationSubmenu();
 
-const APP_LABELS = {'crm-black':'CRM Black', administracion:'Administración', 'crm-oftalmologos':'CRM Oftalmólogos', marketing:'Marketing'};
-let usersData = [
-  {id:1,nombre:'Leandro',email:'leandro@blackoptica.ar',apps:['crm-black','administracion','crm-oftalmologos','marketing'],superAdmin:true,activo:true},
-  {id:2,nombre:'Recepción Óptica',email:'recepcion@blackoptica.ar',apps:['administracion'],superAdmin:false,activo:true},
-  {id:3,nombre:'Dr. Gómez',email:'gomez@ejemplo.com',apps:['crm-oftalmologos'],superAdmin:false,activo:true}
-];
-let nextUserId = 4;
+const APP_LABELS = {
+  'crm-black':'CRM Black',
+  administracion:'Administración',
+  'crm-oftalmologos':'CRM Oftalmólogos',
+  recetas:'Recetas',
+  marketing:'Marketing',
+  catalogo:'Catálogo de cristales',
+  turnos:'Turnos'
+};
+let usersData = [];
 let editingUserId = null;
+let usersLoading = false;
+
+function currentSessionUser(){
+  return window.BlackPortal?.currentSession?.user || null;
+}
+function isPortalOwner(user=currentSessionUser()){
+  const email=String(user?.email||'').toLowerCase();
+  return email==='leandro@blackoptica.ar' || user?.app_metadata?.black_os_super_admin===true;
+}
+function userAppsFromMeta(user=currentSessionUser()){
+  if(isPortalOwner(user)) return Object.keys(APP_LABELS);
+  const meta=user?.app_metadata||{};
+  return Array.isArray(meta.black_os_apps)?meta.black_os_apps:[];
+}
+function userCanOpen(viewName,user=currentSessionUser()){
+  if(viewName==='inicio') return true;
+  if(viewName==='usuarios') return isPortalOwner(user);
+  const map={
+    'crm-clientes':'crm-black',
+    administracion:'administracion',
+    'crm-oftalmologos':'crm-oftalmologos',
+    recetas:'recetas',
+    catalogo:'catalogo',
+    marketing:'marketing'
+  };
+  const app=map[viewName];
+  return !app || userAppsFromMeta(user).includes(app);
+}
+function applyPortalAccess(user=currentSessionUser()){
+  const selectors={
+    'crm-clientes':['#crm-clientes-nav','#crm-clientes-card'],
+    administracion:['#administracion-nav','#administracion-card'],
+    'crm-oftalmologos':['#crm-oftalmologos-nav','#crm-oftalmologos-card'],
+    recetas:['#recetas-nav','#recetas-card'],
+    catalogo:['#catalogo-nav'],
+    marketing:['#marketing-nav','#marketing-card'],
+    usuarios:['.nav-item[data-view="usuarios"]']
+  };
+  Object.entries(selectors).forEach(([view,items])=>{
+    const allowed=userCanOpen(view,user);
+    items.forEach(sel=>document.querySelectorAll(sel).forEach(el=>{
+      el.hidden=!allowed;
+      el.setAttribute('aria-hidden',allowed?'false':'true');
+    }));
+  });
+}
+async function callUserAdmin(action,payload={}){
+  if(!supabaseClient) throw new Error('Supabase no está disponible.');
+  const {data,error}=await supabaseClient.functions.invoke('black-os-user-admin',{
+    body:{action,...payload}
+  });
+  if(error){
+    const detail=data?.error||error.message||'No se pudo administrar usuarios.';
+    throw new Error(detail);
+  }
+  if(!data?.ok) throw new Error(data?.error||'No se pudo administrar usuarios.');
+  return data;
+}
+async function loadUsers(){
+  if(!isPortalOwner()) return;
+  usersLoading=true;
+  const tbody=document.getElementById('users-tbody');
+  if(tbody) tbody.innerHTML='<tr><td colspan="4"><div class="empty-state">Cargando usuarios…</div></td></tr>';
+  try{
+    const data=await callUserAdmin('list');
+    usersData=data.users||[];
+    renderUsers();
+  }catch(error){
+    console.error('No se pudieron cargar usuarios:',error);
+    if(tbody) tbody.innerHTML=`<tr><td colspan="4"><div class="empty-state"><strong>No se pudo conectar el administrador de usuarios.</strong><br><span>${String(error.message||error)}</span><br><small>Verificá que la Edge Function <code>black-os-user-admin</code> esté desplegada en Supabase.</small></div></td></tr>`;
+  }finally{usersLoading=false}
+}
 
 function renderUsers() {
   const tbody = document.getElementById('users-tbody');
   const countEl = document.getElementById('users-count');
   if (!tbody || !countEl) return;
   countEl.textContent = usersData.length + (usersData.length === 1 ? ' usuario' : ' usuarios');
-  if (!usersData.length) { tbody.innerHTML='<tr><td colspan="4"><div class="empty-state">Todavía no diste de alta ningún usuario.</div></td></tr>'; return; }
+  if (!usersData.length) { tbody.innerHTML='<tr><td colspan="4"><div class="empty-state">Todavía no hay usuarios cargados.</div></td></tr>'; return; }
   tbody.innerHTML = usersData.map(user => {
-    const badges = user.superAdmin ? '<span class="badge super">Acceso total</span>' : (user.apps.length ? user.apps.map(app=>`<span class="badge">${APP_LABELS[app]||app}</span>`).join('') : '<span class="badge">Sin accesos</span>');
-    return `<tr data-id="${user.id}"><td><div class="user-cell"><div class="avatar">${initials(user.nombre)}</div><div><div class="user-cell-name">${user.nombre}</div><div class="user-cell-email">${user.email}</div></div></div></td><td>${badges}</td><td><span class="status-dot ${user.activo?'':'inactive'}">${user.activo?'Activo':'Inactivo'}</span></td><td><div class="row-actions"><button type="button" class="edit-user" title="Editar">✎</button><button type="button" class="danger delete-user" title="Eliminar">×</button></div></td></tr>`;
+    const badges = user.superAdmin ? '<span class="badge super">Acceso total</span>' : (user.apps?.length ? user.apps.map(app=>`<span class="badge">${APP_LABELS[app]||app}</span>`).join('') : '<span class="badge">Sin accesos</span>');
+    const locked=user.superAdmin?'disabled aria-disabled="true"':'';
+    return `<tr data-id="${user.id}"><td><div class="user-cell"><div class="avatar">${initials(user.nombre)}</div><div><div class="user-cell-name">${user.nombre}</div><div class="user-cell-email">${user.email}</div></div></div></td><td>${badges}</td><td><span class="status-dot ${user.activo?'':'inactive'}">${user.activo?'Activo':'Inactivo'}</span></td><td><div class="row-actions"><button type="button" class="edit-user" title="Editar" ${locked}>✎</button><button type="button" class="danger delete-user" title="Eliminar" ${locked}>×</button></div></td></tr>`;
   }).join('');
-  tbody.querySelectorAll('.edit-user').forEach(button => button.addEventListener('click',()=>openModal(Number(button.closest('tr').dataset.id))));
-  tbody.querySelectorAll('.delete-user').forEach(button => button.addEventListener('click',()=>{
-    const id=Number(button.closest('tr').dataset.id); const user=usersData.find(x=>x.id===id); if(!user) return;
-    if(confirm(`¿Eliminar a ${user.nombre}? Va a perder el acceso al portal.`)){ usersData=usersData.filter(x=>x.id!==id); renderUsers(); }
+  tbody.querySelectorAll('.edit-user:not([disabled])').forEach(button => button.addEventListener('click',()=>openModal(button.closest('tr').dataset.id)));
+  tbody.querySelectorAll('.delete-user:not([disabled])').forEach(button => button.addEventListener('click',async()=>{
+    const id=button.closest('tr').dataset.id; const user=usersData.find(x=>String(x.id)===String(id)); if(!user) return;
+    if(!confirm(`¿Eliminar a ${user.nombre}? Va a perder el acceso al portal.`)) return;
+    button.disabled=true;
+    try{
+      await callUserAdmin('delete',{id:user.id});
+      usersData=usersData.filter(x=>String(x.id)!==String(id));
+      renderUsers();
+    }catch(error){alert(error.message||String(error));button.disabled=false}
   }));
 }
 
@@ -288,6 +374,7 @@ const modalPasswordField=document.getElementById('modal-password-field');
 const userForm=document.getElementById('user-form');
 const nameInput=document.getElementById('modal-name');
 const emailInput=document.getElementById('modal-email');
+const passwordInput=document.getElementById('modal-password');
 const btnNewUser=document.getElementById('btn-new-user');
 const modalClose=document.getElementById('modal-close');
 const modalCancel=document.getElementById('modal-cancel');
@@ -296,8 +383,20 @@ function openModal(userId=null){
   if(!modalOverlay||!userForm||!modalTitle||!modalPasswordField||!nameInput||!emailInput)return;
   editingUserId=userId||null; userForm.reset();
   document.querySelectorAll('.permiso-item input').forEach(input=>input.checked=false);
-  if(editingUserId){ const user=usersData.find(x=>x.id===editingUserId); if(!user)return; modalTitle.textContent='Editar usuario'; modalPasswordField.style.display='none'; nameInput.value=user.nombre; emailInput.value=user.email; document.querySelectorAll('.permiso-item input').forEach(input=>input.checked=user.apps.includes(input.value)); }
-  else { modalTitle.textContent='Nuevo usuario'; modalPasswordField.style.display='flex'; }
+  if(editingUserId){
+    const user=usersData.find(x=>String(x.id)===String(editingUserId)); if(!user)return;
+    modalTitle.textContent='Editar usuario';
+    modalPasswordField.style.display='flex';
+    const passLabel=modalPasswordField.querySelector('label'); if(passLabel)passLabel.textContent='Nueva contraseña (opcional)';
+    if(passwordInput){passwordInput.required=false;passwordInput.placeholder='Dejar vacío para mantener la actual';}
+    nameInput.value=user.nombre||''; emailInput.value=user.email||'';
+    document.querySelectorAll('.permiso-item input').forEach(input=>input.checked=(user.apps||[]).includes(input.value));
+  } else {
+    modalTitle.textContent='Nuevo usuario';
+    modalPasswordField.style.display='flex';
+    const passLabel=modalPasswordField.querySelector('label'); if(passLabel)passLabel.textContent='Contraseña temporal';
+    if(passwordInput){passwordInput.required=true;passwordInput.placeholder='Mínimo 8 caracteres';}
+  }
   modalOverlay.classList.add('show'); setTimeout(()=>nameInput.focus(),50);
 }
 function closeModal(){ modalOverlay?.classList.remove('show'); editingUserId=null; }
@@ -305,14 +404,38 @@ btnNewUser?.addEventListener('click',()=>openModal());
 modalClose?.addEventListener('click',closeModal);
 modalCancel?.addEventListener('click',closeModal);
 modalOverlay?.addEventListener('click',event=>{if(event.target===modalOverlay)closeModal();});
-userForm?.addEventListener('submit',event=>{
-  event.preventDefault(); const nombre=nameInput?.value.trim()||''; const email=emailInput?.value.trim()||''; if(!nombre||!email)return;
-  const apps=Array.from(document.querySelectorAll('.permiso-item input:checked')).map(input=>input.value);
-  if(editingUserId){ const user=usersData.find(x=>x.id===editingUserId); if(!user)return; user.nombre=nombre; user.email=email; user.apps=apps; }
-  else usersData.push({id:nextUserId++,nombre,email,apps,superAdmin:false,activo:true});
-  renderUsers(); closeModal();
+
+userForm?.addEventListener('submit',async event=>{
+  event.preventDefault();
+  if(usersLoading) return;
+  const nombre=nameInput?.value.trim()||'';
+  const email=emailInput?.value.trim().toLowerCase()||'';
+  const password=passwordInput?.value||'';
+  if(!nombre||!email) return;
+  if(!editingUserId && password.length<8){alert('La contraseña temporal debe tener al menos 8 caracteres.');return;}
+  const config=window.BlackUserPermissions?.collect?.()||{
+    permissions:{},
+    branchScope:['all']
+  };
+  const submit=userForm.querySelector('button[type="submit"]');
+  if(submit){submit.disabled=true;submit.textContent='Guardando…';}
+  try{
+    const action=editingUserId?'update':'create';
+    const data=await callUserAdmin(action,{
+      id:editingUserId||undefined,nombre,email,password:password||undefined,
+      permissions:config.permissions,branchScope:config.branchScope,activo:true
+    });
+    const savedUser=data.user;
+    const i=usersData.findIndex(x=>String(x.id)===String(savedUser.id));
+    if(i>=0)usersData[i]=savedUser;else usersData.push(savedUser);
+    renderUsers();closeModal();
+  }catch(error){
+    console.error(error);alert(error.message||String(error));
+  }finally{
+    if(submit){submit.disabled=false;submit.textContent='Guardar';}
+  }
 });
-renderUsers();
+
 
 const notifBtn=document.getElementById('notif-btn');
 const notifPanel=document.getElementById('notif-panel');
@@ -332,6 +455,11 @@ async function bootPortal(){
   if(!supabaseClient){window.location.replace('index.html');return;}
   try{
     const {data:{session},error}=await supabaseClient.auth.getSession(); if(error||!session){window.location.replace('index.html');return;}
+    window.BlackPortal=window.BlackPortal||{};window.BlackPortal.currentSession=session;
+    const meta=session.user.app_metadata||{};
+    if(meta.black_os_active===false){await supabaseClient.auth.signOut();window.location.replace('index.html?disabled=1');return;}
+    applyPortalAccess(session.user);
+    if(isPortalOwner(session.user)) loadUsers();
     const email=session.user.email||'';
     const rawName=session.user.user_metadata?.full_name||session.user.user_metadata?.name||email.split('@')[0].replace(/[._-]+/g,' ');
     const displayName=rawName.split(' ').filter(Boolean).map(part=>part.charAt(0).toUpperCase()+part.slice(1)).join(' ');
@@ -341,6 +469,7 @@ async function bootPortal(){
     const params=new URLSearchParams(window.location.search);
     const requestedView=params.get('view');
     if(requestedView&&document.getElementById('view-'+requestedView))initialView=requestedView;
+    if(!userCanOpen(initialView,session.user))initialView='inicio';
     if(initialView==='catalogo'&&params.has('catalogo')){
       const frame=document.getElementById('catalogo-frame');
       if(frame)frame.src=`black-ai.html?catalogo=${encodeURIComponent(params.get('catalogo')||'')}`;
