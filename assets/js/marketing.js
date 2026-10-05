@@ -4,6 +4,45 @@
   if(!C){console.error('BlackMarketingCore no disponible');return;}
   const $=(s,root=document)=>root.querySelector(s), $$=(s,root=document)=>[...root.querySelectorAll(s)];
   const BRANCH_LABELS={'general-paz':'General Paz','zona-norte':'Cerro de las Rosas'};
+  // Fechas editoriales de referencia para planificar contenido. No crean publicaciones automáticamente.
+  // Feriados 2026: calendario nacional + días turísticos vigentes. Se suman hitos comerciales/culturales útiles para una óptica.
+  const KEY_DATES_2026=[
+    {date:'2026-01-01',kind:'holiday',title:'Año Nuevo',description:'Feriado nacional. Útil para saludo de marca, horarios especiales y reapertura.'},
+    {date:'2026-02-14',kind:'commercial',title:'San Valentín',description:'Oportunidad comercial liviana: regalos, estilo, anteojos de sol y contenido de parejas sin forzar promoción.'},
+    {date:'2026-02-16',kind:'holiday',title:'Carnaval',description:'Feriado nacional. Comunicar horarios y, si aplica, contenido estacional o de viaje.'},
+    {date:'2026-02-17',kind:'holiday',title:'Carnaval',description:'Segundo día de Carnaval. Reforzar horarios y continuidad de atención.'},
+    {date:'2026-03-08',kind:'institutional',title:'Día Internacional de la Mujer',description:'Contenido institucional y de comunidad. Priorizar un mensaje respetuoso antes que una promoción agresiva.'},
+    {date:'2026-03-23',kind:'holiday',title:'Día no laborable turístico',description:'Fin de semana largo. Anticipar horarios, campañas locales y necesidades de lentes de sol o viaje.'},
+    {date:'2026-03-24',kind:'institutional',title:'Día Nacional de la Memoria',description:'Feriado nacional. Mantener comunicación institucional sobria; evitar campañas promocionales invasivas.'},
+    {date:'2026-04-02',kind:'institutional',title:'Malvinas / Jueves Santo',description:'Día del Veterano y de los Caídos en Malvinas y Jueves Santo. Comunicar horarios con tono institucional.'},
+    {date:'2026-04-03',kind:'holiday',title:'Viernes Santo',description:'Feriado nacional. Señalar horarios y disponibilidad de atención.'},
+    {date:'2026-04-07',kind:'health',title:'Día Mundial de la Salud',description:'Buen momento para contenido educativo sobre controles visuales, prevención y salud ocular.'},
+    {date:'2026-05-01',kind:'holiday',title:'Día del Trabajador',description:'Feriado nacional. Comunicar horarios y, si se desea, reconocer al equipo de Black Óptica.'},
+    {date:'2026-05-25',kind:'institutional',title:'Revolución de Mayo',description:'Feriado nacional. Pieza institucional simple y aviso de horarios.'},
+    {date:'2026-06-15',kind:'holiday',title:'Güemes — feriado trasladado',description:'Feriado nacional trasladado por el 17 de junio. Comunicar horarios y fin de semana largo.'},
+    {date:'2026-06-20',kind:'institutional',title:'Día de la Bandera',description:'Feriado nacional por Manuel Belgrano. Comunicación institucional y de horarios.'},
+    {date:'2026-06-21',kind:'commercial',title:'Día del Padre',description:'Fecha comercial fuerte: regalos, clip-on, anteojos de sol y campañas con selección de modelos.'},
+    {date:'2026-06-27',kind:'optical',title:'Día de los Anteojos de Sol',description:'Hito temático ideal para polarizados, protección UV, clip-on y demostraciones de producto.'},
+    {date:'2026-07-09',kind:'institutional',title:'Día de la Independencia',description:'Feriado nacional. Comunicación institucional y horarios.'},
+    {date:'2026-07-10',kind:'holiday',title:'Día no laborable turístico',description:'Fin de semana largo. Reforzar horarios y contenido de viaje/protección solar.'},
+    {date:'2026-07-20',kind:'commercial',title:'Día del Amigo',description:'Fecha de alto interés en Argentina. Contenido social, UGC, regalos o dinámica entre amigos.'},
+    {date:'2026-08-16',kind:'commercial',title:'Día de las Infancias',description:'Contenido familiar y preventivo: controles visuales infantiles, vuelta a clases y cuidado ocular.'},
+    {date:'2026-08-17',kind:'holiday',title:'San Martín',description:'Feriado nacional. Comunicar horarios y continuidad de atención.'},
+    {date:'2026-09-21',kind:'commercial',title:'Primavera / Día del Estudiante',description:'Oportunidad visual y juvenil: sol, color, tendencias, clip-on y contenido lifestyle.'},
+    {date:'2026-10-08',kind:'optical',title:'Día Mundial de la Visión',description:'Una de las fechas más importantes para Black Óptica: educación, chequeos, prevención y autoridad profesional.'},
+    {date:'2026-10-12',kind:'institutional',title:'Diversidad Cultural',description:'Feriado nacional. Comunicación institucional y horarios.'},
+    {date:'2026-10-18',kind:'commercial',title:'Día de la Madre',description:'Fecha comercial prioritaria: regalos, estilo, campañas por segmento y contenido emocional de marca.'},
+    {date:'2026-10-31',kind:'commercial',title:'Halloween',description:'Fecha opcional para contenido creativo, disruptivo o estético sin necesidad de descuento.'},
+    {date:'2026-11-09',kind:'holiday',title:'Feriado nacional — visita papal',description:'Feriado nacional extraordinario 2026. Comunicar horarios y operación de ambas sucursales.'},
+    {date:'2026-11-10',kind:'cordoba',title:'Feriado en Córdoba — visita papal',description:'Feriado extraordinario en la Provincia de Córdoba. Importante para horarios y atención de Black Óptica.'},
+    {date:'2026-11-23',kind:'holiday',title:'Soberanía Nacional — trasladado',description:'Feriado trasladado por el 20 de noviembre. Comunicar horarios y fin de semana largo.'},
+    {date:'2026-11-27',kind:'commercial',title:'Black Friday',description:'Fecha comercial de alta competencia. Si se participa, definir oferta real, stock, margen, pauta y duración con anticipación.'},
+    {date:'2026-12-07',kind:'holiday',title:'Día no laborable turístico',description:'Fin de semana largo previo a fiestas. Buena ventana para regalos, sol y campañas de cierre de año.'},
+    {date:'2026-12-08',kind:'holiday',title:'Inmaculada Concepción',description:'Feriado nacional. Comunicar horarios y aprovechar el inicio fuerte de compras de fin de año.'},
+    {date:'2026-12-24',kind:'commercial',title:'Nochebuena',description:'Última ventana de regalos. Priorizar horarios de atención, entregas y productos disponibles en el día.'},
+    {date:'2026-12-25',kind:'holiday',title:'Navidad',description:'Feriado nacional. Saludo de marca; no hace falta una pieza comercial agresiva.'},
+    {date:'2026-12-31',kind:'commercial',title:'Fin de Año',description:'Cierre institucional: logros, comunidad, equipo, balance y horarios especiales.'}
+  ];
   const state={client:null,session:null,ready:false,options:[],contents:[],stories:[],frames:[],campaigns:[],adSets:[],ads:[],budgets:[],results:[],suggestions:[],references:[],imports:[],calendarMode:'month',calendarAnchor:new Date(),activeTab:'home',currentImport:null,setupError:null};
 
   const tables={
@@ -151,14 +190,24 @@
     $$('[data-content-id]',root).forEach(card=>{card.onclick=()=>openContent(state.contents.find(x=>x.id===card.dataset.contentId));card.ondragstart=e=>e.dataTransfer.setData('text/content-id',card.dataset.contentId)});
   }
 
+  function openKeyDate(date){
+    const x=KEY_DATES_2026.find(d=>d.date===date);if(!x)return;
+    openModal(x.title,`<div class="mk-keydate-detail"><span class="mk-keydate-kind ${esc(x.kind)}">${esc(x.kind==='holiday'?'Feriado / no laborable':x.kind==='optical'?'Óptica y salud visual':x.kind==='health'?'Salud':x.kind==='cordoba'?'Córdoba':x.kind==='institutional'?'Institucional':'Fecha comercial')}</span><p>${esc(x.description)}</p><div class="mk-help">Esta fecha funciona como referencia editorial. No crea ni publica contenido automáticamente.</div><div class="mk-form-actions"><div></div><div class="mk-form-actions-right"><button class="mk-btn secondary" type="button" data-close-modal>Cerrar</button><button class="mk-btn primary" type="button" id="mk-keydate-create">Crear contenido para esta fecha</button></div></div></div>`,'FECHA CLAVE');
+    $('[data-close-modal]').onclick=closeModal;
+    $('#mk-keydate-create').onclick=()=>{closeModal();openContent({publish_date:x.date,status_id:'scheduled',brief:`Fecha clave: ${x.title}. ${x.description}`})};
+  }
+
   function renderCalendar(){
     const el=$('#mk-calendar');if(!el||!state.ready)return;const month=state.calendarMode==='month';$('#mk-calendar-month')?.classList.toggle('active',month);$('#mk-calendar-week')?.classList.toggle('active',!month);
     const dates=month?C.monthGrid(state.calendarAnchor):C.weekGrid(state.calendarAnchor);const today=C.isoToday();
     $('#mk-cal-title').textContent=month?new Intl.DateTimeFormat('es-AR',{month:'long',year:'numeric'}).format(state.calendarAnchor):`${fmtDate(C.toISODate(dates[0]))} – ${fmtDate(C.toISODate(dates[6]))}`;
     el.className=`mk-calendar ${month?'month':'week'}`;const heads=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(x=>`<div class="mk-cal-head">${x}</div>`).join('');
     const rows=filteredContents();
-    el.innerHTML=heads+dates.map(d=>{const iso=C.toISODate(d);const items=rows.filter(x=>x.publish_date===iso);const outside=month&&d.getMonth()!==state.calendarAnchor.getMonth();return `<div class="mk-day ${outside?'outside':''} ${iso===today?'today':''}" data-date="${iso}"><button class="mk-day-num mk-link" data-create-date="${iso}">${d.getDate()} +</button>${items.map(x=>`<div class="mk-cal-card" draggable="true" data-content-id="${x.id}" style="--type-color:${esc(optionColor('content_type',x.content_type_id))}"><strong>${esc(x.title)}</strong><small>${esc(x.stable_id)} · ${esc(optionLabel('production_status',x.status_id))}</small></div>`).join('')}</div>`}).join('');
-    bindContentCards(el);$$('[data-create-date]',el).forEach(x=>x.onclick=e=>{e.stopPropagation();openContent({publish_date:x.dataset.createDate,status_id:'scheduled'})});$$('.mk-day',el).forEach(day=>{day.ondragover=e=>e.preventDefault();day.ondrop=async e=>{e.preventDefault();const id=e.dataTransfer.getData('text/content-id');if(id)await patchContent(id,{publish_date:day.dataset.date,status_id:state.contents.find(x=>x.id===id)?.status_id==='idea'?'scheduled':state.contents.find(x=>x.id===id)?.status_id})}});
+    el.innerHTML=heads+dates.map(d=>{const iso=C.toISODate(d);const items=rows.filter(x=>x.publish_date===iso);const keyDates=KEY_DATES_2026.filter(x=>x.date===iso);const outside=month&&d.getMonth()!==state.calendarAnchor.getMonth();return `<div class="mk-day ${outside?'outside':''} ${iso===today?'today':''} ${keyDates.length?'has-keydate':''}" data-date="${iso}"><div class="mk-day-top"><button class="mk-day-num mk-link" data-create-date="${iso}"><span class="mk-day-weekday">${new Intl.DateTimeFormat('es-AR',{weekday:'short'}).format(d)}</span><span>${d.getDate()}</span> +</button>${keyDates.length?`<span class="mk-keydate-count" title="Fecha clave">${keyDates.length}</span>`:''}</div>${keyDates.map(k=>`<button type="button" class="mk-keydate-card ${esc(k.kind)}" data-key-date="${esc(k.date)}"><strong>${esc(k.title)}</strong><small>${esc(k.description)}</small></button>`).join('')}${items.map(x=>`<div class="mk-cal-card" draggable="true" data-content-id="${x.id}" style="--type-color:${esc(optionColor('content_type',x.content_type_id))}"><strong>${esc(x.title)}</strong><small>${esc(x.stable_id)} · ${esc(optionLabel('production_status',x.status_id))}</small></div>`).join('')}</div>`}).join('');
+    bindContentCards(el);
+    $('[data-create-date]',el).forEach(x=>x.onclick=e=>{e.stopPropagation();openContent({publish_date:x.dataset.createDate,status_id:'scheduled'})});
+    $('[data-key-date]',el).forEach(x=>x.onclick=e=>{e.stopPropagation();openKeyDate(x.dataset.keyDate)});
+    $('.mk-day',el).forEach(day=>{day.ondragover=e=>e.preventDefault();day.ondrop=async e=>{e.preventDefault();const id=e.dataTransfer.getData('text/content-id');if(id)await patchContent(id,{publish_date:day.dataset.date,status_id:state.contents.find(x=>x.id===id)?.status_id==='idea'?'scheduled':state.contents.find(x=>x.id===id)?.status_id})}});
   }
 
   function renderDashboard(){
