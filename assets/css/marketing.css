@@ -107,3 +107,22 @@
   .mk-calendar-nav{grid-template-columns:auto 1fr auto}
   #mk-cal-today{grid-column:1/-1}
 }
+
+.mk-prep-card{display:block;width:100%;text-align:left;border:1px solid #3d3a2e;border-left:3px solid #8f835d;background:#14130f;color:#cfc6a6;border-radius:8px;padding:6px;margin:4px 0;cursor:pointer}
+.mk-prep-card strong{display:block;font-size:9px;line-height:1.25}
+.mk-prep-card small{display:block;margin-top:3px;font-size:8px;color:#8f8a77}
+.mk-prep-card.high{border-color:#5a392f;border-left-color:#b56f58;background:#18100e;color:#e3b5a5}
+.mk-prep-card.medium{border-color:#4d4631;border-left-color:#a18f58;background:#17150f;color:#d8c895}
+.mk-keydate-headline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mk-keydate-priority{display:inline-flex;border-radius:999px;padding:5px 8px;font-size:9px;border:1px solid #343434;color:#aaa}
+.mk-keydate-priority.high{border-color:#704538;color:#e0a795;background:#1c1210}
+.mk-keydate-priority.medium{border-color:#66583a;color:#d4be83;background:#19160f}
+.mk-keydate-timing{display:grid;gap:3px;margin:14px 0;padding:12px;border:1px solid #2c2c2c;border-radius:11px;background:#0a0a0a}
+.mk-keydate-timing strong{font-size:12px}
+.mk-keydate-timing span{font-size:10px;color:#777}
+.mk-keydate-plan{margin:14px 0}
+.mk-keydate-plan>strong{font-size:11px}
+.mk-keydate-plan ol{margin:8px 0 0 18px;padding:0;color:#aaa;font-size:10px;line-height:1.65}
+.mk-keydate-alert{cursor:pointer}
+.mk-keydate-alert.high{border-color:#55352d}
+.mk-keydate-alert.medium{border-color:#4c452f}
