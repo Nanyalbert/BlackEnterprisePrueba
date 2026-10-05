@@ -4,12 +4,51 @@
   if(!C){console.error('BlackMarketingCore no disponible');return;}
   const $=(s,root=document)=>root.querySelector(s), $$=(s,root=document)=>[...root.querySelectorAll(s)];
   const BRANCH_LABELS={'general-paz':'General Paz','zona-norte':'Cerro de las Rosas'};
-  const state={client:null,session:null,ready:false,options:[],contents:[],stories:[],frames:[],campaigns:[],adSets:[],ads:[],budgets:[],results:[],suggestions:[],references:[],imports:[],calendarMode:'month',calendarAnchor:new Date(),activeTab:'home',currentImport:null,setupError:null};
+  // Fechas editoriales de referencia para planificar contenido. No crean publicaciones automáticamente.
+  // Feriados 2026: calendario nacional + días turísticos vigentes. Se suman hitos comerciales/culturales útiles para una óptica.
+  const KEY_DATES_2026=[
+    {date:'2026-01-01',kind:'holiday',title:'Año Nuevo',description:'Feriado nacional. Útil para saludo de marca, horarios especiales y reapertura.'},
+    {date:'2026-02-14',kind:'commercial',title:'San Valentín',description:'Oportunidad comercial liviana: regalos, estilo, anteojos de sol y contenido de parejas sin forzar promoción.'},
+    {date:'2026-02-16',kind:'holiday',title:'Carnaval',description:'Feriado nacional. Comunicar horarios y, si aplica, contenido estacional o de viaje.'},
+    {date:'2026-02-17',kind:'holiday',title:'Carnaval',description:'Segundo día de Carnaval. Reforzar horarios y continuidad de atención.'},
+    {date:'2026-03-08',kind:'institutional',title:'Día Internacional de la Mujer',description:'Contenido institucional y de comunidad. Priorizar un mensaje respetuoso antes que una promoción agresiva.'},
+    {date:'2026-03-23',kind:'holiday',title:'Día no laborable turístico',description:'Fin de semana largo. Anticipar horarios, campañas locales y necesidades de lentes de sol o viaje.'},
+    {date:'2026-03-24',kind:'institutional',title:'Día Nacional de la Memoria',description:'Feriado nacional. Mantener comunicación institucional sobria; evitar campañas promocionales invasivas.'},
+    {date:'2026-04-02',kind:'institutional',title:'Malvinas / Jueves Santo',description:'Día del Veterano y de los Caídos en Malvinas y Jueves Santo. Comunicar horarios con tono institucional.'},
+    {date:'2026-04-03',kind:'holiday',title:'Viernes Santo',description:'Feriado nacional. Señalar horarios y disponibilidad de atención.'},
+    {date:'2026-04-07',kind:'health',title:'Día Mundial de la Salud',description:'Buen momento para contenido educativo sobre controles visuales, prevención y salud ocular.'},
+    {date:'2026-05-01',kind:'holiday',title:'Día del Trabajador',description:'Feriado nacional. Comunicar horarios y, si se desea, reconocer al equipo de Black Óptica.'},
+    {date:'2026-05-25',kind:'institutional',title:'Revolución de Mayo',description:'Feriado nacional. Pieza institucional simple y aviso de horarios.'},
+    {date:'2026-06-15',kind:'holiday',title:'Güemes — feriado trasladado',description:'Feriado nacional trasladado por el 17 de junio. Comunicar horarios y fin de semana largo.'},
+    {date:'2026-06-20',kind:'institutional',title:'Día de la Bandera',description:'Feriado nacional por Manuel Belgrano. Comunicación institucional y de horarios.'},
+    {date:'2026-06-21',kind:'commercial',title:'Día del Padre',description:'Fecha comercial fuerte: regalos, clip-on, anteojos de sol y campañas con selección de modelos.'},
+    {date:'2026-06-27',kind:'optical',title:'Día de los Anteojos de Sol',description:'Hito temático ideal para polarizados, protección UV, clip-on y demostraciones de producto.'},
+    {date:'2026-07-09',kind:'institutional',title:'Día de la Independencia',description:'Feriado nacional. Comunicación institucional y horarios.'},
+    {date:'2026-07-06',kind:'cordoba',title:'Aniversario de la Fundación de Córdoba',description:'Fecha local útil para reforzar identidad cordobesa, comunidad y presencia de las dos sucursales.'},
+    {date:'2026-07-10',kind:'holiday',title:'Día no laborable turístico',description:'Fin de semana largo. Reforzar horarios y contenido de viaje/protección solar.'},
+    {date:'2026-07-20',kind:'commercial',title:'Día del Amigo',description:'Fecha de alto interés en Argentina. Contenido social, UGC, regalos o dinámica entre amigos.'},
+    {date:'2026-08-16',kind:'commercial',title:'Día de las Infancias',description:'Contenido familiar y preventivo: controles visuales infantiles, vuelta a clases y cuidado ocular.'},
+    {date:'2026-08-17',kind:'holiday',title:'San Martín',description:'Feriado nacional. Comunicar horarios y continuidad de atención.'},
+    {date:'2026-09-21',kind:'commercial',title:'Primavera / Día del Estudiante',description:'Oportunidad visual y juvenil: sol, color, tendencias, clip-on y contenido lifestyle.'},
+    {date:'2026-09-30',kind:'cordoba',title:'San Jerónimo · patrono de Córdoba',description:'Fecha local opcional para contenido institucional o de comunidad; validar siempre horarios/alcance municipal antes de comunicar cierres.'},
+    {date:'2026-10-08',kind:'optical',title:'Día Mundial de la Visión',description:'Una de las fechas más importantes para Black Óptica: educación, chequeos, prevención y autoridad profesional.'},
+    {date:'2026-10-12',kind:'institutional',title:'Diversidad Cultural',description:'Feriado nacional. Comunicación institucional y horarios.'},
+    {date:'2026-10-18',kind:'commercial',title:'Día de la Madre',description:'Fecha comercial prioritaria: regalos, estilo, campañas por segmento y contenido emocional de marca.'},
+    {date:'2026-10-31',kind:'commercial',title:'Halloween',description:'Fecha opcional para contenido creativo, disruptivo o estético sin necesidad de descuento.'},
+    {date:'2026-11-23',kind:'holiday',title:'Soberanía Nacional — trasladado',description:'Feriado trasladado por el 20 de noviembre. Comunicar horarios y fin de semana largo.'},
+    {date:'2026-11-27',kind:'commercial',title:'Black Friday',description:'Fecha comercial de alta competencia. Si se participa, definir oferta real, stock, margen, pauta y duración con anticipación.'},
+    {date:'2026-12-07',kind:'holiday',title:'Día no laborable turístico',description:'Fin de semana largo previo a fiestas. Buena ventana para regalos, sol y campañas de cierre de año.'},
+    {date:'2026-12-08',kind:'holiday',title:'Inmaculada Concepción',description:'Feriado nacional. Comunicar horarios y aprovechar el inicio fuerte de compras de fin de año.'},
+    {date:'2026-12-24',kind:'commercial',title:'Nochebuena',description:'Última ventana de regalos. Priorizar horarios de atención, entregas y productos disponibles en el día.'},
+    {date:'2026-12-25',kind:'holiday',title:'Navidad',description:'Feriado nacional. Saludo de marca; no hace falta una pieza comercial agresiva.'},
+    {date:'2026-12-31',kind:'commercial',title:'Fin de Año',description:'Cierre institucional: logros, comunidad, equipo, balance y horarios especiales.'}
+  ];
+  const state={client:null,session:null,ready:false,options:[],contents:[],stories:[],frames:[],campaigns:[],adSets:[],ads:[],budgets:[],results:[],suggestions:[],references:[],imports:[],keyDatePlans:[],calendarMode:'month',calendarAnchor:new Date(),activeTab:'home',currentImport:null,setupError:null};
 
   const tables={
     options:'marketing_options',contents:'marketing_contents',stories:'marketing_story_sequences',frames:'marketing_story_frames',
     campaigns:'marketing_campaigns',adSets:'marketing_ad_sets',ads:'marketing_ads',budgets:'marketing_budget_pools',results:'marketing_results',
-    suggestions:'marketing_suggestions',references:'marketing_reference_notes',imports:'marketing_import_batches'
+    suggestions:'marketing_suggestions',references:'marketing_reference_notes',imports:'marketing_import_batches',keyDatePlans:'marketing_key_date_plans'
   };
 
   function client(){
@@ -27,12 +66,96 @@
   const setSync=t=>{const el=$('#mk-sync');if(el)el.textContent=t};
   const toast=message=>{setSync(message);clearTimeout(toast.t);toast.t=setTimeout(()=>setSync(state.ready?'Sincronizado':'Revisar configuración'),2600)};
   const stableId=(prefix='MK')=>`${prefix}-${new Date().toISOString().replace(/[-:TZ.]/g,'').slice(0,14)}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+  const keyDateLeadDays=x=>{
+    if(/Black Friday|Día de la Madre|Día del Padre/i.test(x.title))return 28;
+    if(x.kind==='commercial'||x.kind==='optical')return 21;
+    if(x.kind==='health')return 14;
+    if(x.kind==='holiday'||x.kind==='cordoba')return 7;
+    return 5;
+  };
+  const keyDatePriority=x=>{
+    if(/Black Friday|Día de la Madre|Día del Padre|Día Mundial de la Visión/i.test(x.title))return 'high';
+    if(x.kind==='commercial'||x.kind==='optical'||x.kind==='health')return 'medium';
+    return 'normal';
+  };
+  const keyDatePrepISO=x=>C.toISODate(C.addDays(C.parseISODate(x.date),-keyDateLeadDays(x)));
+  const daysBetween=(a,b)=>Math.round((C.parseISODate(b)-C.parseISODate(a))/86400000);
+  const keyDatePlan=x=>{
+    const base=['Definir objetivo de la pieza','Definir responsable y formato','Grabar/diseñar con anticipación','Programar publicación y revisar CTA'];
+    if(x.kind==='commercial')return ['Definir oferta, stock y margen real','Elegir productos/modelos protagonistas','Preparar pieza orgánica y decidir si llevará pauta',...base.slice(1)];
+    if(x.kind==='optical'||x.kind==='health')return ['Definir enfoque educativo y dato clínico validado','Preparar demostración o explicación profesional','Evitar promesas médicas no sustentadas',...base.slice(1)];
+    if(x.kind==='holiday')return ['Confirmar horarios de ambas sucursales','Preparar historia/placa de horarios','Programar comunicación antes del cierre'];
+    if(x.kind==='institutional'||x.kind==='cordoba')return ['Definir tono institucional adecuado','Confirmar si corresponde comunicar horarios','Preparar pieza simple, sobria y coherente con Black'];
+    return base;
+  };
+  const hasScheduledContentForDate=x=>state.contents.some(c=>!c.archived_at&&c.publish_date&&c.publish_date>=keyDatePrepISO(x)&&c.publish_date<=x.date);
+  const KEY_DATE_STATUSES=[
+    {id:'unstarted',label:'Sin trabajar'},
+    {id:'strategy',label:'Estrategia definida'},
+    {id:'production',label:'Contenido en producción'},
+    {id:'campaign_ready',label:'Campaña preparada'},
+    {id:'ready',label:'Listo'},
+    {id:'executed',label:'Ejecutado'},
+    {id:'analyzed',label:'Analizado'}
+  ];
+  const keyDateStableId=x=>`KEYDATE-${x.date}-${x.title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'').slice(0,48)}`;
+  const keyDatePlanRecord=x=>state.keyDatePlans.find(p=>p.stable_id===keyDateStableId(x))||null;
+  const keyDateStatus=x=>keyDatePlanRecord(x)?.status||'unstarted';
+  const keyDateStatusLabel=status=>KEY_DATE_STATUSES.find(x=>x.id===status)?.label||status;
+  const keyDateStatusOptions=status=>KEY_DATE_STATUSES.map(x=>`<option value="${x.id}" ${x.id===status?'selected':''}>${esc(x.label)}</option>`).join('');
+  async function saveKeyDatePlan(x,patch={}){
+    const existing=keyDatePlanRecord(x);
+    const payload={
+      stable_id:keyDateStableId(x),event_date:x.date,title:x.title,
+      status:patch.status||existing?.status||'unstarted',
+      owner:patch.owner!==undefined?patch.owner:(existing?.owner||null),
+      notes:patch.notes!==undefined?patch.notes:(existing?.notes||null),
+      planning:{...(existing?.planning||{}),lead_days:keyDateLeadDays(x),priority:keyDatePriority(x),kind:x.kind,description:x.description,...(patch.planning||{})},
+      updated_by:state.session?.user?.id||null
+    };
+    if(!existing)payload.created_by=state.session?.user?.id||null;
+    const {data,error}=await state.client.from(tables.keyDatePlans).upsert(payload,{onConflict:'stable_id'}).select().single();
+    if(error){
+      if(/does not exist|schema cache|PGRST205|42P01/i.test(String(error.message||error))){
+        alert('Para guardar el estado de planificación ejecutá sql/30_marketing_key_date_planning.sql en Supabase.');
+        return null;
+      }
+      alert(error.message||String(error));return null;
+    }
+    const i=state.keyDatePlans.findIndex(p=>p.stable_id===data.stable_id);
+    if(i>=0)state.keyDatePlans[i]=data;else state.keyDatePlans.push(data);
+    renderDashboard();renderCalendar();renderKeyDateOverview();toast('Planificación actualizada');
+    return data;
+  }
+  function renderKeyDateOverview(){
+    const el=$('#mk-keydate-overview');if(!el)return;
+    const today=C.isoToday(),limit=C.toISODate(C.addDays(C.parseISODate(today),30));
+    const upcoming=KEY_DATES_2026.filter(x=>x.date>=today&&x.date<=limit);
+    const counts={total:upcoming.length,ready:0,pending:0,unstarted:0};
+    upcoming.forEach(x=>{
+      const s=keyDateStatus(x);
+      if(['ready','executed','analyzed'].includes(s))counts.ready++;
+      else if(s==='unstarted')counts.unstarted++;
+      else counts.pending++;
+    });
+    el.innerHTML=`<div class="mk-keydate-overview-head"><div><span class="mk-kicker">PRÓXIMOS 30 DÍAS</span><strong>${counts.total} fechas relevantes</strong></div><div class="mk-keydate-overview-stats"><span><b>${counts.ready}</b> listas</span><span><b>${counts.pending}</b> en proceso</span><span><b>${counts.unstarted}</b> sin trabajar</span></div></div>${upcoming.length?`<div class="mk-keydate-overview-list">${upcoming.slice(0,6).map(x=>{const s=keyDateStatus(x);return `<button type="button" data-key-overview="${esc(x.date)}"><span>${esc(fmtDate(x.date))}</span><strong>${esc(x.title)}</strong><em class="${esc(s)}">${esc(keyDateStatusLabel(s))}</em></button>`}).join('')}</div>`:'<div class="mk-empty">No hay fechas clave dentro de los próximos 30 días.</div>'}`;
+    $('[data-key-overview]',el).forEach(b=>b.onclick=()=>openKeyDate(b.dataset.keyOverview));
+  }
 
   async function fetchTable(name,query='*',order=null){
     let q=state.client.from(name).select(query);
     if(order)q=q.order(order,{ascending:true});
     const {data,error}=await q;
     if(error)throw error;
+    return data||[];
+  }
+  async function fetchOptionalTable(name,query='*'){
+    const {data,error}=await state.client.from(name).select(query);
+    if(error){
+      const m=String(error.message||error);
+      if(/does not exist|schema cache|PGRST205|42P01/i.test(m))return [];
+      throw error;
+    }
     return data||[];
   }
 
@@ -59,12 +182,12 @@
   function showSetup(detail){state.setupError=detail;$('#mk-setup')?.classList.remove('hidden');setSync('Configuración pendiente');}
 
   async function loadAll(){
-    const [options,contents,stories,frames,campaigns,adSets,ads,budgets,results,suggestions,references,imports]=await Promise.all([
+    const [options,contents,stories,frames,campaigns,adSets,ads,budgets,results,suggestions,references,imports,keyDatePlans]=await Promise.all([
       fetchTable(tables.options),fetchTable(tables.contents),fetchTable(tables.stories),fetchTable(tables.frames),fetchTable(tables.campaigns),
       fetchTable(tables.adSets),fetchTable(tables.ads),fetchTable(tables.budgets),fetchTable(tables.results),fetchTable(tables.suggestions),
-      fetchTable(tables.references),fetchTable(tables.imports)
+      fetchTable(tables.references),fetchTable(tables.imports),fetchOptionalTable(tables.keyDatePlans)
     ]);
-    Object.assign(state,{options,contents,stories,frames,campaigns,adSets,ads,budgets,results,suggestions,references,imports});
+    Object.assign(state,{options,contents,stories,frames,campaigns,adSets,ads,budgets,results,suggestions,references,imports,keyDatePlans});
   }
 
   function bindStatic(){
@@ -84,10 +207,10 @@
     $('#mk-modal-close')?.addEventListener('click',closeModal);
     $('#mk-modal-backdrop')?.addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
     document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
-    ['mk-search','mk-filter-type','mk-filter-theme','mk-filter-format','mk-filter-status','mk-filter-branch','mk-filter-responsible','mk-filter-objective','mk-filter-channel','mk-filter-ad','mk-sort'].forEach(id=>{
+    ['mk-search','mk-filter-type','mk-filter-theme','mk-filter-format','mk-filter-status','mk-filter-branch','mk-filter-responsible','mk-filter-objective','mk-filter-channel','mk-filter-ad','mk-filter-execution','mk-sort'].forEach(id=>{
       const el=$('#'+id);if(!el)return;el.addEventListener(id==='mk-search'?'input':'change',()=>renderDataViews());
     });
-    $('#mk-clear-filters')?.addEventListener('click',()=>{['mk-search','mk-filter-type','mk-filter-theme','mk-filter-format','mk-filter-status','mk-filter-branch','mk-filter-responsible','mk-filter-objective','mk-filter-channel','mk-filter-ad'].forEach(id=>{const el=$('#'+id);if(el)el.value=''});renderDataViews()});
+    $('#mk-clear-filters')?.addEventListener('click',()=>{['mk-search','mk-filter-type','mk-filter-theme','mk-filter-format','mk-filter-status','mk-filter-branch','mk-filter-responsible','mk-filter-objective','mk-filter-channel','mk-filter-ad','mk-filter-execution'].forEach(id=>{const el=$('#'+id);if(el)el.value=''});renderDataViews()});
     $('#mk-calendar-month')?.addEventListener('click',()=>{state.calendarMode='month';renderCalendar()});
     $('#mk-calendar-week')?.addEventListener('click',()=>{state.calendarMode='week';renderCalendar()});
     $('#mk-cal-prev')?.addEventListener('click',()=>{state.calendarAnchor=state.calendarMode==='month'?C.addMonths(state.calendarAnchor,-1):C.addDays(state.calendarAnchor,-7);renderCalendar()});
@@ -105,7 +228,7 @@
   }
 
   function renderAll(){
-    fillFilters();renderDashboard();renderDataViews();renderStories();renderAds();renderResults();renderOptions();renderLegend();renderImportHistory();renderReferenceNotes();
+    fillFilters();renderDashboard();renderDataViews();renderKeyDateOverview();renderStories();renderAds();renderResults();renderOptions();renderLegend();renderImportHistory();renderReferenceNotes();
   }
   function fillSelect(id,items,placeholder){
     const el=$('#'+id);if(!el)return;const current=el.value;
@@ -122,7 +245,9 @@
   function filteredContents({includeArchived=false}={}){
     const q=($('#mk-search')?.value||'').trim().toLowerCase();
     const filters={content_type_id:$('#mk-filter-type')?.value,theme_id:$('#mk-filter-theme')?.value,format_id:$('#mk-filter-format')?.value,status_id:$('#mk-filter-status')?.value,branch_id:$('#mk-filter-branch')?.value,responsible:$('#mk-filter-responsible')?.value,objective:$('#mk-filter-objective')?.value,channel:$('#mk-filter-channel')?.value,ad_decision_id:$('#mk-filter-ad')?.value};
+    const execution=$('#mk-filter-execution')?.value||'';
     let rows=state.contents.filter(x=>includeArchived||!x.archived_at).filter(x=>Object.entries(filters).every(([k,v])=>!v||String(x[k]||'')===String(v)));
+    if(execution)rows=rows.filter(x=>(x.execution_status||'pending')===execution);
     if(q)rows=rows.filter(x=>[x.stable_id,x.title,x.brief,x.product_label,x.promotion_label,x.responsible,x.objective].some(v=>String(v||'').toLowerCase().includes(q)));
     const sort=$('#mk-sort')?.value||'date_asc';
     rows.sort((a,b)=>{
@@ -133,9 +258,11 @@
     return rows;
   }
 
-  function badges(x){return `<div class="mk-meta"><span class="mk-badge status">${esc(optionLabel('production_status',x.status_id))}</span><span class="mk-badge ad ${esc(x.ad_decision_id||'')}">${esc(optionLabel('ad_decision',x.ad_decision_id))}</span>${x.needs_review?'<span class="mk-badge">Revisar</span>':''}</div>`}
+  const executionLabel=x=>(x.execution_status||'pending')==='done'?'Realizado':(x.execution_status||'pending')==='not_done'?'No realizado':'Pendiente';
+  const executionClass=x=>x.execution_status||'pending';
+  function badges(x){return `<div class="mk-meta"><span class="mk-badge status">${esc(optionLabel('production_status',x.status_id))}</span><span class="mk-badge execution ${esc(executionClass(x))}">${esc(executionLabel(x))}</span><span class="mk-badge ad ${esc(x.ad_decision_id||'')}">${esc(optionLabel('ad_decision',x.ad_decision_id))}</span>${x.needs_review?'<span class="mk-badge">Revisar</span>':''}</div>`}
   function contentCard(x,compact=false){
-    const color=optionColor('content_type',x.content_type_id);return `<article class="mk-content-card" draggable="true" data-content-id="${x.id}" style="--type-color:${esc(color)}"><span class="mk-kicker">${esc(x.stable_id)} · ${esc(fmtDate(x.publish_date))}</span><h3>${esc(x.title)}</h3>${compact?'':`<p>${esc(x.hook||x.brief||'Sin brief')}</p>`}${badges(x)}<div class="mk-item-sub">${esc(branchLabel(x.branch_id))} · ${esc(optionLabel('content_type',x.content_type_id))}</div></article>`}
+    const color=optionColor('content_type',x.content_type_id),exec=executionClass(x);return `<article class="mk-content-card execution-${esc(exec)}" draggable="true" data-content-id="${x.id}" style="--type-color:${esc(color)}"><div class="mk-content-card-top"><span class="mk-kicker">${esc(x.stable_id)} · ${esc(fmtDate(x.publish_date))}</span><span class="mk-execution-pill ${esc(exec)}">${exec==='done'?'✓':exec==='not_done'?'✕':'●'} ${esc(executionLabel(x))}</span></div><h3>${esc(x.title)}</h3>${compact?'':`<p>${esc(x.hook||x.brief||'Sin brief')}</p>`}${badges(x)}<div class="mk-item-sub">${esc(branchLabel(x.branch_id))} · ${esc(optionLabel('content_type',x.content_type_id))}</div></article>`}
 
   function renderDataViews(){renderIdeas();renderProduction();renderCalendar();}
   function renderIdeas(){
@@ -151,24 +278,45 @@
     $$('[data-content-id]',root).forEach(card=>{card.onclick=()=>openContent(state.contents.find(x=>x.id===card.dataset.contentId));card.ondragstart=e=>e.dataTransfer.setData('text/content-id',card.dataset.contentId)});
   }
 
+  function openKeyDate(date){
+    const x=KEY_DATES_2026.find(d=>d.date===date);if(!x)return;
+    const lead=keyDateLeadDays(x),prep=keyDatePrepISO(x),plan=keyDatePlan(x),priority=keyDatePriority(x),record=keyDatePlanRecord(x),status=keyDateStatus(x);
+    openModal(x.title,`<div class="mk-keydate-detail"><div class="mk-keydate-headline"><span class="mk-keydate-kind ${esc(x.kind)}">${esc(x.kind==='holiday'?'Feriado / no laborable':x.kind==='optical'?'Óptica y salud visual':x.kind==='health'?'Salud':x.kind==='cordoba'?'Córdoba':x.kind==='institutional'?'Institucional':'Fecha comercial')}</span><span class="mk-keydate-priority ${priority}">${priority==='high'?'Prioridad alta':priority==='medium'?'Prioridad media':'Referencia'}</span></div><p>${esc(x.description)}</p><div class="mk-keydate-timing"><strong>Empezar a preparar: ${esc(fmtDate(prep))}</strong><span>${lead} días de anticipación recomendada</span></div><div class="mk-form-grid mk-keydate-form"><div class="mk-field"><label>Estado de planificación</label><select id="mk-keydate-status">${keyDateStatusOptions(status)}</select></div><div class="mk-field"><label>Responsable</label><input id="mk-keydate-owner" value="${esc(record?.owner||'')}" placeholder="Ej: Maxi / Leandro"></div><div class="mk-field full"><label>Notas operativas</label><textarea id="mk-keydate-notes" placeholder="Oferta, material, pauta, decisiones pendientes...">${esc(record?.notes||'')}</textarea></div></div><div class="mk-keydate-plan"><strong>Plan sugerido</strong><ol>${plan.map(step=>`<li>${esc(step)}</li>`).join('')}</ol></div><div class="mk-help">El estado se guarda en Black OS y permite distinguir qué fechas todavía no fueron trabajadas, cuáles están en producción y cuáles ya fueron ejecutadas o analizadas.</div><div class="mk-form-actions"><div><button class="mk-btn ghost" type="button" id="mk-keydate-save">Guardar planificación</button></div><div class="mk-form-actions-right"><button class="mk-btn secondary" type="button" data-close-modal>Cerrar</button><button class="mk-btn primary" type="button" id="mk-keydate-create">Crear contenido</button></div></div></div>`,'FECHA CLAVE');
+    $('[data-close-modal]').onclick=closeModal;
+    $('#mk-keydate-save').onclick=async()=>{const saved=await saveKeyDatePlan(x,{status:$('#mk-keydate-status').value,owner:$('#mk-keydate-owner').value.trim()||null,notes:$('#mk-keydate-notes').value.trim()||null});if(saved)openKeyDate(date)};
+    $('#mk-keydate-create').onclick=async()=>{const owner=$('#mk-keydate-owner').value.trim()||null,notes=$('#mk-keydate-notes').value.trim()||null,currentStatus=$('#mk-keydate-status').value;await saveKeyDatePlan(x,{status:['unstarted','strategy'].includes(currentStatus)?'production':currentStatus,owner,notes});closeModal();openContent({publish_date:x.date,status_id:'scheduled',responsible:owner,brief:`Fecha clave: ${x.title}. ${x.description}\nPreparación recomendada desde: ${fmtDate(prep)}.\nPlan: ${plan.join(' · ')}`})};
+  }
+
   function renderCalendar(){
     const el=$('#mk-calendar');if(!el||!state.ready)return;const month=state.calendarMode==='month';$('#mk-calendar-month')?.classList.toggle('active',month);$('#mk-calendar-week')?.classList.toggle('active',!month);
     const dates=month?C.monthGrid(state.calendarAnchor):C.weekGrid(state.calendarAnchor);const today=C.isoToday();
     $('#mk-cal-title').textContent=month?new Intl.DateTimeFormat('es-AR',{month:'long',year:'numeric'}).format(state.calendarAnchor):`${fmtDate(C.toISODate(dates[0]))} – ${fmtDate(C.toISODate(dates[6]))}`;
     el.className=`mk-calendar ${month?'month':'week'}`;const heads=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(x=>`<div class="mk-cal-head">${x}</div>`).join('');
     const rows=filteredContents();
-    el.innerHTML=heads+dates.map(d=>{const iso=C.toISODate(d);const items=rows.filter(x=>x.publish_date===iso);const outside=month&&d.getMonth()!==state.calendarAnchor.getMonth();return `<div class="mk-day ${outside?'outside':''} ${iso===today?'today':''}" data-date="${iso}"><button class="mk-day-num mk-link" data-create-date="${iso}">${d.getDate()} +</button>${items.map(x=>`<div class="mk-cal-card" draggable="true" data-content-id="${x.id}" style="--type-color:${esc(optionColor('content_type',x.content_type_id))}"><strong>${esc(x.title)}</strong><small>${esc(x.stable_id)} · ${esc(optionLabel('production_status',x.status_id))}</small></div>`).join('')}</div>`}).join('');
-    bindContentCards(el);$$('[data-create-date]',el).forEach(x=>x.onclick=e=>{e.stopPropagation();openContent({publish_date:x.dataset.createDate,status_id:'scheduled'})});$$('.mk-day',el).forEach(day=>{day.ondragover=e=>e.preventDefault();day.ondrop=async e=>{e.preventDefault();const id=e.dataTransfer.getData('text/content-id');if(id)await patchContent(id,{publish_date:day.dataset.date,status_id:state.contents.find(x=>x.id===id)?.status_id==='idea'?'scheduled':state.contents.find(x=>x.id===id)?.status_id})}});
+    el.innerHTML=heads+dates.map(d=>{const iso=C.toISODate(d);const items=rows.filter(x=>x.publish_date===iso);const keyDates=KEY_DATES_2026.filter(x=>x.date===iso);const prepDates=KEY_DATES_2026.filter(x=>keyDatePrepISO(x)===iso&&x.date>=today);const outside=month&&d.getMonth()!==state.calendarAnchor.getMonth();return `<div class="mk-day ${outside?'outside':''} ${iso===today?'today':''} ${(keyDates.length||prepDates.length)?'has-keydate':''}" data-date="${iso}"><div class="mk-day-top"><button class="mk-day-num mk-link" data-create-date="${iso}"><span class="mk-day-weekday">${new Intl.DateTimeFormat('es-AR',{weekday:'short'}).format(d)}</span><span>${d.getDate()}</span> +</button>${(keyDates.length||prepDates.length)?`<span class="mk-keydate-count" title="Hitos de planificación">${keyDates.length+prepDates.length}</span>`:''}</div>${prepDates.map(k=>`<button type="button" class="mk-prep-card ${esc(keyDatePriority(k))}" data-key-date="${esc(k.date)}"><strong>Preparar · ${esc(k.title)}</strong><small>${esc(keyDateStatusLabel(keyDateStatus(k)))} · faltan ${keyDateLeadDays(k)} días</small></button>`).join('')}${keyDates.map(k=>`<button type="button" class="mk-keydate-card ${esc(k.kind)}" data-key-date="${esc(k.date)}"><strong>${esc(k.title)}</strong><small>${esc(keyDateStatusLabel(keyDateStatus(k)))} · ${esc(k.description)}</small></button>`).join('')}${items.map(x=>`<div class="mk-cal-card ${esc(executionClass(x))}" draggable="true" data-content-id="${x.id}" style="--type-color:${esc(optionColor('content_type',x.content_type_id))}"><div class="mk-cal-card-head"><strong>${esc(x.title)}</strong><span class="mk-exec-dot ${esc(executionClass(x))}" title="${esc(executionLabel(x))}"></span></div><small>${esc(optionLabel('production_status',x.status_id))} · ${esc(executionLabel(x))}</small><div class="mk-cal-quick"><button type="button" data-exec-done="${x.id}" title="Marcar realizado">✓</button><button type="button" data-exec-notdone="${x.id}" title="Marcar no realizado">×</button></div></div>`).join('')}</div>`}).join('');
+    bindContentCards(el);
+    $('[data-create-date]',el).forEach(x=>x.onclick=e=>{e.stopPropagation();openContent({publish_date:x.dataset.createDate,status_id:'scheduled'})});
+    $('[data-key-date]',el).forEach(x=>x.onclick=e=>{e.stopPropagation();openKeyDate(x.dataset.keyDate)});
+    $('[data-exec-done]',el).forEach(b=>b.onclick=async e=>{e.stopPropagation();await patchContent(b.dataset.execDone,{execution_status:'done',executed_at:nowISO(),status_id:'published'})});
+    $('[data-exec-notdone]',el).forEach(b=>b.onclick=async e=>{e.stopPropagation();await patchContent(b.dataset.execNotdone,{execution_status:'not_done',executed_at:null})});
+    $('.mk-day',el).forEach(day=>{day.ondragover=e=>e.preventDefault();day.ondrop=async e=>{e.preventDefault();const id=e.dataTransfer.getData('text/content-id');if(id)await patchContent(id,{publish_date:day.dataset.date,status_id:state.contents.find(x=>x.id===id)?.status_id==='idea'?'scheduled':state.contents.find(x=>x.id===id)?.status_id})}});
   }
 
   function renderDashboard(){
-    const active=state.contents.filter(x=>!x.archived_at),today=C.isoToday(),upcoming=active.filter(x=>x.publish_date&&x.publish_date>=today&&!['published','analyzed'].includes(x.status_id)).sort((a,b)=>a.publish_date.localeCompare(b.publish_date)),overdue=active.filter(x=>x.publish_date&&x.publish_date<today&&!['published','analyzed'].includes(x.status_id));
+    const active=state.contents.filter(x=>!x.archived_at),today=C.isoToday(),upcoming=active.filter(x=>x.publish_date&&x.publish_date>=today&&(x.execution_status||'pending')==='pending'&&!['published','analyzed'].includes(x.status_id)).sort((a,b)=>a.publish_date.localeCompare(b.publish_date)),overdue=active.filter(x=>x.publish_date&&x.publish_date<today&&(x.execution_status||'pending')==='pending'&&!['published','analyzed'].includes(x.status_id));
     const activeCampaigns=state.campaigns.filter(x=>['testing','active'].includes(x.status_id));
     const planned=state.budgets.filter(x=>!x.is_template).reduce((s,x)=>s+Number(x.planned_amount||0),0),spent=state.budgets.filter(x=>!x.is_template).reduce((s,x)=>s+Number(x.actual_spend||0),0);
     const kpis=[['Próximos',upcoming.length,'Contenido con fecha'],['Atrasados',overdue.length,'Requieren decisión'],['Campañas',activeCampaigns.length,'En prueba o activas'],['Pauta',planned?C.formatMoney(Math.max(planned-spent,0)):'—','Saldo registrado']];
     $('#mk-kpis').innerHTML=kpis.map(x=>`<article class="mk-kpi"><span>${x[0]}</span><strong>${x[1]}</strong><small>${x[2]}</small></article>`).join('');
     const ue=$('#mk-upcoming');ue.innerHTML=upcoming.slice(0,8).map(x=>`<div class="mk-item clickable" data-content-id="${x.id}"><div class="mk-item-top"><span class="mk-item-title">${esc(x.title)}</span><span class="mk-chip">${esc(fmtDate(x.publish_date))}</span></div>${badges(x)}</div>`).join('')||'<div class="mk-empty">Sin contenidos próximos.</div>';bindContentCards(ue);
-    const alerts=[];overdue.slice(0,5).forEach(x=>alerts.push(`<div class="mk-item clickable" data-content-id="${x.id}"><strong class="mk-danger-text">Atrasado · ${esc(x.stable_id)}</strong><span class="mk-item-sub">${esc(x.title)} · ${esc(fmtDate(x.publish_date))}</span></div>`));state.stories.filter(x=>x.valid_until&&x.valid_until.slice(0,10)<today&&!x.archived_at).slice(0,3).forEach(x=>alerts.push(`<div class="mk-item"><strong class="mk-danger-text">Historia vencida</strong><span class="mk-item-sub">${esc(x.title)}</span></div>`));$('#mk-alerts').innerHTML=alerts.join('')||'<div class="mk-empty">No hay alertas operativas.</div>';bindContentCards($('#mk-alerts'));
+    const alerts=[];
+    overdue.slice(0,4).forEach(x=>alerts.push(`<div class="mk-item clickable" data-content-id="${x.id}"><strong class="mk-danger-text">Atrasado · ${esc(x.stable_id)}</strong><span class="mk-item-sub">${esc(x.title)} · ${esc(fmtDate(x.publish_date))}</span></div>`));
+    const keyDateAlerts=KEY_DATES_2026.filter(x=>x.date>=today&&daysBetween(today,x.date)<=30&&!['ready','executed','analyzed'].includes(keyDateStatus(x))&&(!hasScheduledContentForDate(x)||['unstarted','strategy'].includes(keyDateStatus(x)))).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
+    keyDateAlerts.forEach(x=>{const days=daysBetween(today,x.date),priority=keyDatePriority(x);alerts.push(`<div class="mk-item mk-keydate-alert ${priority}" data-key-date-alert="${esc(x.date)}"><div class="mk-item-top"><strong>${esc(x.title)}</strong><span class="mk-chip">${days===0?'Hoy':`En ${days} días`}</span></div><span class="mk-item-sub">Estado: ${esc(keyDateStatusLabel(keyDateStatus(x)))}. Preparación recomendada desde ${esc(fmtDate(keyDatePrepISO(x)))}.</span></div>`)});
+    state.stories.filter(x=>x.valid_until&&x.valid_until.slice(0,10)<today&&!x.archived_at).slice(0,2).forEach(x=>alerts.push(`<div class="mk-item"><strong class="mk-danger-text">Historia vencida</strong><span class="mk-item-sub">${esc(x.title)}</span></div>`));
+    $('#mk-alerts').innerHTML=alerts.join('')||'<div class="mk-empty">No hay alertas operativas.</div>';
+    bindContentCards($('#mk-alerts'));
+    $('[data-key-date-alert]',$('#mk-alerts')).forEach(x=>x.onclick=()=>openKeyDate(x.dataset.keyDateAlert));
     renderBudgetSummary();renderSuggestionsHome();
   }
   function renderBudgetSummary(){
@@ -187,7 +335,7 @@
 
   async function openContent(item={}){
     const existing=!!item?.id;const x={stable_id:stableId('CONT'),status_id:'idea',ad_decision_id:'organic',ad_status_id:'not_activated',format_id:'reel_video',...item};
-    const readiness=C.contentReadiness(x);openModal(existing?'Editar contenido':'Nueva idea',`<form id="mk-content-form"><div class="mk-form-grid">
+    const readiness=C.contentReadiness(x);openModal(existing?'Editar contenido':'Nueva idea',`<form id="mk-content-form"><section class="mk-execution-control" aria-labelledby="mk-execution-title"><div class="mk-execution-control-head"><div><span class="mk-kicker">EJECUCIÓN</span><h3 id="mk-execution-title">¿Este contenido se llevó a cabo?</h3><p>Marcá el resultado operativo para cerrar la tarea y mantener el calendario al día.</p></div><span class="mk-execution-current ${esc(x.execution_status||'pending')}" id="mk-execution-current">${(x.execution_status||'pending')==='done'?'✓ Realizado':(x.execution_status||'pending')==='not_done'?'✕ No realizado':'● Pendiente'}</span></div><input type="hidden" name="execution_status" id="mk-execution-status" value="${esc(x.execution_status||'pending')}"><div class="mk-execution-segment"><button type="button" class="mk-execution-option pending ${(x.execution_status||'pending')==='pending'?'selected':''}" data-execution-value="pending"><span>●</span><strong>Pendiente</strong><small>Todavía no se hizo</small></button><button type="button" class="mk-execution-option done ${x.execution_status==='done'?'selected':''}" data-execution-value="done"><span>✓</span><strong>Realizado</strong><small>Se publicó / se hizo</small></button><button type="button" class="mk-execution-option not_done ${x.execution_status==='not_done'?'selected':''}" data-execution-value="not_done"><span>✕</span><strong>No realizado</strong><small>Se canceló o no salió</small></button></div><div class="mk-execution-date ${x.execution_status==='done'?'':'hidden'}" id="mk-execution-date-wrap"><label>Fecha de realización</label><input name="executed_at" id="mk-executed-at" type="datetime-local" value="${esc((x.executed_at||'').slice(0,16))}"><small>Se completa automáticamente al guardar si la dejás vacía.</small></div></section><div class="mk-form-grid">
       <div class="mk-field"><label>ID estable</label><input name="stable_id" value="${esc(x.stable_id||'')}" ${existing?'readonly':''} required><small>No cambia al reprogramar ni duplicar.</small></div>
       <div class="mk-field"><label>Título</label><input name="title" value="${esc(x.title||'')}" required></div>
       <div class="mk-field"><label>Tipo</label><select name="content_type_id">${selectOptions('content_type',x.content_type_id)}</select></div>
@@ -204,7 +352,7 @@
       <div class="mk-field"><label>Fecha calendario</label><input name="publish_date" type="date" value="${esc(x.publish_date||'')}"><small>Programar acá no publica nada.</small></div>
       <div class="mk-field"><label>Fecha grabación</label><input name="recording_date" type="date" value="${esc(x.recording_date||'')}"></div>
       <div class="mk-field"><label>Fecha revisión</label><input name="review_date" type="date" value="${esc(x.review_date||'')}"></div>
-      <div class="mk-field"><label>Estado</label><select name="status_id">${selectOptions('production_status',x.status_id,false)}</select></div>
+      <div class="mk-field"><label>Estado de producción</label><select name="status_id">${selectOptions('production_status',x.status_id,false)}</select></div>
       <div class="mk-field"><label>Decisión de pauta</label><select name="ad_decision_id">${selectOptions('ad_decision',x.ad_decision_id,false)}</select></div>
       <div class="mk-field"><label>Estado publicitario</label><select name="ad_status_id">${selectOptions('ad_status',x.ad_status_id,false)}</select></div>
       <div class="mk-field"><label>Idea original / versión de</label><select name="parent_id"><option value="">Sin vínculo</option>${state.contents.filter(c=>c.id!==x.id).map(c=>`<option value="${c.id}" ${c.id===x.parent_id?'selected':''}>${esc(c.stable_id)} · ${esc(c.title)}</option>`).join('')}</select></div>
@@ -214,13 +362,26 @@
       <div class="mk-field full"><label>Guion</label><textarea name="script">${esc(x.script||'')}</textarea></div>
       <div class="mk-field full"><label>Material / planos</label><textarea name="material">${esc(x.material||'')}</textarea></div>
       <div class="mk-field full"><label>CTA</label><textarea name="cta">${esc(x.cta||'')}</textarea></div>
+      <div class="mk-field full"><label>Nota de ejecución</label><textarea name="execution_note" placeholder="Qué pasó, por qué no se realizó o qué resultado operativo dejó.">${esc(x.execution_note||'')}</textarea></div>
       <div class="mk-field full"><label>Observaciones</label><textarea name="notes">${esc(x.notes||'')}</textarea></div>
     </div><div class="mk-help">${readiness.ready?'La ficha tiene los datos mínimos para su estado actual.':`Falta para avanzar: ${esc(readiness.missing.join(', '))}.`}</div>
     <div id="mk-audit-preview"></div>
     <div class="mk-form-actions"><div>${existing?`<button type="button" class="mk-btn ${x.archived_at?'secondary':'danger'}" id="mk-content-archive">${x.archived_at?'Recuperar':'Archivar'}</button> <button type="button" class="mk-btn ghost" id="mk-content-duplicate">Duplicar</button>`:''}</div><div class="mk-form-actions-right"><button class="mk-btn secondary" type="button" data-close-modal>Cancelar</button><button class="mk-btn primary" type="submit">Guardar</button></div></div></form>`);
     $('[data-close-modal]')?.addEventListener('click',closeModal);
-    $('#mk-content-form').onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),payload=Object.fromEntries(fd.entries());['parent_id','branch_id','product_label','promotion_label','audience_zone','recording_date','review_date','publish_date','objective','responsible','channel','destination'].forEach(k=>{if(payload[k]==='')payload[k]=null});payload.updated_by=state.session.user.id;if(!existing)payload.created_by=state.session.user.id;setSync('Guardando…');let result;if(existing)result=await state.client.from(tables.contents).update(payload).eq('id',x.id).select().single();else result=await state.client.from(tables.contents).insert(payload).select().single();if(result.error){alert(result.error.message);return}if(existing){const i=state.contents.findIndex(c=>c.id===x.id);state.contents[i]=result.data}else state.contents.push(result.data);closeModal();fillFilters();renderAll();toast('Guardado')};
-    if(existing){$('#mk-content-archive').onclick=async()=>patchContent(x.id,{archived_at:x.archived_at?null:nowISO()});$('#mk-content-duplicate').onclick=async()=>{const clone={...x};['id','created_at','updated_at','created_by','updated_by'].forEach(k=>delete clone[k]);clone.stable_id=`${x.stable_id}-COPY-${Date.now().toString().slice(-5)}`;clone.title=`${x.title} · copia`;clone.parent_id=x.parent_id||x.id;clone.status_id='idea';clone.publish_date=null;clone.archived_at=null;const {data,error}=await state.client.from(tables.contents).insert(clone).select().single();if(error){alert(error.message);return}state.contents.push(data);closeModal();renderAll();openContent(data)};loadAudit('marketing_contents',x.id)}
+    const syncExecutionUI=value=>{
+      const hidden=$('#mk-execution-status'),current=$('#mk-execution-current'),dateWrap=$('#mk-execution-date-wrap'),dateInput=$('#mk-executed-at');
+      if(hidden)hidden.value=value;
+      $('.mk-execution-option').forEach(b=>b.classList.toggle('selected',b.dataset.executionValue===value));
+      if(current){
+        current.className=`mk-execution-current ${value}`;
+        current.textContent=value==='done'?'✓ Realizado':value==='not_done'?'✕ No realizado':'● Pendiente';
+      }
+      dateWrap?.classList.toggle('hidden',value!=='done');
+      if(value!=='done'&&dateInput)dateInput.value='';
+    };
+    $('.mk-execution-option').forEach(b=>b.onclick=()=>syncExecutionUI(b.dataset.executionValue));
+    $('#mk-content-form').onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.currentTarget),payload=Object.fromEntries(fd.entries());['parent_id','branch_id','product_label','promotion_label','audience_zone','recording_date','review_date','publish_date','objective','responsible','channel','destination','execution_note','executed_at'].forEach(k=>{if(payload[k]==='')payload[k]=null});if(payload.executed_at)payload.executed_at=new Date(payload.executed_at).toISOString();if(payload.execution_status==='done'){payload.executed_at=payload.executed_at||nowISO();if(!['published','analyzed'].includes(payload.status_id))payload.status_id='published'}else if(payload.execution_status!=='done')payload.executed_at=null;payload.updated_by=state.session.user.id;if(!existing)payload.created_by=state.session.user.id;setSync('Guardando…');let result;if(existing)result=await state.client.from(tables.contents).update(payload).eq('id',x.id).select().single();else result=await state.client.from(tables.contents).insert(payload).select().single();if(result.error){alert(result.error.message);return}if(existing){const i=state.contents.findIndex(c=>c.id===x.id);state.contents[i]=result.data}else state.contents.push(result.data);closeModal();fillFilters();renderAll();toast('Guardado')};
+    if(existing){$('#mk-content-archive').onclick=async()=>patchContent(x.id,{archived_at:x.archived_at?null:nowISO()});$('#mk-content-duplicate').onclick=async()=>{const clone={...x};['id','created_at','updated_at','created_by','updated_by'].forEach(k=>delete clone[k]);clone.stable_id=`${x.stable_id}-COPY-${Date.now().toString().slice(-5)}`;clone.title=`${x.title} · copia`;clone.parent_id=x.parent_id||x.id;clone.status_id='idea';clone.publish_date=null;clone.archived_at=null;clone.execution_status='pending';clone.executed_at=null;clone.execution_note=null;const {data,error}=await state.client.from(tables.contents).insert(clone).select().single();if(error){alert(error.message);return}state.contents.push(data);closeModal();renderAll();openContent(data)};loadAudit('marketing_contents',x.id)}
   }
 
   async function loadAudit(table,rowId){
@@ -336,6 +497,15 @@
     return null;
   }
   async function buildImportPreview(source,meta={}){
+    // Refrescar las entidades reconciliables antes de clasificar NEW/UPDATE.
+    // Evita que una importación previa parcial o cambios en otra sesión dejen
+    // state.* desactualizado y hagan que la preview marque como NEW un stable_id existente.
+    const [contents,stories,references]=await Promise.all([
+      fetchTable(tables.contents),
+      fetchTable(tables.stories),
+      fetchTable(tables.references)
+    ]);
+    Object.assign(state,{contents,stories,references});
     const rows=canonicalRows(source);const seen=new Set();const preview=rows.map(row=>{const issues=[];if(!row.stable_id)issues.push('Falta ID');if(seen.has(row.stable_id))issues.push('ID duplicado en lote');seen.add(row.stable_id);const existing=existingForRow(row),hash=C.fastHash(row.payload);let action=issues.length?'review':existing?(existing.source_hash===hash?'duplicate':'update'):'new';return {...row,existing,source_hash:hash,action,issues}});
     const summary=preview.reduce((a,r)=>(a[r.action]=(a[r.action]||0)+1,a),{});const sourceMeta=source.source||meta||{};
     const batchInsert=await state.client.from('marketing_import_batches').insert({source_name:sourceMeta.name||meta.name||'Importación manual',source_version:sourceMeta.version||meta.version||null,source_hash:sourceMeta.sha256||C.fastHash(source),status:'preview',summary,source_meta:sourceMeta}).select().single();if(batchInsert.error)throw batchInsert.error;
@@ -350,27 +520,143 @@
 
   function mapCanonicalContent(item,existing){
     const p={stable_id:item.stable_id,title:item.title,content_type_id:item.type_key||'other',theme_id:item.theme_key||'general',format_id:item.format_key||'reel_video',objective:item.objective||null,branch_id:item.branch_key||null,responsible:item.responsible||null,brief:item.brief||null,hook:item.hook||null,development:item.development||null,material:item.material||null,cta:item.cta||null,channel:item.channel||null,destination:item.destination||null,publish_date:item.proposed_date||null,status_id:item.production_status||'scheduled',ad_decision_id:item.ad_decision||'organic',ad_status_id:item.ad_status||'not_activated',notes:item.notes||null,source_name:'Black Óptica — Plan ampliado de contenido y Meta Ads',source_version:'10',source_hash:C.fastHash(item),source_payload:item,needs_review:!!item.needs_review,updated_by:state.session.user.id};
-    if(existing){p.publish_date=existing.publish_date||p.publish_date;p.status_id=existing.status_id||p.status_id;p.ad_decision_id=existing.ad_decision_id||p.ad_decision_id;p.ad_status_id=existing.ad_status_id||p.ad_status_id;p.responsible=existing.responsible||p.responsible;p.channel=existing.channel||p.channel;p.destination=existing.destination||p.destination;p.product_id=existing.product_id||null;p.product_label=existing.product_label||null;p.promotion_label=existing.promotion_label||null;p.audience_zone=existing.audience_zone||null;p.attachments=existing.attachments||[];p.results=existing.results||{};p.script=existing.script||null;p.archived_at=existing.archived_at||null;}
+    if(existing){p.publish_date=existing.publish_date||p.publish_date;p.status_id=existing.status_id||p.status_id;p.ad_decision_id=existing.ad_decision_id||p.ad_decision_id;p.ad_status_id=existing.ad_status_id||p.ad_status_id;p.responsible=existing.responsible||p.responsible;p.channel=existing.channel||p.channel;p.destination=existing.destination||p.destination;p.product_id=existing.product_id||null;p.product_label=existing.product_label||null;p.promotion_label=existing.promotion_label||null;p.audience_zone=existing.audience_zone||null;p.attachments=existing.attachments||[];p.results=existing.results||{};p.script=existing.script||null;p.archived_at=existing.archived_at||null;p.execution_status=existing.execution_status||'pending';p.executed_at=existing.executed_at||null;p.execution_note=existing.execution_note||null;}
     else p.created_by=state.session.user.id;return p;
   }
   function mapGenericContent(item,existing){
-    const p={stable_id:item.stable_id,title:item.title||item.name||'Sin título',content_type_id:item.content_type_id||item.type_key||'other',theme_id:item.theme_id||item.theme_key||'general',format_id:item.format_id||item.format_key||'reel_video',objective:item.objective||null,branch_id:item.branch_id||item.branch_key||null,responsible:item.responsible||null,brief:item.brief||null,hook:item.hook||null,development:item.development||null,script:item.script||null,material:item.material||null,cta:item.cta||null,channel:item.channel||null,destination:item.destination||null,publish_date:item.publish_date||item.proposed_date||null,status_id:item.status_id||item.production_status||'idea',ad_decision_id:item.ad_decision_id||item.ad_decision||'organic',ad_status_id:item.ad_status_id||item.ad_status||'not_activated',notes:item.notes||null,source_name:'Importación JSON/CSV',source_version:item.source_version||null,source_hash:C.fastHash(item),source_payload:item,needs_review:!!item.needs_review,updated_by:state.session.user.id};if(existing){p.publish_date=existing.publish_date||p.publish_date;p.status_id=existing.status_id||p.status_id;p.ad_decision_id=existing.ad_decision_id||p.ad_decision_id;p.responsible=existing.responsible||p.responsible;p.results=existing.results||{};p.attachments=existing.attachments||[]}else p.created_by=state.session.user.id;return p;
+    const p={stable_id:item.stable_id,title:item.title||item.name||'Sin título',content_type_id:item.content_type_id||item.type_key||'other',theme_id:item.theme_id||item.theme_key||'general',format_id:item.format_id||item.format_key||'reel_video',objective:item.objective||null,branch_id:item.branch_id||item.branch_key||null,responsible:item.responsible||null,brief:item.brief||null,hook:item.hook||null,development:item.development||null,script:item.script||null,material:item.material||null,cta:item.cta||null,channel:item.channel||null,destination:item.destination||null,publish_date:item.publish_date||item.proposed_date||null,status_id:item.status_id||item.production_status||'idea',ad_decision_id:item.ad_decision_id||item.ad_decision||'organic',ad_status_id:item.ad_status_id||item.ad_status||'not_activated',notes:item.notes||null,source_name:'Importación JSON/CSV',source_version:item.source_version||null,source_hash:C.fastHash(item),source_payload:item,needs_review:!!item.needs_review,updated_by:state.session.user.id};if(existing){p.publish_date=existing.publish_date||p.publish_date;p.status_id=existing.status_id||p.status_id;p.ad_decision_id=existing.ad_decision_id||p.ad_decision_id;p.responsible=existing.responsible||p.responsible;p.results=existing.results||{};p.attachments=existing.attachments||[];p.execution_status=existing.execution_status||'pending';p.executed_at=existing.executed_at||null;p.execution_note=existing.execution_note||null}else p.created_by=state.session.user.id;return p;
   }
   async function applyCurrentImport(){
-    const current=state.currentImport;if(!current)return;const rows=current.preview.filter(r=>['new','update'].includes(r.action));setSync(`Importando ${rows.length}…`);let applied=0;
+    const current=state.currentImport;if(!current)return;
+    const rows=current.preview.filter(r=>['new','update'].includes(r.action));
+    setSync(`Importando ${rows.length}…`);
+    let applied=0;
+
+    const lookupByStableId=async(table,stableId)=>{
+      const {data,error}=await state.client.from(table).select('*').eq('stable_id',stableId).maybeSingle();
+      if(error)throw error;
+      return data||null;
+    };
+
     for(const r of rows){
       let result=null;
-      if(r.entity_kind==='content'){
-        const payload=(current.source.schema_version==='black-marketing-import-v1')?mapCanonicalContent(r.payload,r.existing):mapGenericContent(r.payload,r.existing);
-        result=r.existing?await state.client.from(tables.contents).update(payload).eq('id',r.existing.id).select('id').single():await state.client.from(tables.contents).insert(payload).select('id').single();
-      }else if(r.entity_kind==='story'){
-        const p={stable_id:r.payload.stable_id,title:r.payload.title,objective:r.payload.objective||null,notes:`Ejemplos: ${r.payload.examples||''}\nMaterial/frecuencia: ${r.payload.material_frequency||''}`,status_id:'idea',source_version:current.source.source?.version||null,source_payload:r.payload,updated_by:state.session.user.id};result=r.existing?await state.client.from(tables.stories).update(p).eq('id',r.existing.id).select('id').single():await state.client.from(tables.stories).insert({...p,created_by:state.session.user.id}).select('id').single();if(!result.error&&result.data?.id&&!state.frames.some(f=>f.sequence_id===result.data.id)){await state.client.from(tables.frames).insert({sequence_id:result.data.id,sort_order:10,text_content:r.payload.examples||null,material:r.payload.material_frequency||null,created_by:state.session.user.id})}
-      }else if(r.entity_kind==='reference'){
-        const p={stable_id:r.payload.stable_id,title:r.payload.title,content:r.payload.content||'',tags:r.payload.tags||[],source_version:current.source.source?.version||null,source_hash:C.fastHash(r.payload),needs_review:!!r.payload.needs_review,updated_by:state.session.user.id};result=r.existing?await state.client.from(tables.references).update(p).eq('id',r.existing.id).select('id').single():await state.client.from(tables.references).insert({...p,created_by:state.session.user.id}).select('id').single();
+      try{
+        if(r.entity_kind==='content'){
+          // La preview es informativa. La verdad final se consulta justo antes de escribir:
+          // si el stable_id apareció entre preview y apply, upsert actualiza en vez de duplicar.
+          const existingNow=await lookupByStableId(tables.contents,r.stable_id);
+          const payload=(current.source.schema_version==='black-marketing-import-v1')
+            ? mapCanonicalContent(r.payload,existingNow)
+            : mapGenericContent(r.payload,existingNow);
+          result=await state.client
+            .from(tables.contents)
+            .upsert(payload,{onConflict:'stable_id'})
+            .select('id')
+            .single();
+        }else if(r.entity_kind==='story'){
+          const existingNow=await lookupByStableId(tables.stories,r.stable_id);
+          const p={
+            stable_id:r.payload.stable_id,
+            title:r.payload.title,
+            objective:r.payload.objective||null,
+            notes:`Ejemplos: ${r.payload.examples||''}\nMaterial/frecuencia: ${r.payload.material_frequency||''}`,
+            status_id:existingNow?.status_id||'idea',
+            source_version:current.source.source?.version||null,
+            source_payload:r.payload,
+            updated_by:state.session.user.id
+          };
+          if(existingNow){
+            p.content_id=existingNow.content_id||null;
+            p.branch_id=existingNow.branch_id||null;
+            p.cta=existingNow.cta||null;
+            p.channel=existingNow.channel||'stories';
+            p.destination=existingNow.destination||null;
+            p.valid_from=existingNow.valid_from||null;
+            p.valid_until=existingNow.valid_until||null;
+            p.highlight_id=existingNow.highlight_id||null;
+            p.archived_at=existingNow.archived_at||null;
+          }else{
+            p.created_by=state.session.user.id;
+          }
+          result=await state.client
+            .from(tables.stories)
+            .upsert(p,{onConflict:'stable_id'})
+            .select('id')
+            .single();
+
+          if(!result.error&&result.data?.id){
+            const {data:frameRows,error:frameLookupError}=await state.client
+              .from(tables.frames)
+              .select('id')
+              .eq('sequence_id',result.data.id)
+              .limit(1);
+            if(frameLookupError)throw frameLookupError;
+            if(!(frameRows||[]).length){
+              const {error:frameInsertError}=await state.client.from(tables.frames).insert({
+                sequence_id:result.data.id,
+                sort_order:10,
+                text_content:r.payload.examples||null,
+                material:r.payload.material_frequency||null,
+                created_by:state.session.user.id
+              });
+              if(frameInsertError)throw frameInsertError;
+            }
+          }
+        }else if(r.entity_kind==='reference'){
+          const existingNow=await lookupByStableId(tables.references,r.stable_id);
+          const p={
+            stable_id:r.payload.stable_id,
+            title:r.payload.title,
+            content:r.payload.content||'',
+            tags:r.payload.tags||[],
+            source_version:current.source.source?.version||null,
+            source_hash:C.fastHash(r.payload),
+            needs_review:!!r.payload.needs_review,
+            updated_by:state.session.user.id
+          };
+          if(!existingNow)p.created_by=state.session.user.id;
+          result=await state.client
+            .from(tables.references)
+            .upsert(p,{onConflict:'stable_id'})
+            .select('id')
+            .single();
+        }
+      }catch(error){
+        result={error};
       }
-      if(result?.error){await state.client.from('marketing_import_batches').update({status:'failed',summary:{error:result.error.message,applied}}).eq('id',current.batch.id);alert(`Importación detenida en ${r.stable_id}: ${result.error.message}`);return}applied++;await state.client.from('marketing_import_rows').update({action:'applied',applied_at:nowISO()}).eq('batch_id',current.batch.id).eq('entity_kind',r.entity_kind).eq('stable_id',r.stable_id);
+
+      if(result?.error){
+        await state.client.from('marketing_import_batches').update({
+          status:'failed',
+          summary:{...current.batch.summary,error:result.error.message||String(result.error),applied}
+        }).eq('id',current.batch.id);
+        // Refrescar estado local después de una aplicación parcial para que un reintento
+        // no vuelva a clasificar registros ya escritos como nuevos.
+        try{await loadAll();}catch(_){}
+        alert(`Importación detenida en ${r.stable_id}: ${result.error.message||result.error}`);
+        setSync('Error de importación');
+        return;
+      }
+
+      applied++;
+      await state.client.from('marketing_import_rows').update({
+        action:'applied',
+        applied_at:nowISO()
+      }).eq('batch_id',current.batch.id).eq('entity_kind',r.entity_kind).eq('stable_id',r.stable_id);
     }
-    await state.client.from('marketing_import_batches').update({status:'applied',applied_at:nowISO(),summary:{...current.batch.summary,applied}}).eq('id',current.batch.id);await loadAll();state.currentImport=null;closeModal();fillFilters();renderAll();toast(`Importación aplicada · ${applied} cambios`)
+
+    await state.client.from('marketing_import_batches').update({
+      status:'applied',
+      applied_at:nowISO(),
+      summary:{...current.batch.summary,applied}
+    }).eq('id',current.batch.id);
+
+    await loadAll();
+    state.currentImport=null;
+    closeModal();
+    fillFilters();
+    renderAll();
+    toast(`Importación aplicada · ${applied} cambios`);
   }
 
   async function handleImportFile(event){const file=event.target.files?.[0];if(!file)return;try{const text=await file.text();let source;if(file.name.toLowerCase().endsWith('.json')){const data=JSON.parse(text);source=Array.isArray(data)?{content_items:data}:{...data};if(!source.content_items)throw new Error('El JSON debe incluir content_items o ser un array de contenidos.')}else{const rows=C.csvRows(text);source={content_items:rows.map(r=>({...r,stable_id:r.stable_id||r.id,title:r.title||r.titulo})),source:{name:file.name,version:'manual'}}}source.schema_version=source.schema_version||'manual-import-v1';source.story_templates=source.story_templates||[];source.reference_notes=source.reference_notes||[];source.brand_references=source.brand_references||[];const current=await buildImportPreview(source,{name:file.name,version:'manual'});showImportPreview(current)}catch(error){alert(`No se pudo previsualizar: ${error.message}`)}finally{event.target.value=''}}
