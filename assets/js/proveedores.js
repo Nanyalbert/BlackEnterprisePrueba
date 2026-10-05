@@ -8,6 +8,31 @@
   const charts={};
 
   const safe=v=>String(v??'').trim();
+  const normalizeKey=value=>safe(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'');
+  const FIELD_ALIASES={
+    date:['Fecha Cpte','Fecha Cbte','Fecha Comprobante','Fecha'],
+    provider:['Proveedor','Nombre Proveedor','Prov.','Proveedor Nombre'],
+    brand:['Marca','Brand'],
+    article:['Articulo','Artículo','Producto','Descripción','Descripcion'],
+    cost:['Costo de Vta','Costo de Venta','Costo Venta','Costo'],
+    sales:['Total C/Iva','Total C/IVA','Total c/iva','Venta Total','Total Venta','Importe'],
+    profit:['Total Utilidad','Utilidad Total','Utilidad'],
+    units:['Total Cantidad','Cantidad Total','Cantidad','Unidades']
+  };
+  const aliasCache=new Map();
+  function findField(row,logical){
+    if(!row)return undefined;
+    const aliases=FIELD_ALIASES[logical]||[];
+    const signature=Object.keys(row).sort().join('|')+'::'+logical;
+    if(aliasCache.has(signature)) return aliasCache.get(signature);
+    const keys=Object.keys(row), byNorm=new Map(keys.map(k=>[normalizeKey(k),k]));
+    let found=null;
+    for(const alias of aliases){const k=byNorm.get(normalizeKey(alias));if(k){found=k;break;}}
+    aliasCache.set(signature,found);
+    return found;
+  }
+  const valueOf=(row,logical)=>{const key=findField(row,logical);return key?row[key]:null;};
+  const hasLogicalField=(rows,logical)=>rows.some(r=>Boolean(findField(r,logical)));
   const num=value=>{
     if(typeof value==='number') return Number.isFinite(value)?value:0;
     if(value==null||value==='') return 0;
@@ -23,7 +48,18 @@
   function parseDate(value){
     if(!value) return null;
     if(value instanceof Date&&!Number.isNaN(value.getTime())) return value;
-    const d=new Date(value);
+    if(typeof value==='number'){
+      const utc=new Date(Date.UTC(1899,11,30)+value*86400000);
+      return Number.isNaN(utc.getTime())?null:new Date(utc.getUTCFullYear(),utc.getUTCMonth(),utc.getUTCDate());
+    }
+    const text=safe(value);
+    const dmY=text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+    if(dmY){
+      const year=Number(dmY[3].length===2?'20'+dmY[3]:dmY[3]);
+      const d=new Date(year,Number(dmY[2])-1,Number(dmY[1]));
+      return Number.isNaN(d.getTime())?null:d;
+    }
+    const d=new Date(text);
     return Number.isNaN(d.getTime())?null:d;
   }
   function periodName(key){
@@ -32,7 +68,7 @@
     return new Date(y,m-1,1).toLocaleDateString('es-AR',{month:'long',year:'numeric'}).replace(/^./,c=>c.toUpperCase());
   }
   function periodLabelFromRows(rows){
-    const dates=rows.map(r=>parseDate(r['Fecha Cpte'])).filter(Boolean).sort((a,b)=>a-b);
+    const dates=rows.map(r=>parseDate(valueOf(r,'date'))).filter(Boolean).sort((a,b)=>a-b);
     if(!dates.length) return 'Sin datos';
     const f=d=>d.toLocaleDateString('es-AR',{day:'2-digit',month:'short',year:'numeric'});
     return `${f(dates[0])} — ${f(dates[dates.length-1])}`;
@@ -41,7 +77,7 @@
     return rows.filter(r=>{
       const values=Object.values(r).map(safe).filter(Boolean);
       const isTotal=values.some(v=>/^total(es)?$/i.test(v));
-      return !isTotal&&Boolean(safe(r['Fecha Cpte']));
+      return !isTotal&&Boolean(safe(valueOf(r,'date')));
     });
   }
 
@@ -76,11 +112,11 @@
   function patchAction(provider,patch){const all=loadActions();const period=currentPeriod();all[period]||={};all[period][provider]={paid:0,replenished:0,note:'',...(all[period][provider]||{}),...patch};saveActions(all);render();}
 
   function aggregateSuppliers(){
-    const rows=cleanRows(adminData.sales).filter(r=>safe(r.Proveedor));
+    const rows=cleanRows(adminData.sales).filter(r=>safe(valueOf(r,'provider')));
     const map={};
     rows.forEach(r=>{
-      const provider=safe(r.Proveedor), brand=safe(r.Marca)||'Sin marca', article=safe(r.Articulo||r['Artículo'])||'Sin artículo';
-      const cost=num(r['Costo de Vta']), sales=num(r['Total C/Iva']), profit=num(r['Total Utilidad']), units=num(r['Total Cantidad']);
+      const provider=safe(valueOf(r,'provider')), brand=safe(valueOf(r,'brand'))||'Sin marca', article=safe(valueOf(r,'article'))||'Sin artículo';
+      const cost=num(valueOf(r,'cost')), sales=num(valueOf(r,'sales')), profit=num(valueOf(r,'profit')), units=num(valueOf(r,'units'));
       if(!map[provider])map[provider]={name:provider,cost:0,sales:0,profit:0,units:0,brands:{},articles:{}};
       const p=map[provider];p.cost+=cost;p.sales+=sales;p.profit+=profit;p.units+=units;
       if(!p.brands[brand])p.brands[brand]={name:brand,cost:0,sales:0,profit:0,units:0};
@@ -107,10 +143,25 @@
 
   function render(){
     const rows=cleanRows(adminData.sales);const providers=aggregateSuppliers();const totalCost=providers.reduce((s,p)=>s+p.cost,0);const totalUnits=providers.reduce((s,p)=>s+p.units,0);const totalPaid=providers.reduce((s,p)=>s+num(getAction(p.name).paid),0);const pending=providers.reduce((s,p)=>s+Math.max(p.cost-num(getAction(p.name).paid),0),0);const topShare=providers[0]&&totalCost?providers[0].cost/totalCost*100:0;
+    const rowsWithProvider=rows.filter(r=>safe(valueOf(r,'provider'))),rowsMissingProvider=rows.filter(r=>!safe(valueOf(r,'provider')));
+    const allCost=rows.reduce((s,r)=>s+num(valueOf(r,'cost')),0),missingCost=rowsMissingProvider.reduce((s,r)=>s+num(valueOf(r,'cost')),0);
+    const identifiedCost=allCost-missingCost,costCoverage=allCost?identifiedCost/allCost*100:0,rowCoverage=rows.length?rowsWithProvider.length/rows.length*100:0;
     const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
     set('suppliers-period',periodLabelFromRows(rows));set('supplier-total-cost',providers.length?fmtCurrency(totalCost):'$ --');set('supplier-total-units',providers.length?fmtNumber(totalUnits):'--');set('supplier-count',providers.length?String(providers.length):'--');set('supplier-pending-ref',providers.length?fmtCurrency(pending):'$ --');set('supplier-paid-total',providers.length?fmtCurrency(totalPaid):'$ --');set('supplier-top-share',providers.length?`${fmtNumber(topShare)}%`:'--');
+    set('supplier-rows-total',rows.length?fmtNumber(rows.length):'--');set('supplier-rows-identified',rows.length?fmtNumber(rowsWithProvider.length):'--');set('supplier-rows-missing',rows.length?fmtNumber(rowsMissingProvider.length):'--');set('supplier-cost-coverage',rows.length?`${fmtNumber(costCoverage)}%`:'--');
+    const quality=document.getElementById('supplier-quality-badge'),qualityNote=document.getElementById('supplier-quality-note');
+    if(quality){
+      const level=!rows.length?'none':costCoverage>=99&&rowCoverage>=99?'good':costCoverage>=90?'warn':'bad';
+      quality.className=`supplier-quality-badge ${level}`;
+      quality.textContent=!rows.length?'Sin datos':level==='good'?'Cobertura completa':level==='warn'?'Cobertura parcial':'Revisar datos';
+    }
+    if(qualityNote){
+      qualityNote.textContent=!rows.length?'Cargá un período para validar la cobertura.':rowsMissingProvider.length
+        ? `${rowsMissingProvider.length} fila(s) no tienen proveedor. Representan ${fmtCurrency(missingCost)} de costo y no aparecen en el ranking por proveedor.`
+        : 'Todas las filas del período tienen proveedor identificado.';
+    }
     const ranking=document.getElementById('supplier-ranking');if(ranking)ranking.innerHTML=providers.length?providers.map((p,i)=>`<tr><td>${i+1}. ${esc(p.name)}</td><td>${fmtCurrency(p.cost)}</td><td>${fmtNumber(p.units)}</td><td>${fmtCurrency(p.sales)}</td><td>${fmtCurrency(p.profit)}</td><td>${fmtNumber(totalCost?p.cost/totalCost*100:0)}%</td></tr>`).join(''):'<tr><td colspan="6" class="empty-cell">Sin datos</td></tr>';
-    const list=document.getElementById('supplier-list');if(list){const hasColumn=rows.some(r=>Object.prototype.hasOwnProperty.call(r,'Proveedor'));list.innerHTML=!adminData.sales.length?'<div class="supplier-empty">No hay un período de Ventas guardado. Volvé a Administración y cargá el Excel de Ventas.</div>':!hasColumn?'<div class="supplier-empty"><strong>El Excel de Ventas no incluye la columna Proveedor.</strong><br>Volvé a exportarlo agregando Proveedor para habilitar este análisis.</div>':!providers.length?'<div class="supplier-empty">No hay movimientos con proveedor identificado en este período.</div>':providers.map(p=>card(p,totalCost)).join('');}
+    const list=document.getElementById('supplier-list');if(list){const hasColumn=hasLogicalField(rows,'provider');list.innerHTML=!adminData.sales.length?'<div class="supplier-empty">No hay un período de Ventas guardado. Volvé a Administración y cargá el Excel de Ventas.</div>':!hasColumn?'<div class="supplier-empty"><strong>El Excel de Ventas no incluye una columna de Proveedor reconocible.</strong><br>Volvé a exportarlo agregando Proveedor para habilitar este análisis.</div>':!providers.length?'<div class="supplier-empty">No hay movimientos con proveedor identificado en este período.</div>':providers.map(p=>card(p,totalCost)).join('');}
     makeChart('supplier-consumption-chart',{type:'bar',data:{labels:providers.slice(0,8).map(p=>p.name),datasets:[{data:providers.slice(0,8).map(p=>p.cost),backgroundColor:'#A78BFA',borderRadius:7,borderSkipped:false}]},options:{...commonOptions,indexAxis:'y'}});
   }
 
