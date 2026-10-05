@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/base.css">
-<link rel="stylesheet" href="assets/css/marketing.css?v=20261005-1">
+<link rel="stylesheet" href="assets/css/marketing.css?v=20261005-2">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="assets/js/supabase-config.js"></script>
 </head>
@@ -22,8 +22,8 @@
     </div>
     <div class="mk-header-actions">
       <span class="mk-sync" id="mk-sync">Inicializando…</span>
-      <button class="mk-btn secondary" id="mk-import-open" type="button">Importar</button>
       <button class="mk-btn primary" id="mk-new-content" type="button">+ Nueva idea</button>
+      <button class="mk-btn secondary" id="mk-import-open" type="button">Importar plan</button>
     </div>
   </header>
 
@@ -44,24 +44,31 @@
   </nav>
 
   <section class="mk-toolbar" id="mk-toolbar">
-    <label class="mk-search"><span>⌕</span><input id="mk-search" type="search" placeholder="Buscar por título, ID, brief o producto"></label>
-    <select id="mk-filter-type" aria-label="Filtrar por tipo"><option value="">Todos los tipos</option></select>
-    <select id="mk-filter-theme" aria-label="Filtrar por temática"><option value="">Todas las temáticas</option></select>
-    <select id="mk-filter-format" aria-label="Filtrar por formato"><option value="">Todos los formatos</option></select>
-    <select id="mk-filter-status" aria-label="Filtrar por estado"><option value="">Todos los estados</option></select>
-    <select id="mk-filter-branch" aria-label="Filtrar por sucursal"><option value="">Todas las sucursales</option><option value="general-paz">General Paz</option><option value="zona-norte">Cerro de las Rosas</option></select>
-    <select id="mk-filter-responsible" aria-label="Filtrar por responsable"><option value="">Todos los responsables</option></select>
-    <select id="mk-filter-objective" aria-label="Filtrar por objetivo"><option value="">Todos los objetivos</option></select>
-    <select id="mk-filter-channel" aria-label="Filtrar por canal"><option value="">Todos los canales</option></select>
-    <select id="mk-filter-ad" aria-label="Filtrar por pauta"><option value="">Toda pauta</option></select>
-    <select id="mk-filter-execution" aria-label="Filtrar por ejecución">
-      <option value="">Ejecución: todos</option>
-      <option value="pending">Pendientes</option>
-      <option value="done">Realizados</option>
-      <option value="not_done">No realizados</option>
-    </select>
-    <select id="mk-sort" aria-label="Ordenar"><option value="date_asc">Fecha ↑</option><option value="date_desc">Fecha ↓</option><option value="title_asc">Título A–Z</option><option value="updated_desc">Actualizados</option></select>
-    <button class="mk-btn ghost" id="mk-clear-filters" type="button">Limpiar</button>
+    <div class="mk-toolbar-primary">
+      <label class="mk-search"><span>⌕</span><input id="mk-search" type="search" placeholder="Buscar contenido..."></label>
+      <select id="mk-filter-execution" aria-label="Filtrar por ejecución">
+        <option value="">Ejecución: todos</option>
+        <option value="pending">Pendientes</option>
+        <option value="done">Realizados</option>
+        <option value="not_done">No realizados</option>
+      </select>
+      <select id="mk-filter-status" aria-label="Filtrar por estado"><option value="">Estado: todos</option></select>
+      <select id="mk-filter-branch" aria-label="Filtrar por sucursal"><option value="">Sucursal: todas</option><option value="general-paz">General Paz</option><option value="zona-norte">Cerro de las Rosas</option></select>
+      <select id="mk-filter-responsible" aria-label="Filtrar por responsable"><option value="">Responsable: todos</option></select>
+    </div>
+    <details class="mk-filter-more">
+      <summary>Más filtros</summary>
+      <div class="mk-filter-more-grid">
+        <select id="mk-filter-type" aria-label="Filtrar por tipo"><option value="">Tipo: todos</option></select>
+        <select id="mk-filter-theme" aria-label="Filtrar por temática"><option value="">Temática: todas</option></select>
+        <select id="mk-filter-format" aria-label="Filtrar por formato"><option value="">Formato: todos</option></select>
+        <select id="mk-filter-objective" aria-label="Filtrar por objetivo"><option value="">Objetivo: todos</option></select>
+        <select id="mk-filter-channel" aria-label="Filtrar por canal"><option value="">Canal: todos</option></select>
+        <select id="mk-filter-ad" aria-label="Filtrar por pauta"><option value="">Pauta: todas</option></select>
+        <select id="mk-sort" aria-label="Ordenar"><option value="date_asc">Orden: fecha ↑</option><option value="date_desc">Orden: fecha ↓</option><option value="title_asc">Orden: título A–Z</option><option value="updated_desc">Orden: actualizados</option></select>
+        <button class="mk-btn ghost" id="mk-clear-filters" type="button">Limpiar filtros</button>
+      </div>
+    </details>
   </section>
 
   <section class="mk-tab active" id="mk-tab-home">
@@ -81,7 +88,7 @@
     <div class="mk-keydate-overview" id="mk-keydate-overview"></div>
     <div class="mk-calendar-controls">
       <div class="mk-segment"><button id="mk-calendar-month" class="active" type="button">Mes</button><button id="mk-calendar-week" type="button">Semana</button></div>
-      <div class="mk-calendar-nav"><button id="mk-cal-prev">←</button><button id="mk-cal-today">Hoy</button><strong id="mk-cal-title"></strong><button id="mk-cal-next">→</button></div>
+      <div class="mk-calendar-nav"><button id="mk-cal-prev" aria-label="Período anterior">←</button><strong id="mk-cal-title"></strong><button id="mk-cal-next" aria-label="Período siguiente">→</button><button id="mk-cal-today">Hoy</button></div>
     </div>
     <div class="mk-calendar" id="mk-calendar"></div>
   </section>
@@ -133,6 +140,6 @@
 </div>
 
 <script src="assets/js/marketing-core.js?v=20261004-1"></script>
-<script src="assets/js/marketing.js?v=20261005-1"></script>
+<script src="assets/js/marketing.js?v=20261005-2"></script>
 </body>
 </html>
