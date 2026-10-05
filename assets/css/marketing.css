@@ -148,3 +148,66 @@
   .mk-keydate-overview-stats{justify-content:flex-start}
   .mk-keydate-overview-list{grid-template-columns:1fr}
 }
+
+/* UX calendario y ejecución de contenidos */
+.mk-toolbar{grid-template-columns:minmax(220px,1.5fr) repeat(4,minmax(135px,1fr))}
+.mk-day{min-height:148px;padding:9px}
+.mk-day-top{min-height:30px}
+.mk-day-num{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:2px 4px;
+  border-radius:8px;
+  text-decoration:none!important;
+  color:#9a9a94;
+  font-size:10px;
+  line-height:1;
+}
+.mk-day-num:hover{background:#171717;color:#fff}
+.mk-day-num>span:not(.mk-day-weekday){font-size:18px;font-weight:700;letter-spacing:-.03em;color:#deded8}
+.mk-day.today .mk-day-num>span:not(.mk-day-weekday){
+  display:inline-grid;place-items:center;
+  min-width:26px;height:26px;padding:0 5px;
+  background:#ededE8;color:#0b0b0b;border-radius:8px;
+}
+.mk-cal-card{position:relative;padding:8px 30px 8px 8px;border:1px solid #262626;border-left:3px solid var(--type-color,#777)}
+.mk-cal-card.done{opacity:.72;border-color:#29402f}
+.mk-cal-card.not_done{opacity:.64;border-color:#4b302b}
+.mk-cal-card-head{display:flex;align-items:flex-start;gap:6px;justify-content:space-between}
+.mk-cal-card-head strong{font-size:10px;line-height:1.35}
+.mk-exec-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;margin-top:2px;background:#777}
+.mk-exec-dot.pending{background:#a58b57}
+.mk-exec-dot.done{background:#6f9b79}
+.mk-exec-dot.not_done{background:#a46d63}
+.mk-cal-card small{display:block;margin-top:3px;font-size:8px;line-height:1.35}
+.mk-cal-quick{position:absolute;right:5px;bottom:5px;display:flex;gap:3px;opacity:0;transition:.15s}
+.mk-cal-card:hover .mk-cal-quick,.mk-cal-card:focus-within .mk-cal-quick{opacity:1}
+.mk-cal-quick button{
+  width:21px;height:21px;padding:0;border-radius:6px;
+  border:1px solid #343434;background:#101010;color:#8f8f89;
+  cursor:pointer;font-size:11px;line-height:1;
+}
+.mk-cal-quick button:hover{background:#202020;color:#fff}
+.mk-badge.execution.pending{border-color:#66583a;color:#d4bd82}
+.mk-badge.execution.done{border-color:#3e6048;color:#9bc3a4}
+.mk-badge.execution.not_done{border-color:#69453d;color:#d39a8f}
+.mk-execution-field{padding:10px;border:1px solid #2d2d2d;border-radius:11px;background:#0a0a0a}
+.mk-execution-field label{color:#aaa}
+.mk-content-card:has(.mk-badge.execution.done){opacity:.8}
+.mk-content-card:has(.mk-badge.execution.not_done){opacity:.68}
+@media(max-width:900px){
+  .mk-toolbar{grid-template-columns:1fr 1fr}
+}
+@media(max-width:560px){
+  .mk-calendar .mk-day{padding:11px;margin-bottom:9px}
+  .mk-day-top{min-height:34px}
+  .mk-day-num{gap:7px;padding:3px 4px}
+  .mk-day-num>span:not(.mk-day-weekday){font-size:22px}
+  .mk-day-weekday{font-size:11px!important}
+  .mk-cal-card{padding:10px 34px 10px 10px}
+  .mk-cal-card-head strong{font-size:11px}
+  .mk-cal-card small{font-size:9px}
+  .mk-cal-quick{opacity:1;right:6px;bottom:6px}
+  .mk-cal-quick button{width:24px;height:24px}
+}
