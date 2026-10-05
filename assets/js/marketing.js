@@ -66,6 +66,29 @@
   const setSync=t=>{const el=$('#mk-sync');if(el)el.textContent=t};
   const toast=message=>{setSync(message);clearTimeout(toast.t);toast.t=setTimeout(()=>setSync(state.ready?'Sincronizado':'Revisar configuración'),2600)};
   const stableId=(prefix='MK')=>`${prefix}-${new Date().toISOString().replace(/[-:TZ.]/g,'').slice(0,14)}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+  const keyDateLeadDays=x=>{
+    if(/Black Friday|Día de la Madre|Día del Padre/i.test(x.title))return 28;
+    if(x.kind==='commercial'||x.kind==='optical')return 21;
+    if(x.kind==='health')return 14;
+    if(x.kind==='holiday'||x.kind==='cordoba')return 7;
+    return 5;
+  };
+  const keyDatePriority=x=>{
+    if(/Black Friday|Día de la Madre|Día del Padre|Día Mundial de la Visión/i.test(x.title))return 'high';
+    if(x.kind==='commercial'||x.kind==='optical'||x.kind==='health')return 'medium';
+    return 'normal';
+  };
+  const keyDatePrepISO=x=>C.toISODate(C.addDays(C.parseISODate(x.date),-keyDateLeadDays(x)));
+  const daysBetween=(a,b)=>Math.round((C.parseISODate(b)-C.parseISODate(a))/86400000);
+  const keyDatePlan=x=>{
+    const base=['Definir objetivo de la pieza','Definir responsable y formato','Grabar/diseñar con anticipación','Programar publicación y revisar CTA'];
+    if(x.kind==='commercial')return ['Definir oferta, stock y margen real','Elegir productos/modelos protagonistas','Preparar pieza orgánica y decidir si llevará pauta',...base.slice(1)];
+    if(x.kind==='optical'||x.kind==='health')return ['Definir enfoque educativo y dato clínico validado','Preparar demostración o explicación profesional','Evitar promesas médicas no sustentadas',...base.slice(1)];
+    if(x.kind==='holiday')return ['Confirmar horarios de ambas sucursales','Preparar historia/placa de horarios','Programar comunicación antes del cierre'];
+    if(x.kind==='institutional'||x.kind==='cordoba')return ['Definir tono institucional adecuado','Confirmar si corresponde comunicar horarios','Preparar pieza simple, sobria y coherente con Black'];
+    return base;
+  };
+  const hasScheduledContentForDate=x=>state.contents.some(c=>!c.archived_at&&c.publish_date&&c.publish_date>=keyDatePrepISO(x)&&c.publish_date<=x.date);
 
   async function fetchTable(name,query='*',order=null){
     let q=state.client.from(name).select(query);
@@ -192,9 +215,10 @@
 
   function openKeyDate(date){
     const x=KEY_DATES_2026.find(d=>d.date===date);if(!x)return;
-    openModal(x.title,`<div class="mk-keydate-detail"><span class="mk-keydate-kind ${esc(x.kind)}">${esc(x.kind==='holiday'?'Feriado / no laborable':x.kind==='optical'?'Óptica y salud visual':x.kind==='health'?'Salud':x.kind==='cordoba'?'Córdoba':x.kind==='institutional'?'Institucional':'Fecha comercial')}</span><p>${esc(x.description)}</p><div class="mk-help">Esta fecha funciona como referencia editorial. No crea ni publica contenido automáticamente.</div><div class="mk-form-actions"><div></div><div class="mk-form-actions-right"><button class="mk-btn secondary" type="button" data-close-modal>Cerrar</button><button class="mk-btn primary" type="button" id="mk-keydate-create">Crear contenido para esta fecha</button></div></div></div>`,'FECHA CLAVE');
+    const lead=keyDateLeadDays(x),prep=keyDatePrepISO(x),plan=keyDatePlan(x),priority=keyDatePriority(x);
+    openModal(x.title,`<div class="mk-keydate-detail"><div class="mk-keydate-headline"><span class="mk-keydate-kind ${esc(x.kind)}">${esc(x.kind==='holiday'?'Feriado / no laborable':x.kind==='optical'?'Óptica y salud visual':x.kind==='health'?'Salud':x.kind==='cordoba'?'Córdoba':x.kind==='institutional'?'Institucional':'Fecha comercial')}</span><span class="mk-keydate-priority ${priority}">${priority==='high'?'Prioridad alta':priority==='medium'?'Prioridad media':'Referencia'}</span></div><p>${esc(x.description)}</p><div class="mk-keydate-timing"><strong>Empezar a preparar: ${esc(fmtDate(prep))}</strong><span>${lead} días de anticipación recomendada</span></div><div class="mk-keydate-plan"><strong>Plan sugerido</strong><ol>${plan.map(step=>`<li>${esc(step)}</li>`).join('')}</ol></div><div class="mk-help">Es una referencia editorial: Black OS te recuerda cuándo empezar a trabajarla, pero no crea ni publica nada automáticamente.</div><div class="mk-form-actions"><div></div><div class="mk-form-actions-right"><button class="mk-btn secondary" type="button" data-close-modal>Cerrar</button><button class="mk-btn primary" type="button" id="mk-keydate-create">Crear contenido para esta fecha</button></div></div></div>`,'FECHA CLAVE');
     $('[data-close-modal]').onclick=closeModal;
-    $('#mk-keydate-create').onclick=()=>{closeModal();openContent({publish_date:x.date,status_id:'scheduled',brief:`Fecha clave: ${x.title}. ${x.description}`})};
+    $('#mk-keydate-create').onclick=()=>{closeModal();openContent({publish_date:x.date,status_id:'scheduled',brief:`Fecha clave: ${x.title}. ${x.description}\nPreparación recomendada desde: ${fmtDate(prep)}.\nPlan: ${plan.join(' · ')}`})};
   }
 
   function renderCalendar(){
@@ -203,7 +227,7 @@
     $('#mk-cal-title').textContent=month?new Intl.DateTimeFormat('es-AR',{month:'long',year:'numeric'}).format(state.calendarAnchor):`${fmtDate(C.toISODate(dates[0]))} – ${fmtDate(C.toISODate(dates[6]))}`;
     el.className=`mk-calendar ${month?'month':'week'}`;const heads=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(x=>`<div class="mk-cal-head">${x}</div>`).join('');
     const rows=filteredContents();
-    el.innerHTML=heads+dates.map(d=>{const iso=C.toISODate(d);const items=rows.filter(x=>x.publish_date===iso);const keyDates=KEY_DATES_2026.filter(x=>x.date===iso);const outside=month&&d.getMonth()!==state.calendarAnchor.getMonth();return `<div class="mk-day ${outside?'outside':''} ${iso===today?'today':''} ${keyDates.length?'has-keydate':''}" data-date="${iso}"><div class="mk-day-top"><button class="mk-day-num mk-link" data-create-date="${iso}"><span class="mk-day-weekday">${new Intl.DateTimeFormat('es-AR',{weekday:'short'}).format(d)}</span><span>${d.getDate()}</span> +</button>${keyDates.length?`<span class="mk-keydate-count" title="Fecha clave">${keyDates.length}</span>`:''}</div>${keyDates.map(k=>`<button type="button" class="mk-keydate-card ${esc(k.kind)}" data-key-date="${esc(k.date)}"><strong>${esc(k.title)}</strong><small>${esc(k.description)}</small></button>`).join('')}${items.map(x=>`<div class="mk-cal-card" draggable="true" data-content-id="${x.id}" style="--type-color:${esc(optionColor('content_type',x.content_type_id))}"><strong>${esc(x.title)}</strong><small>${esc(x.stable_id)} · ${esc(optionLabel('production_status',x.status_id))}</small></div>`).join('')}</div>`}).join('');
+    el.innerHTML=heads+dates.map(d=>{const iso=C.toISODate(d);const items=rows.filter(x=>x.publish_date===iso);const keyDates=KEY_DATES_2026.filter(x=>x.date===iso);const prepDates=KEY_DATES_2026.filter(x=>keyDatePrepISO(x)===iso&&x.date>=today);const outside=month&&d.getMonth()!==state.calendarAnchor.getMonth();return `<div class="mk-day ${outside?'outside':''} ${iso===today?'today':''} ${(keyDates.length||prepDates.length)?'has-keydate':''}" data-date="${iso}"><div class="mk-day-top"><button class="mk-day-num mk-link" data-create-date="${iso}"><span class="mk-day-weekday">${new Intl.DateTimeFormat('es-AR',{weekday:'short'}).format(d)}</span><span>${d.getDate()}</span> +</button>${(keyDates.length||prepDates.length)?`<span class="mk-keydate-count" title="Hitos de planificación">${keyDates.length+prepDates.length}</span>`:''}</div>${prepDates.map(k=>`<button type="button" class="mk-prep-card ${esc(keyDatePriority(k))}" data-key-date="${esc(k.date)}"><strong>Preparar · ${esc(k.title)}</strong><small>Faltan ${keyDateLeadDays(k)} días</small></button>`).join('')}${keyDates.map(k=>`<button type="button" class="mk-keydate-card ${esc(k.kind)}" data-key-date="${esc(k.date)}"><strong>${esc(k.title)}</strong><small>${esc(k.description)}</small></button>`).join('')}${items.map(x=>`<div class="mk-cal-card" draggable="true" data-content-id="${x.id}" style="--type-color:${esc(optionColor('content_type',x.content_type_id))}"><strong>${esc(x.title)}</strong><small>${esc(x.stable_id)} · ${esc(optionLabel('production_status',x.status_id))}</small></div>`).join('')}</div>`}).join('');
     bindContentCards(el);
     $('[data-create-date]',el).forEach(x=>x.onclick=e=>{e.stopPropagation();openContent({publish_date:x.dataset.createDate,status_id:'scheduled'})});
     $('[data-key-date]',el).forEach(x=>x.onclick=e=>{e.stopPropagation();openKeyDate(x.dataset.keyDate)});
@@ -217,7 +241,14 @@
     const kpis=[['Próximos',upcoming.length,'Contenido con fecha'],['Atrasados',overdue.length,'Requieren decisión'],['Campañas',activeCampaigns.length,'En prueba o activas'],['Pauta',planned?C.formatMoney(Math.max(planned-spent,0)):'—','Saldo registrado']];
     $('#mk-kpis').innerHTML=kpis.map(x=>`<article class="mk-kpi"><span>${x[0]}</span><strong>${x[1]}</strong><small>${x[2]}</small></article>`).join('');
     const ue=$('#mk-upcoming');ue.innerHTML=upcoming.slice(0,8).map(x=>`<div class="mk-item clickable" data-content-id="${x.id}"><div class="mk-item-top"><span class="mk-item-title">${esc(x.title)}</span><span class="mk-chip">${esc(fmtDate(x.publish_date))}</span></div>${badges(x)}</div>`).join('')||'<div class="mk-empty">Sin contenidos próximos.</div>';bindContentCards(ue);
-    const alerts=[];overdue.slice(0,5).forEach(x=>alerts.push(`<div class="mk-item clickable" data-content-id="${x.id}"><strong class="mk-danger-text">Atrasado · ${esc(x.stable_id)}</strong><span class="mk-item-sub">${esc(x.title)} · ${esc(fmtDate(x.publish_date))}</span></div>`));state.stories.filter(x=>x.valid_until&&x.valid_until.slice(0,10)<today&&!x.archived_at).slice(0,3).forEach(x=>alerts.push(`<div class="mk-item"><strong class="mk-danger-text">Historia vencida</strong><span class="mk-item-sub">${esc(x.title)}</span></div>`));$('#mk-alerts').innerHTML=alerts.join('')||'<div class="mk-empty">No hay alertas operativas.</div>';bindContentCards($('#mk-alerts'));
+    const alerts=[];
+    overdue.slice(0,4).forEach(x=>alerts.push(`<div class="mk-item clickable" data-content-id="${x.id}"><strong class="mk-danger-text">Atrasado · ${esc(x.stable_id)}</strong><span class="mk-item-sub">${esc(x.title)} · ${esc(fmtDate(x.publish_date))}</span></div>`));
+    const keyDateAlerts=KEY_DATES_2026.filter(x=>x.date>=today&&daysBetween(today,x.date)<=30&&!hasScheduledContentForDate(x)).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
+    keyDateAlerts.forEach(x=>{const days=daysBetween(today,x.date),priority=keyDatePriority(x);alerts.push(`<div class="mk-item mk-keydate-alert ${priority}" data-key-date-alert="${esc(x.date)}"><div class="mk-item-top"><strong>${esc(x.title)}</strong><span class="mk-chip">${days===0?'Hoy':`En ${days} días`}</span></div><span class="mk-item-sub">Sin contenido programado entre ${esc(fmtDate(keyDatePrepISO(x)))} y la fecha clave. Preparación recomendada: ${keyDateLeadDays(x)} días.</span></div>`)});
+    state.stories.filter(x=>x.valid_until&&x.valid_until.slice(0,10)<today&&!x.archived_at).slice(0,2).forEach(x=>alerts.push(`<div class="mk-item"><strong class="mk-danger-text">Historia vencida</strong><span class="mk-item-sub">${esc(x.title)}</span></div>`));
+    $('#mk-alerts').innerHTML=alerts.join('')||'<div class="mk-empty">No hay alertas operativas.</div>';
+    bindContentCards($('#mk-alerts'));
+    $('[data-key-date-alert]',$('#mk-alerts')).forEach(x=>x.onclick=()=>openKeyDate(x.dataset.keyDateAlert));
     renderBudgetSummary();renderSuggestionsHome();
   }
   function renderBudgetSummary(){
