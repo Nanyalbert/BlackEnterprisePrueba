@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/base.css">
 <link rel="stylesheet" href="assets/css/administracion.css">
-<link rel="stylesheet" href="assets/css/administracion-proveedores.css">
+<link rel="stylesheet" href="assets/css/administracion-proveedores.css?v=20261005-suppliers-1">
 </head>
 <body class="admin-page">
 <main class="admin-shell">
@@ -41,11 +41,25 @@
     <div class="section-head"><div><p class="eyebrow">PROVEEDORES</p><h2>Resumen del período</h2></div><span class="period-label" id="suppliers-period">Sin datos</span></div>
 
     <div class="supplier-overview">
-      <article class="kpi-card primary"><span>Consumo del período</span><strong id="supplier-total-cost">$ --</strong><small>Costo de mercadería vendida con proveedor identificado.</small></article>
-      <article class="kpi-card"><span>Unidades consumidas</span><strong id="supplier-total-units">--</strong><small>Unidades asociadas a proveedores.</small></article>
+      <article class="kpi-card primary"><span>Consumo identificado</span><strong id="supplier-total-cost">$ --</strong><small>Costo de mercadería vendida asociado a un proveedor.</small></article>
+      <article class="kpi-card"><span>Unidades identificadas</span><strong id="supplier-total-units">--</strong><small>Unidades con proveedor reconocido.</small></article>
       <article class="kpi-card"><span>Proveedores activos</span><strong id="supplier-count">--</strong><small>Con movimiento en el período seleccionado.</small></article>
-      <article class="kpi-card"><span>Referencia pendiente</span><strong id="supplier-pending-ref">$ --</strong><small>Consumo menos pagos registrados manualmente.</small></article>
+      <article class="kpi-card"><span>Referencia pendiente</span><strong id="supplier-pending-ref">$ --</strong><small>Consumo identificado menos pagos registrados.</small></article>
     </div>
+
+    <section class="supplier-data-quality" aria-label="Control de calidad de datos">
+      <div class="supplier-quality-head">
+        <div><p class="eyebrow">CONTROL DE DATOS</p><h2>Qué tan completa está la información</h2></div>
+        <span class="supplier-quality-badge" id="supplier-quality-badge">Sin datos</span>
+      </div>
+      <div class="supplier-quality-grid">
+        <div><span>Filas de ventas</span><strong id="supplier-rows-total">--</strong></div>
+        <div><span>Con proveedor</span><strong id="supplier-rows-identified">--</strong></div>
+        <div><span>Sin proveedor</span><strong id="supplier-rows-missing">--</strong></div>
+        <div><span>Cobertura del costo</span><strong id="supplier-cost-coverage">--</strong></div>
+      </div>
+      <div class="supplier-quality-note" id="supplier-quality-note">Cargá un período para validar la cobertura.</div>
+    </section>
 
     <div class="supplier-callout">
       <article class="panel-card"><div class="panel-title"><h3>Lectura operativa</h3><span>Para decidir</span></div><p>El consumo muestra cuánto costo de mercadería salió de cada proveedor. Sirve como referencia para decidir pagos, reposición y negociación comercial. No se interpreta automáticamente como deuda contable.</p></article>
@@ -63,6 +77,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="assets/js/supabase-config.js"></script>
-<script src="assets/js/proveedores.js"></script>
+<script src="assets/js/proveedores.js?v=20261005-suppliers-1"></script>
 </body>
 </html>
