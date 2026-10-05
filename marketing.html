@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Marketing · Black OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/marketing.css?v=20261004-1">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="assets/js/supabase-config.js"></script>
+</head>
+<body>
+<main class="mk-page">
+  <header class="mk-header">
+    <div>
+      <span class="mk-eyebrow">BLACK OS · PLANIFICACIÓN COMERCIAL</span>
+      <h1>Marketing</h1>
+      <p>Contenido, producción, campañas y resultados en un solo lugar.</p>
+    </div>
+    <div class="mk-header-actions">
+      <span class="mk-sync" id="mk-sync">Inicializando…</span>
+      <button class="mk-btn secondary" id="mk-import-open" type="button">Importar</button>
+      <button class="mk-btn primary" id="mk-new-content" type="button">+ Nueva idea</button>
+    </div>
+  </header>
+
+  <div class="mk-setup hidden" id="mk-setup">
+    <strong>Falta preparar la base de Marketing.</strong>
+    <span>Ejecutá <code>sql/29_marketing_module.sql</code> en Supabase y recargá esta pantalla.</span>
+  </div>
+
+  <nav class="mk-tabs" aria-label="Secciones de Marketing">
+    <button class="active" data-tab="home">Inicio</button>
+    <button data-tab="calendar">Calendario</button>
+    <button data-tab="ideas">Banco de ideas</button>
+    <button data-tab="production">Producción</button>
+    <button data-tab="stories">Historias</button>
+    <button data-tab="ads">Publicidad</button>
+    <button data-tab="results">Resultados</button>
+    <button data-tab="settings">Configuración</button>
+  </nav>
+
+  <section class="mk-toolbar" id="mk-toolbar">
+    <label class="mk-search"><span>⌕</span><input id="mk-search" type="search" placeholder="Buscar por título, ID, brief o producto"></label>
+    <select id="mk-filter-type" aria-label="Filtrar por tipo"><option value="">Todos los tipos</option></select>
+    <select id="mk-filter-theme" aria-label="Filtrar por temática"><option value="">Todas las temáticas</option></select>
+    <select id="mk-filter-format" aria-label="Filtrar por formato"><option value="">Todos los formatos</option></select>
+    <select id="mk-filter-status" aria-label="Filtrar por estado"><option value="">Todos los estados</option></select>
+    <select id="mk-filter-branch" aria-label="Filtrar por sucursal"><option value="">Todas las sucursales</option><option value="general-paz">General Paz</option><option value="zona-norte">Cerro de las Rosas</option></select>
+    <select id="mk-filter-responsible" aria-label="Filtrar por responsable"><option value="">Todos los responsables</option></select>
+    <select id="mk-filter-objective" aria-label="Filtrar por objetivo"><option value="">Todos los objetivos</option></select>
+    <select id="mk-filter-channel" aria-label="Filtrar por canal"><option value="">Todos los canales</option></select>
+    <select id="mk-filter-ad" aria-label="Filtrar por pauta"><option value="">Toda pauta</option></select>
+    <select id="mk-sort" aria-label="Ordenar"><option value="date_asc">Fecha ↑</option><option value="date_desc">Fecha ↓</option><option value="title_asc">Título A–Z</option><option value="updated_desc">Actualizados</option></select>
+    <button class="mk-btn ghost" id="mk-clear-filters" type="button">Limpiar</button>
+  </section>
+
+  <section class="mk-tab active" id="mk-tab-home">
+    <div class="mk-kpis" id="mk-kpis"></div>
+    <div class="mk-grid two">
+      <article class="mk-panel"><div class="mk-panel-head"><div><span class="mk-kicker">PRÓXIMOS</span><h2>Contenido del período</h2></div><button class="mk-link" data-go="calendar">Ver calendario</button></div><div id="mk-upcoming" class="mk-list"></div></article>
+      <article class="mk-panel"><div class="mk-panel-head"><div><span class="mk-kicker">CONTROL</span><h2>Alertas y pendientes</h2></div></div><div id="mk-alerts" class="mk-list"></div></article>
+    </div>
+    <div class="mk-grid two">
+      <article class="mk-panel"><div class="mk-panel-head"><div><span class="mk-kicker">PAUTA</span><h2>Presupuesto</h2></div><button class="mk-link" data-go="ads">Abrir publicidad</button></div><div id="mk-budget-summary"></div></article>
+      <article class="mk-panel"><div class="mk-panel-head"><div><span class="mk-kicker">SUGERENCIAS</span><h2>Próximas acciones</h2></div><button class="mk-btn ghost small" id="mk-refresh-suggestions">Actualizar</button></div><div id="mk-suggestions-home" class="mk-list"></div></article>
+    </div>
+  </section>
+
+  <section class="mk-tab" id="mk-tab-calendar">
+    <div class="mk-section-head"><div><h2>Calendario</h2><p>Reprogramar cambia la fecha interna; no publica contenido ni activa pauta.</p></div><button class="mk-btn primary" data-new-content>+ Crear contenido</button></div>
+    <div class="mk-calendar-controls">
+      <div class="mk-segment"><button id="mk-calendar-month" class="active" type="button">Mes</button><button id="mk-calendar-week" type="button">Semana</button></div>
+      <div class="mk-calendar-nav"><button id="mk-cal-prev">←</button><button id="mk-cal-today">Hoy</button><strong id="mk-cal-title"></strong><button id="mk-cal-next">→</button></div>
+    </div>
+    <div class="mk-calendar" id="mk-calendar"></div>
+  </section>
+
+  <section class="mk-tab" id="mk-tab-ideas">
+    <div class="mk-section-head"><div><h2>Banco de ideas</h2><p>Ideas sin fecha, archivadas recuperables y propuestas pendientes.</p></div><button class="mk-btn primary" data-new-content>+ Nueva idea</button></div>
+    <div class="mk-card-grid" id="mk-ideas"></div>
+  </section>
+
+  <section class="mk-tab" id="mk-tab-production">
+    <div class="mk-section-head"><div><h2>Producción</h2><p>Flujo desde idea hasta análisis. Cada cambio queda persistido.</p></div></div>
+    <div class="mk-kanban" id="mk-kanban"></div>
+  </section>
+
+  <section class="mk-tab" id="mk-tab-stories">
+    <div class="mk-section-head"><div><h2>Historias</h2><p>Secuencias ordenables, vigencias y destacados.</p></div><button class="mk-btn primary" id="mk-new-story">+ Nueva secuencia</button></div>
+    <div class="mk-grid two"><div class="mk-panel"><h3>Secuencias</h3><div id="mk-stories" class="mk-list"></div></div><div class="mk-panel"><h3>Destacados</h3><div id="mk-highlights" class="mk-chip-wrap"></div><div class="mk-help">Revisá promociones y horarios para retirar material vencido. El destacado no reemplaza la vigencia de la información.</div></div></div>
+  </section>
+
+  <section class="mk-tab" id="mk-tab-ads">
+    <div class="mk-section-head"><div><h2>Publicidad</h2><p>Planificación manual de Meta y Google. Ninguna acción se publica desde Black OS.</p></div><button class="mk-btn primary" id="mk-new-campaign">+ Nueva campaña</button></div>
+    <div id="mk-budget-pools" class="mk-budget-grid"></div>
+    <article class="mk-panel"><div class="mk-panel-head"><div><span class="mk-kicker">CAMPAÑAS</span><h3>Planificación</h3></div></div><div class="mk-table-wrap"><table class="mk-table"><thead><tr><th>Campaña</th><th>Plataforma</th><th>Objetivo</th><th>Estado</th><th>Presupuesto</th><th>Gasto</th><th>Próxima revisión</th><th></th></tr></thead><tbody id="mk-campaigns"></tbody></table></div></article>
+  </section>
+
+  <section class="mk-tab" id="mk-tab-results">
+    <div class="mk-section-head"><div><h2>Resultados</h2><p>ROAS y CPA solo se muestran cuando existen datos suficientes.</p></div><button class="mk-btn primary" id="mk-new-result">+ Cargar resultado</button></div>
+    <div class="mk-kpis" id="mk-result-kpis"></div>
+    <article class="mk-panel"><div class="mk-table-wrap"><table class="mk-table"><thead><tr><th>Período</th><th>Fuente</th><th>Consultas</th><th>Presupuestos</th><th>Ventas</th><th>Ingresos</th><th>Gasto</th><th>CPA</th><th>ROAS</th></tr></thead><tbody id="mk-results"></tbody></table></div></article>
+    <div class="mk-help wide"><strong>Fórmulas:</strong> CPA = pauta atribuida / ventas. ROAS = ingresos atribuidos / pauta. Si no hay ventas e ingresos atribuidos, se muestra “ROAS no calculable con los datos actuales”. ROAS no equivale a utilidad.</div>
+  </section>
+
+  <section class="mk-tab" id="mk-tab-settings">
+    <div class="mk-section-head"><div><h2>Configuración</h2><p>Estados, categorías, colores, importaciones y fuentes.</p></div></div>
+    <div class="mk-grid two">
+      <article class="mk-panel"><div class="mk-panel-head"><div><span class="mk-kicker">CLASIFICACIÓN</span><h3>Opciones editables</h3></div><button class="mk-btn ghost small" id="mk-new-option">+ Agregar</button></div><div class="mk-option-kind"><label>Grupo<select id="mk-option-kind"><option value="production_status">Estados de producción</option><option value="content_type">Tipos de contenido</option><option value="format">Formatos</option><option value="theme">Temáticas</option><option value="ad_decision">Decisión de pauta</option><option value="ad_status">Estado publicitario</option><option value="highlight">Destacados</option></select></label></div><div id="mk-options" class="mk-list"></div></article>
+      <article class="mk-panel"><div class="mk-panel-head"><div><span class="mk-kicker">IMPORTACIÓN</span><h3>Fuente canónica</h3></div></div><p>Plan v10 · 96 videos · IDs estables. La importación siempre muestra una previsualización antes de aplicar.</p><button class="mk-btn secondary" id="mk-import-canonical">Previsualizar plan v10</button><label class="mk-file-label">Importar JSON/CSV<input id="mk-import-file" type="file" accept=".json,.csv,application/json,text/csv"></label><div id="mk-import-history" class="mk-list compact"></div></article>
+    </div>
+    <article class="mk-panel"><div class="mk-panel-head"><div><span class="mk-kicker">LEYENDA</span><h3>Identificación visual</h3></div></div><div id="mk-legend" class="mk-legend"></div><div class="mk-help">El color identifica el tipo. El estado de producción y la decisión de pauta siempre aparecen además como texto.</div></article>
+    <article class="mk-panel"><div class="mk-panel-head"><div><span class="mk-kicker">REFERENCIAS</span><h3>Notas del plan</h3></div></div><div id="mk-reference-notes" class="mk-reference-list"></div></article>
+  </section>
+</main>
+
+<div class="mk-modal-backdrop hidden" id="mk-modal-backdrop">
+  <div class="mk-modal" role="dialog" aria-modal="true" aria-labelledby="mk-modal-title">
+    <div class="mk-modal-head"><div><span class="mk-kicker" id="mk-modal-kicker">MARKETING</span><h2 id="mk-modal-title">Editar</h2></div><button class="mk-modal-close" id="mk-modal-close" aria-label="Cerrar">×</button></div>
+    <div id="mk-modal-body"></div>
+  </div>
+</div>
+
+<script src="assets/js/marketing-core.js?v=20261004-1"></script>
+<script src="assets/js/marketing.js?v=20261004-1"></script>
+</body>
+</html>
