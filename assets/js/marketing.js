@@ -43,12 +43,12 @@
     {date:'2026-12-25',kind:'holiday',title:'Navidad',description:'Feriado nacional. Saludo de marca; no hace falta una pieza comercial agresiva.'},
     {date:'2026-12-31',kind:'commercial',title:'Fin de Año',description:'Cierre institucional: logros, comunidad, equipo, balance y horarios especiales.'}
   ];
-  const state={client:null,session:null,ready:false,options:[],contents:[],stories:[],frames:[],campaigns:[],adSets:[],ads:[],budgets:[],results:[],suggestions:[],references:[],imports:[],calendarMode:'month',calendarAnchor:new Date(),activeTab:'home',currentImport:null,setupError:null};
+  const state={client:null,session:null,ready:false,options:[],contents:[],stories:[],frames:[],campaigns:[],adSets:[],ads:[],budgets:[],results:[],suggestions:[],references:[],imports:[],keyDatePlans:[],calendarMode:'month',calendarAnchor:new Date(),activeTab:'home',currentImport:null,setupError:null};
 
   const tables={
     options:'marketing_options',contents:'marketing_contents',stories:'marketing_story_sequences',frames:'marketing_story_frames',
     campaigns:'marketing_campaigns',adSets:'marketing_ad_sets',ads:'marketing_ads',budgets:'marketing_budget_pools',results:'marketing_results',
-    suggestions:'marketing_suggestions',references:'marketing_reference_notes',imports:'marketing_import_batches'
+    suggestions:'marketing_suggestions',references:'marketing_reference_notes',imports:'marketing_import_batches',keyDatePlans:'marketing_key_date_plans'
   };
 
   function client(){
@@ -89,12 +89,73 @@
     return base;
   };
   const hasScheduledContentForDate=x=>state.contents.some(c=>!c.archived_at&&c.publish_date&&c.publish_date>=keyDatePrepISO(x)&&c.publish_date<=x.date);
+  const KEY_DATE_STATUSES=[
+    {id:'unstarted',label:'Sin trabajar'},
+    {id:'strategy',label:'Estrategia definida'},
+    {id:'production',label:'Contenido en producción'},
+    {id:'campaign_ready',label:'Campaña preparada'},
+    {id:'ready',label:'Listo'},
+    {id:'executed',label:'Ejecutado'},
+    {id:'analyzed',label:'Analizado'}
+  ];
+  const keyDateStableId=x=>`KEYDATE-${x.date}-${x.title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'').slice(0,48)}`;
+  const keyDatePlanRecord=x=>state.keyDatePlans.find(p=>p.stable_id===keyDateStableId(x))||null;
+  const keyDateStatus=x=>keyDatePlanRecord(x)?.status||'unstarted';
+  const keyDateStatusLabel=status=>KEY_DATE_STATUSES.find(x=>x.id===status)?.label||status;
+  const keyDateStatusOptions=status=>KEY_DATE_STATUSES.map(x=>`<option value="${x.id}" ${x.id===status?'selected':''}>${esc(x.label)}</option>`).join('');
+  async function saveKeyDatePlan(x,patch={}){
+    const existing=keyDatePlanRecord(x);
+    const payload={
+      stable_id:keyDateStableId(x),event_date:x.date,title:x.title,
+      status:patch.status||existing?.status||'unstarted',
+      owner:patch.owner!==undefined?patch.owner:(existing?.owner||null),
+      notes:patch.notes!==undefined?patch.notes:(existing?.notes||null),
+      planning:{...(existing?.planning||{}),lead_days:keyDateLeadDays(x),priority:keyDatePriority(x),kind:x.kind,description:x.description,...(patch.planning||{})},
+      updated_by:state.session?.user?.id||null
+    };
+    if(!existing)payload.created_by=state.session?.user?.id||null;
+    const {data,error}=await state.client.from(tables.keyDatePlans).upsert(payload,{onConflict:'stable_id'}).select().single();
+    if(error){
+      if(/does not exist|schema cache|PGRST205|42P01/i.test(String(error.message||error))){
+        alert('Para guardar el estado de planificación ejecutá sql/30_marketing_key_date_planning.sql en Supabase.');
+        return null;
+      }
+      alert(error.message||String(error));return null;
+    }
+    const i=state.keyDatePlans.findIndex(p=>p.stable_id===data.stable_id);
+    if(i>=0)state.keyDatePlans[i]=data;else state.keyDatePlans.push(data);
+    renderDashboard();renderCalendar();renderKeyDateOverview();toast('Planificación actualizada');
+    return data;
+  }
+  function renderKeyDateOverview(){
+    const el=$('#mk-keydate-overview');if(!el)return;
+    const today=C.isoToday(),limit=C.toISODate(C.addDays(C.parseISODate(today),30));
+    const upcoming=KEY_DATES_2026.filter(x=>x.date>=today&&x.date<=limit);
+    const counts={total:upcoming.length,ready:0,pending:0,unstarted:0};
+    upcoming.forEach(x=>{
+      const s=keyDateStatus(x);
+      if(['ready','executed','analyzed'].includes(s))counts.ready++;
+      else if(s==='unstarted')counts.unstarted++;
+      else counts.pending++;
+    });
+    el.innerHTML=`<div class="mk-keydate-overview-head"><div><span class="mk-kicker">PRÓXIMOS 30 DÍAS</span><strong>${counts.total} fechas relevantes</strong></div><div class="mk-keydate-overview-stats"><span><b>${counts.ready}</b> listas</span><span><b>${counts.pending}</b> en proceso</span><span><b>${counts.unstarted}</b> sin trabajar</span></div></div>${upcoming.length?`<div class="mk-keydate-overview-list">${upcoming.slice(0,6).map(x=>{const s=keyDateStatus(x);return `<button type="button" data-key-overview="${esc(x.date)}"><span>${esc(fmtDate(x.date))}</span><strong>${esc(x.title)}</strong><em class="${esc(s)}">${esc(keyDateStatusLabel(s))}</em></button>`}).join('')}</div>`:'<div class="mk-empty">No hay fechas clave dentro de los próximos 30 días.</div>'}`;
+    $('[data-key-overview]',el).forEach(b=>b.onclick=()=>openKeyDate(b.dataset.keyOverview));
+  }
 
   async function fetchTable(name,query='*',order=null){
     let q=state.client.from(name).select(query);
     if(order)q=q.order(order,{ascending:true});
     const {data,error}=await q;
     if(error)throw error;
+    return data||[];
+  }
+  async function fetchOptionalTable(name,query='*'){
+    const {data,error}=await state.client.from(name).select(query);
+    if(error){
+      const m=String(error.message||error);
+      if(/does not exist|schema cache|PGRST205|42P01/i.test(m))return [];
+      throw error;
+    }
     return data||[];
   }
 
@@ -121,12 +182,12 @@
   function showSetup(detail){state.setupError=detail;$('#mk-setup')?.classList.remove('hidden');setSync('Configuración pendiente');}
 
   async function loadAll(){
-    const [options,contents,stories,frames,campaigns,adSets,ads,budgets,results,suggestions,references,imports]=await Promise.all([
+    const [options,contents,stories,frames,campaigns,adSets,ads,budgets,results,suggestions,references,imports,keyDatePlans]=await Promise.all([
       fetchTable(tables.options),fetchTable(tables.contents),fetchTable(tables.stories),fetchTable(tables.frames),fetchTable(tables.campaigns),
       fetchTable(tables.adSets),fetchTable(tables.ads),fetchTable(tables.budgets),fetchTable(tables.results),fetchTable(tables.suggestions),
-      fetchTable(tables.references),fetchTable(tables.imports)
+      fetchTable(tables.references),fetchTable(tables.imports),fetchOptionalTable(tables.keyDatePlans)
     ]);
-    Object.assign(state,{options,contents,stories,frames,campaigns,adSets,ads,budgets,results,suggestions,references,imports});
+    Object.assign(state,{options,contents,stories,frames,campaigns,adSets,ads,budgets,results,suggestions,references,imports,keyDatePlans});
   }
 
   function bindStatic(){
@@ -167,7 +228,7 @@
   }
 
   function renderAll(){
-    fillFilters();renderDashboard();renderDataViews();renderStories();renderAds();renderResults();renderOptions();renderLegend();renderImportHistory();renderReferenceNotes();
+    fillFilters();renderDashboard();renderDataViews();renderKeyDateOverview();renderStories();renderAds();renderResults();renderOptions();renderLegend();renderImportHistory();renderReferenceNotes();
   }
   function fillSelect(id,items,placeholder){
     const el=$('#'+id);if(!el)return;const current=el.value;
@@ -215,10 +276,11 @@
 
   function openKeyDate(date){
     const x=KEY_DATES_2026.find(d=>d.date===date);if(!x)return;
-    const lead=keyDateLeadDays(x),prep=keyDatePrepISO(x),plan=keyDatePlan(x),priority=keyDatePriority(x);
-    openModal(x.title,`<div class="mk-keydate-detail"><div class="mk-keydate-headline"><span class="mk-keydate-kind ${esc(x.kind)}">${esc(x.kind==='holiday'?'Feriado / no laborable':x.kind==='optical'?'Óptica y salud visual':x.kind==='health'?'Salud':x.kind==='cordoba'?'Córdoba':x.kind==='institutional'?'Institucional':'Fecha comercial')}</span><span class="mk-keydate-priority ${priority}">${priority==='high'?'Prioridad alta':priority==='medium'?'Prioridad media':'Referencia'}</span></div><p>${esc(x.description)}</p><div class="mk-keydate-timing"><strong>Empezar a preparar: ${esc(fmtDate(prep))}</strong><span>${lead} días de anticipación recomendada</span></div><div class="mk-keydate-plan"><strong>Plan sugerido</strong><ol>${plan.map(step=>`<li>${esc(step)}</li>`).join('')}</ol></div><div class="mk-help">Es una referencia editorial: Black OS te recuerda cuándo empezar a trabajarla, pero no crea ni publica nada automáticamente.</div><div class="mk-form-actions"><div></div><div class="mk-form-actions-right"><button class="mk-btn secondary" type="button" data-close-modal>Cerrar</button><button class="mk-btn primary" type="button" id="mk-keydate-create">Crear contenido para esta fecha</button></div></div></div>`,'FECHA CLAVE');
+    const lead=keyDateLeadDays(x),prep=keyDatePrepISO(x),plan=keyDatePlan(x),priority=keyDatePriority(x),record=keyDatePlanRecord(x),status=keyDateStatus(x);
+    openModal(x.title,`<div class="mk-keydate-detail"><div class="mk-keydate-headline"><span class="mk-keydate-kind ${esc(x.kind)}">${esc(x.kind==='holiday'?'Feriado / no laborable':x.kind==='optical'?'Óptica y salud visual':x.kind==='health'?'Salud':x.kind==='cordoba'?'Córdoba':x.kind==='institutional'?'Institucional':'Fecha comercial')}</span><span class="mk-keydate-priority ${priority}">${priority==='high'?'Prioridad alta':priority==='medium'?'Prioridad media':'Referencia'}</span></div><p>${esc(x.description)}</p><div class="mk-keydate-timing"><strong>Empezar a preparar: ${esc(fmtDate(prep))}</strong><span>${lead} días de anticipación recomendada</span></div><div class="mk-form-grid mk-keydate-form"><div class="mk-field"><label>Estado de planificación</label><select id="mk-keydate-status">${keyDateStatusOptions(status)}</select></div><div class="mk-field"><label>Responsable</label><input id="mk-keydate-owner" value="${esc(record?.owner||'')}" placeholder="Ej: Maxi / Leandro"></div><div class="mk-field full"><label>Notas operativas</label><textarea id="mk-keydate-notes" placeholder="Oferta, material, pauta, decisiones pendientes...">${esc(record?.notes||'')}</textarea></div></div><div class="mk-keydate-plan"><strong>Plan sugerido</strong><ol>${plan.map(step=>`<li>${esc(step)}</li>`).join('')}</ol></div><div class="mk-help">El estado se guarda en Black OS y permite distinguir qué fechas todavía no fueron trabajadas, cuáles están en producción y cuáles ya fueron ejecutadas o analizadas.</div><div class="mk-form-actions"><div><button class="mk-btn ghost" type="button" id="mk-keydate-save">Guardar planificación</button></div><div class="mk-form-actions-right"><button class="mk-btn secondary" type="button" data-close-modal>Cerrar</button><button class="mk-btn primary" type="button" id="mk-keydate-create">Crear contenido</button></div></div></div>`,'FECHA CLAVE');
     $('[data-close-modal]').onclick=closeModal;
-    $('#mk-keydate-create').onclick=()=>{closeModal();openContent({publish_date:x.date,status_id:'scheduled',brief:`Fecha clave: ${x.title}. ${x.description}\nPreparación recomendada desde: ${fmtDate(prep)}.\nPlan: ${plan.join(' · ')}`})};
+    $('#mk-keydate-save').onclick=async()=>{const saved=await saveKeyDatePlan(x,{status:$('#mk-keydate-status').value,owner:$('#mk-keydate-owner').value.trim()||null,notes:$('#mk-keydate-notes').value.trim()||null});if(saved)openKeyDate(date)};
+    $('#mk-keydate-create').onclick=async()=>{await saveKeyDatePlan(x,{status:['unstarted','strategy'].includes($('#mk-keydate-status').value)?'production':$('#mk-keydate-status').value,owner:$('#mk-keydate-owner').value.trim()||null,notes:$('#mk-keydate-notes').value.trim()||null});closeModal();openContent({publish_date:x.date,status_id:'scheduled',responsible:$('#mk-keydate-owner')?.value||null,brief:`Fecha clave: ${x.title}. ${x.description}\nPreparación recomendada desde: ${fmtDate(prep)}.\nPlan: ${plan.join(' · ')}`})};
   }
 
   function renderCalendar(){
@@ -227,7 +289,7 @@
     $('#mk-cal-title').textContent=month?new Intl.DateTimeFormat('es-AR',{month:'long',year:'numeric'}).format(state.calendarAnchor):`${fmtDate(C.toISODate(dates[0]))} – ${fmtDate(C.toISODate(dates[6]))}`;
     el.className=`mk-calendar ${month?'month':'week'}`;const heads=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(x=>`<div class="mk-cal-head">${x}</div>`).join('');
     const rows=filteredContents();
-    el.innerHTML=heads+dates.map(d=>{const iso=C.toISODate(d);const items=rows.filter(x=>x.publish_date===iso);const keyDates=KEY_DATES_2026.filter(x=>x.date===iso);const prepDates=KEY_DATES_2026.filter(x=>keyDatePrepISO(x)===iso&&x.date>=today);const outside=month&&d.getMonth()!==state.calendarAnchor.getMonth();return `<div class="mk-day ${outside?'outside':''} ${iso===today?'today':''} ${(keyDates.length||prepDates.length)?'has-keydate':''}" data-date="${iso}"><div class="mk-day-top"><button class="mk-day-num mk-link" data-create-date="${iso}"><span class="mk-day-weekday">${new Intl.DateTimeFormat('es-AR',{weekday:'short'}).format(d)}</span><span>${d.getDate()}</span> +</button>${(keyDates.length||prepDates.length)?`<span class="mk-keydate-count" title="Hitos de planificación">${keyDates.length+prepDates.length}</span>`:''}</div>${prepDates.map(k=>`<button type="button" class="mk-prep-card ${esc(keyDatePriority(k))}" data-key-date="${esc(k.date)}"><strong>Preparar · ${esc(k.title)}</strong><small>Faltan ${keyDateLeadDays(k)} días</small></button>`).join('')}${keyDates.map(k=>`<button type="button" class="mk-keydate-card ${esc(k.kind)}" data-key-date="${esc(k.date)}"><strong>${esc(k.title)}</strong><small>${esc(k.description)}</small></button>`).join('')}${items.map(x=>`<div class="mk-cal-card" draggable="true" data-content-id="${x.id}" style="--type-color:${esc(optionColor('content_type',x.content_type_id))}"><strong>${esc(x.title)}</strong><small>${esc(x.stable_id)} · ${esc(optionLabel('production_status',x.status_id))}</small></div>`).join('')}</div>`}).join('');
+    el.innerHTML=heads+dates.map(d=>{const iso=C.toISODate(d);const items=rows.filter(x=>x.publish_date===iso);const keyDates=KEY_DATES_2026.filter(x=>x.date===iso);const prepDates=KEY_DATES_2026.filter(x=>keyDatePrepISO(x)===iso&&x.date>=today);const outside=month&&d.getMonth()!==state.calendarAnchor.getMonth();return `<div class="mk-day ${outside?'outside':''} ${iso===today?'today':''} ${(keyDates.length||prepDates.length)?'has-keydate':''}" data-date="${iso}"><div class="mk-day-top"><button class="mk-day-num mk-link" data-create-date="${iso}"><span class="mk-day-weekday">${new Intl.DateTimeFormat('es-AR',{weekday:'short'}).format(d)}</span><span>${d.getDate()}</span> +</button>${(keyDates.length||prepDates.length)?`<span class="mk-keydate-count" title="Hitos de planificación">${keyDates.length+prepDates.length}</span>`:''}</div>${prepDates.map(k=>`<button type="button" class="mk-prep-card ${esc(keyDatePriority(k))}" data-key-date="${esc(k.date)}"><strong>Preparar · ${esc(k.title)}</strong><small>${esc(keyDateStatusLabel(keyDateStatus(k)))} · faltan ${keyDateLeadDays(k)} días</small></button>`).join('')}${keyDates.map(k=>`<button type="button" class="mk-keydate-card ${esc(k.kind)}" data-key-date="${esc(k.date)}"><strong>${esc(k.title)}</strong><small>${esc(keyDateStatusLabel(keyDateStatus(k)))} · ${esc(k.description)}</small></button>`).join('')}${items.map(x=>`<div class="mk-cal-card" draggable="true" data-content-id="${x.id}" style="--type-color:${esc(optionColor('content_type',x.content_type_id))}"><strong>${esc(x.title)}</strong><small>${esc(x.stable_id)} · ${esc(optionLabel('production_status',x.status_id))}</small></div>`).join('')}</div>`}).join('');
     bindContentCards(el);
     $('[data-create-date]',el).forEach(x=>x.onclick=e=>{e.stopPropagation();openContent({publish_date:x.dataset.createDate,status_id:'scheduled'})});
     $('[data-key-date]',el).forEach(x=>x.onclick=e=>{e.stopPropagation();openKeyDate(x.dataset.keyDate)});
@@ -243,8 +305,8 @@
     const ue=$('#mk-upcoming');ue.innerHTML=upcoming.slice(0,8).map(x=>`<div class="mk-item clickable" data-content-id="${x.id}"><div class="mk-item-top"><span class="mk-item-title">${esc(x.title)}</span><span class="mk-chip">${esc(fmtDate(x.publish_date))}</span></div>${badges(x)}</div>`).join('')||'<div class="mk-empty">Sin contenidos próximos.</div>';bindContentCards(ue);
     const alerts=[];
     overdue.slice(0,4).forEach(x=>alerts.push(`<div class="mk-item clickable" data-content-id="${x.id}"><strong class="mk-danger-text">Atrasado · ${esc(x.stable_id)}</strong><span class="mk-item-sub">${esc(x.title)} · ${esc(fmtDate(x.publish_date))}</span></div>`));
-    const keyDateAlerts=KEY_DATES_2026.filter(x=>x.date>=today&&daysBetween(today,x.date)<=30&&!hasScheduledContentForDate(x)).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
-    keyDateAlerts.forEach(x=>{const days=daysBetween(today,x.date),priority=keyDatePriority(x);alerts.push(`<div class="mk-item mk-keydate-alert ${priority}" data-key-date-alert="${esc(x.date)}"><div class="mk-item-top"><strong>${esc(x.title)}</strong><span class="mk-chip">${days===0?'Hoy':`En ${days} días`}</span></div><span class="mk-item-sub">Sin contenido programado entre ${esc(fmtDate(keyDatePrepISO(x)))} y la fecha clave. Preparación recomendada: ${keyDateLeadDays(x)} días.</span></div>`)});
+    const keyDateAlerts=KEY_DATES_2026.filter(x=>x.date>=today&&daysBetween(today,x.date)<=30&&!['ready','executed','analyzed'].includes(keyDateStatus(x))&&(!hasScheduledContentForDate(x)||['unstarted','strategy'].includes(keyDateStatus(x)))).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
+    keyDateAlerts.forEach(x=>{const days=daysBetween(today,x.date),priority=keyDatePriority(x);alerts.push(`<div class="mk-item mk-keydate-alert ${priority}" data-key-date-alert="${esc(x.date)}"><div class="mk-item-top"><strong>${esc(x.title)}</strong><span class="mk-chip">${days===0?'Hoy':`En ${days} días`}</span></div><span class="mk-item-sub">Estado: ${esc(keyDateStatusLabel(keyDateStatus(x)))}. Preparación recomendada desde ${esc(fmtDate(keyDatePrepISO(x)))}.</span></div>`)});
     state.stories.filter(x=>x.valid_until&&x.valid_until.slice(0,10)<today&&!x.archived_at).slice(0,2).forEach(x=>alerts.push(`<div class="mk-item"><strong class="mk-danger-text">Historia vencida</strong><span class="mk-item-sub">${esc(x.title)}</span></div>`));
     $('#mk-alerts').innerHTML=alerts.join('')||'<div class="mk-empty">No hay alertas operativas.</div>';
     bindContentCards($('#mk-alerts'));
