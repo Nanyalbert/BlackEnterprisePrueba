@@ -15,7 +15,52 @@
     return window.BlackPortal.supabaseClient;
   };
 
+  window.BlackPortal.isSuperAdmin = function(user){
+    const email=String(user?.email||'').toLowerCase();
+    return email==='leandro@blackoptica.ar' || user?.app_metadata?.black_os_super_admin===true;
+  };
+  window.BlackPortal.canAccessModule = function(user,moduleId){
+    if(!user) return false;
+    if(window.BlackPortal.isSuperAdmin(user)) return true;
+    if(user?.app_metadata?.black_os_active===false) return false;
+    const apps=Array.isArray(user?.app_metadata?.black_os_apps)?user.app_metadata.black_os_apps:[];
+    return apps.includes(moduleId);
+  };
+
   const path = window.location.pathname;
+
+  const moduleForPath = (() => {
+    if(/(?:^|\/)crm-clientes\.html$/i.test(path)) return 'crm-black';
+    if(/(?:^|\/)(?:administracion|proveedores)\.html$/i.test(path)) return 'administracion';
+    if(/(?:^|\/)crm-oftalmologos\.html$/i.test(path)) return 'crm-oftalmologos';
+    if(/(?:^|\/)marketing\.html$/i.test(path)) return 'marketing';
+    if(/(?:^|\/)black-ai\.html$/i.test(path)) return 'catalogo';
+    if(/(?:^|\/)recetas(?:\/|$)/i.test(path)) return 'recetas';
+    return null;
+  })();
+
+  const enforceModuleAccess = async () => {
+    if(!moduleForPath) return;
+    try{
+      const client=window.BlackPortal.getSupabase();
+      const {data:{session}}=await client.auth.getSession();
+      if(!session){
+        if(window.top===window) window.location.replace('index.html');
+        return;
+      }
+      const user=session.user;
+      if(window.BlackPortal.canAccessModule(user,moduleForPath)) return;
+      if(window.top===window){
+        window.location.replace('menu.html?denied='+encodeURIComponent(moduleForPath));
+        return;
+      }
+      document.body.innerHTML='<main style="min-height:100vh;display:grid;place-items:center;background:#080808;color:#eee;font-family:system-ui;padding:24px"><div style="max-width:460px;text-align:center"><h2 style="margin:0 0 8px">Acceso restringido</h2><p style="color:#888;line-height:1.5">Tu usuario no tiene permiso para abrir este módulo.</p></div></main>';
+      window.parent?.postMessage({type:'blackos:access-denied',module:moduleForPath},'*');
+    }catch(error){console.error('Black OS access guard',error)}
+  };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',enforceModuleAccess,{once:true});
+  else enforceModuleAccess();
+
 
   const loadCss = (id, href) => {
     if (document.getElementById(id)) return;
