@@ -293,6 +293,18 @@ function userAppsFromMeta(user=currentSessionUser()){
   if(!hasExplicitConfig) return Object.keys(APP_LABELS);
   return Array.isArray(meta.black_os_apps)?meta.black_os_apps:[];
 }
+function userPermissionConfig(moduleId,user=currentSessionUser()){
+  if(isPortalOwner(user)) return {level:'full',items:'*'};
+  return user?.app_metadata?.black_os_permissions?.[moduleId]||null;
+}
+function userHasPermission(moduleId,permission,user=currentSessionUser()){
+  if(isPortalOwner(user)) return true;
+  const cfg=userPermissionConfig(moduleId,user);
+  if(!cfg||cfg.level==='none') return false;
+  if(!permission) return true;
+  if(cfg.level==='full'||cfg.items==='*') return true;
+  return Array.isArray(cfg.items)&&cfg.items.includes(permission);
+}
 function userCanOpen(viewName,user=currentSessionUser()){
   if(viewName==='inicio') return true;
   if(viewName==='usuarios') return isPortalOwner(user);
@@ -325,6 +337,25 @@ function applyPortalAccess(user=currentSessionUser()){
       el.hidden=!allowed;
       el.setAttribute('aria-hidden',allowed?'false':'true');
     }));
+  });
+
+  const supplierNav=document.getElementById('proveedores-nav');
+  if(supplierNav){
+    const allowed=userHasPermission('administracion','suppliers',user);
+    supplierNav.hidden=!allowed;
+    supplierNav.setAttribute('aria-hidden',allowed?'false':'true');
+  }
+
+  document.querySelectorAll('.nav-label').forEach(label=>{
+    let next=label.nextElementSibling,hasVisible=false;
+    while(next && !next.classList?.contains('nav-label')){
+      if((next.matches?.('.nav-item')||next.querySelector?.('.nav-item')) && !next.hidden){
+        const nav=next.matches?.('.nav-item')?next:next.querySelector('.nav-item');
+        if(nav && !nav.hidden){hasVisible=true;break}
+      }
+      next=next.nextElementSibling;
+    }
+    label.hidden=!hasVisible;
   });
 }
 async function callUserAdmin(action,payload={}){
@@ -363,7 +394,7 @@ function renderUsers() {
   tbody.innerHTML = usersData.map(user => {
     const badges = user.superAdmin ? '<span class="badge super">Acceso total</span>' : (user.apps?.length ? user.apps.map(app=>`<span class="badge">${APP_LABELS[app]||app}</span>`).join('') : '<span class="badge">Sin accesos</span>');
     const locked=user.superAdmin?'disabled aria-disabled="true"':'';
-    return `<tr data-id="${user.id}"><td><div class="user-cell"><div class="avatar">${initials(user.nombre)}</div><div><div class="user-cell-name">${user.nombre}</div><div class="user-cell-email">${user.email}</div></div></div></td><td>${badges}</td><td><span class="status-dot ${user.activo?'':'inactive'}">${user.activo?'Activo':'Inactivo'}</span></td><td><div class="row-actions"><button type="button" class="edit-user" title="Editar" ${locked}>✎</button><button type="button" class="danger delete-user" title="Eliminar" ${locked}>×</button></div></td></tr>`;
+    return `<tr data-id="${user.id}"><td><div class="user-cell"><div class="avatar">${initials(user.nombre)}</div><div><div class="user-cell-name">${user.nombre}</div><div class="user-cell-email">${user.email}</div></div></div></td><td>${badges}</td><td><span class="status-dot ${user.activo?'':'inactive'}">${user.activo?'Activo':'Inactivo'}</span></td><td><div class="row-actions"><button type="button" class="edit-user" title="Editar usuario" aria-label="Editar usuario" ${locked}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button><button type="button" class="danger delete-user" title="Eliminar usuario" aria-label="Eliminar usuario" ${locked}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M8 11v7M12 11v7M16 11v7M6 7l1 14h10l1-14"/></svg></button></div></td></tr>`;
   }).join('');
   tbody.querySelectorAll('.edit-user:not([disabled])').forEach(button => button.addEventListener('click',()=>openModal(button.closest('tr').dataset.id)));
   tbody.querySelectorAll('.delete-user:not([disabled])').forEach(button => button.addEventListener('click',async()=>{
@@ -385,6 +416,7 @@ const userForm=document.getElementById('user-form');
 const nameInput=document.getElementById('modal-name');
 const emailInput=document.getElementById('modal-email');
 const passwordInput=document.getElementById('modal-password');
+const activeInput=document.getElementById('modal-active');
 const btnNewUser=document.getElementById('btn-new-user');
 const modalClose=document.getElementById('modal-close');
 const modalCancel=document.getElementById('modal-cancel');
@@ -400,12 +432,14 @@ function openModal(userId=null){
     const passLabel=modalPasswordField.querySelector('label'); if(passLabel)passLabel.textContent='Nueva contraseña (opcional)';
     if(passwordInput){passwordInput.required=false;passwordInput.placeholder='Dejar vacío para mantener la actual';}
     nameInput.value=user.nombre||''; emailInput.value=user.email||'';
+    if(activeInput) activeInput.checked=user.activo!==false;
     document.querySelectorAll('.permiso-item input').forEach(input=>input.checked=(user.apps||[]).includes(input.value));
   } else {
     modalTitle.textContent='Nuevo usuario';
     modalPasswordField.style.display='flex';
     const passLabel=modalPasswordField.querySelector('label'); if(passLabel)passLabel.textContent='Contraseña temporal';
     if(passwordInput){passwordInput.required=true;passwordInput.placeholder='Mínimo 8 caracteres';}
+    if(activeInput) activeInput.checked=true;
   }
   modalOverlay.classList.add('show'); setTimeout(()=>nameInput.focus(),50);
 }
@@ -433,7 +467,7 @@ userForm?.addEventListener('submit',async event=>{
     const action=editingUserId?'update':'create';
     const data=await callUserAdmin(action,{
       id:editingUserId||undefined,nombre,email,password:password||undefined,
-      permissions:config.permissions,branchScope:config.branchScope,activo:true
+      permissions:config.permissions,branchScope:config.branchScope,activo:activeInput?.checked!==false
     });
     const savedUser=data.user;
     const i=usersData.findIndex(x=>String(x.id)===String(savedUser.id));
@@ -473,8 +507,9 @@ async function bootPortal(){
     const email=session.user.email||'';
     const rawName=session.user.user_metadata?.full_name||session.user.user_metadata?.name||email.split('@')[0].replace(/[._-]+/g,' ');
     const displayName=rawName.split(' ').filter(Boolean).map(part=>part.charAt(0).toUpperCase()+part.slice(1)).join(' ');
-    const userName=document.getElementById('user-name'); const userAvatar=document.getElementById('user-avatar'); const greeting=document.getElementById('greeting');
+    const userName=document.getElementById('user-name'); const userAvatar=document.getElementById('user-avatar'); const greeting=document.getElementById('greeting'); const userRole=document.querySelector('.user-chip-role');
     if(userName)userName.textContent=displayName||email; if(userAvatar)userAvatar.textContent=initials(displayName||email); if(greeting)greeting.textContent=displayName?`Bienvenido, ${displayName}`:'Bienvenido';
+    if(userRole) userRole.textContent=isPortalOwner(session.user)?'Administrador':'Usuario';
     let initialView='inicio'; try{const savedView=sessionStorage.getItem(VIEW_STORAGE_KEY);if(savedView&&document.getElementById('view-'+savedView))initialView=savedView;}catch(error){}
     const params=new URLSearchParams(window.location.search);
     const requestedView=params.get('view');
