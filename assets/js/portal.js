@@ -353,6 +353,26 @@ function ensureAuthorizedFrame(viewName,user=currentSessionUser()){
   if(desired && (!frame.getAttribute('src') || frame.getAttribute('src')==='about:blank')) frame.src=desired;
 }
 
+async function refreshPortalAccess(){
+  if(!supabaseClient) return;
+  const user=currentSessionUser();
+  if(!user) return;
+  try{
+    const {data,error}=await supabaseClient.rpc('black_os_my_access');
+    if(error||!data) return;
+    window.BlackPortal=window.BlackPortal||{};
+    window.BlackPortal.accessSnapshot=data;
+    if(data.active===false){
+      await supabaseClient.auth.signOut();
+      window.location.replace('index.html?disabled=1');
+      return;
+    }
+    applyPortalAccess(user);
+    const current=document.querySelector('.view.active')?.id?.replace(/^view-/,'');
+    if(current && current!=='inicio' && !userCanOpen(current,user)) showView('inicio');
+  }catch(error){console.warn('No se pudo actualizar el acceso',error)}
+}
+
 function applyPortalAccess(user=currentSessionUser()){
   const selectors={
     'crm-clientes':['#crm-clientes-nav','#crm-clientes-card'],
@@ -633,6 +653,9 @@ async function bootPortal(){
     if(meta.black_os_active===false||profileActive===false||window.BlackPortal.accessSnapshot?.active===false){await supabaseClient.auth.signOut();window.location.replace('index.html?disabled=1');return;}
     applyPortalAccess(session.user);
     if(isPortalOwner(session.user)) loadUsers();
+    window.addEventListener('focus',refreshPortalAccess);
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshPortalAccess()});
+    setInterval(()=>{if(document.visibilityState==='visible')refreshPortalAccess()},120000);
     const email=session.user.email||'';
     const rawName=session.user.user_metadata?.full_name||session.user.user_metadata?.name||email.split('@')[0].replace(/[._-]+/g,' ');
     const displayName=rawName.split(' ').filter(Boolean).map(part=>part.charAt(0).toUpperCase()+part.slice(1)).join(' ');
