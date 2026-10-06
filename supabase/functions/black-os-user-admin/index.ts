@@ -175,7 +175,7 @@ Deno.serve(async req => {
       const password=String(body?.password||"");
       const nombre=String(body?.nombre||"").trim();
       if(!/^\S+@\S+\.\S+$/.test(email)) return reply({error:"Email inválido"},400);
-      if(password.length<8) return reply({error:"La contraseña temporal debe tener al menos 8 caracteres"},400);
+      if(password.length<10) return reply({error:"La contraseña temporal debe tener al menos 10 caracteres"},400);
       if(!nombre) return reply({error:"Ingresá el nombre del usuario"},400);
       const permissions=sanitizePermissions(body?.permissions);
       const branchScope=sanitizeBranches(body?.branchScope);
@@ -225,7 +225,7 @@ Deno.serve(async req => {
         }
       };
       if(password) {
-        if(password.length<8) return reply({error:"La nueva contraseña debe tener al menos 8 caracteres"},400);
+        if(password.length<10) return reply({error:"La nueva contraseña debe tener al menos 10 caracteres"},400);
         attrs.password=password;
       }
       const {data,error}=await admin.auth.admin.updateUserById(id,attrs);
