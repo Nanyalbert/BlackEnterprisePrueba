@@ -1925,3 +1925,16 @@ tbody tr:hover{
 .password-tool svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .field-help{display:block;margin-top:6px;color:var(--text-3);font-size:10px;line-height:1.45}
 @media(max-width:560px){.password-admin-row{grid-template-columns:minmax(0,1fr) auto}.password-tool.icon-only{display:none}}
+
+/* Usuarios · auditoría de accesos */
+.user-audit-panel{margin-top:18px;border:1px solid var(--line);border-radius:14px;background:var(--bg-card);overflow:hidden}
+.user-audit-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 17px;border-bottom:1px solid var(--line)}
+.user-audit-head span{display:block;color:var(--text-3);font-size:9px;font-weight:700;letter-spacing:.12em;margin-bottom:4px}
+.user-audit-head h3{margin:0;font-size:13px}
+.user-audit-list{display:grid}
+.user-audit-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 17px;border-bottom:1px solid var(--line)}
+.user-audit-row:last-child{border-bottom:0}
+.user-audit-row strong{display:block;font-size:11.5px}
+.user-audit-row span{display:block;margin-top:3px;color:var(--text-3);font-size:10px}
+.user-audit-row time{color:var(--text-3);font-size:10px;white-space:nowrap}
+@media(max-width:560px){.user-audit-row{align-items:flex-start;flex-direction:column;gap:6px}.user-audit-head{align-items:flex-start}}
