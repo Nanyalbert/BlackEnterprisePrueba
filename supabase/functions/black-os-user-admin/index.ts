@@ -10,7 +10,7 @@ const reply = (value: unknown, status = 200) => new Response(JSON.stringify(valu
   headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
 });
 
-const MODULES = new Set(["crm-black","administracion","crm-oftalmologos","recetas","marketing","catalogo","turnos"]);
+const MODULES = new Set(["crm-black","administracion","crm-oftalmologos","recetas","marketing","catalogo","turnos","rrhh"]);
 const LEVELS = new Set(["none","read","operator","full","custom"]);
 
 function sanitizePermissions(raw: any) {
@@ -26,18 +26,32 @@ function sanitizePermissions(raw: any) {
   return out;
 }
 function sanitizeBranches(raw:any){
-  const allowed = new Set(["all","general-paz","zona-norte"]);
-  const values = Array.isArray(raw) ? raw.filter((x:any)=>allowed.has(x)) : [];
+  const aliases:Record<string,string> = {
+    "zona-norte":"cerro-de-las-rosas",
+    "alto-palermo":"cerro-de-las-rosas",
+    "cerro":"cerro-de-las-rosas"
+  };
+  const allowed = new Set(["all","general-paz","cerro-de-las-rosas"]);
+  const values = Array.isArray(raw)
+    ? raw.map((x:any)=>aliases[String(x)]||String(x)).filter((x:any)=>allowed.has(x))
+    : [];
   return values.length ? [...new Set(values)] : ["all"];
 }
 function appsFromPermissions(permissions:Record<string,any>){
   return Object.entries(permissions).filter(([,cfg])=>cfg?.level && cfg.level!=="none").map(([id])=>id);
 }
-function isOwner(user:any){
+function isOwnerByMetadata(user:any){
   const email=String(user?.email||"").toLowerCase();
-  return email==="leandro@blackoptica.ar" || user?.app_metadata?.black_os_super_admin===true;
+  return user?.app_metadata?.black_os_super_admin===true || email==="leandro@blackoptica.ar" || email==="nanyalbert@gmail.com";
 }
-function serializeUser(user:any){
+async function loadAdminIds(admin:any){
+  const {data:role,error:roleError}=await admin.from("roles").select("id").eq("code","admin").maybeSingle();
+  if(roleError || !role?.id) return new Set<string>();
+  const {data:links,error:linksError}=await admin.from("user_roles").select("user_id").eq("role_id",role.id);
+  if(linksError) return new Set<string>();
+  return new Set<string>((links||[]).map((x:any)=>String(x.user_id)));
+}
+function serializeUser(user:any,adminIds:Set<string>=new Set()){
   const meta=user?.app_metadata||{};
   const permissions=sanitizePermissions(meta.black_os_permissions||{});
   return {
@@ -47,7 +61,7 @@ function serializeUser(user:any){
     permissions,
     apps:Array.isArray(meta.black_os_apps)?meta.black_os_apps:appsFromPermissions(permissions),
     branchScope:sanitizeBranches(meta.black_os_branch_scope),
-    superAdmin:isOwner(user),
+    superAdmin:isOwnerByMetadata(user)||adminIds.has(String(user.id)),
     activo:meta.black_os_active!==false && !user.banned_until,
     createdAt:user.created_at||null,
     lastSignInAt:user.last_sign_in_at||null,
@@ -73,9 +87,10 @@ Deno.serve(async req => {
   const {data:callerData,error:callerError}=await callerClient.auth.getUser();
   const caller=callerData?.user;
   if(callerError||!caller) return reply({error:"Sesión inválida"},401);
-  if(!isOwner(caller)) return reply({error:"Solo un administrador principal puede gestionar usuarios"},403);
-
   const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
+  const adminIds=await loadAdminIds(admin);
+  if(!isOwnerByMetadata(caller) && !adminIds.has(String(caller.id))) return reply({error:"Solo un administrador principal puede gestionar usuarios"},403);
+
   const body=await req.json().catch(()=>({}));
   const action=String(body?.action||"list");
 
@@ -90,7 +105,7 @@ Deno.serve(async req => {
         if((data?.users||[]).length<100) break;
         page++;
       }
-      return reply({ok:true,users:users.map(serializeUser)});
+      return reply({ok:true,users:users.map(user=>serializeUser(user,adminIds))});
     }
 
     if(action==="create"){
@@ -115,7 +130,7 @@ Deno.serve(async req => {
         }
       });
       if(error) throw error;
-      return reply({ok:true,user:serializeUser(data.user)});
+      return reply({ok:true,user:serializeUser(data.user,adminIds)});
     }
 
     if(action==="update"){
@@ -123,7 +138,7 @@ Deno.serve(async req => {
       if(!id) return reply({error:"Falta el ID del usuario"},400);
       const {data:current,error:getError}=await admin.auth.admin.getUserById(id);
       if(getError||!current?.user) throw getError||new Error("Usuario no encontrado");
-      if(isOwner(current.user)) return reply({error:"El administrador principal no se edita desde esta pantalla"},400);
+      if(isOwnerByMetadata(current.user)||adminIds.has(String(current.user.id))) return reply({error:"El administrador principal no se edita desde esta pantalla"},400);
 
       const permissions=sanitizePermissions(body?.permissions);
       const branchScope=sanitizeBranches(body?.branchScope);
@@ -158,7 +173,7 @@ Deno.serve(async req => {
       if(!id) return reply({error:"Falta el ID del usuario"},400);
       if(id===caller.id) return reply({error:"No podés eliminar tu propio usuario"},400);
       const {data:current}=await admin.auth.admin.getUserById(id);
-      if(current?.user && isOwner(current.user)) return reply({error:"No se puede eliminar al administrador principal"},400);
+      if(current?.user && (isOwnerByMetadata(current.user)||adminIds.has(String(current.user.id)))) return reply({error:"No se puede eliminar al administrador principal"},400);
       const {error}=await admin.auth.admin.deleteUser(id);
       if(error) throw error;
       return reply({ok:true});
