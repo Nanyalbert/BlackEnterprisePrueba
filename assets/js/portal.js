@@ -282,7 +282,7 @@ function currentSessionUser(){
 }
 function isPortalOwner(user=currentSessionUser()){
   const email=String(user?.email||'').toLowerCase();
-  return email==='leandro@blackoptica.ar' || user?.app_metadata?.black_os_super_admin===true;
+  return user?.app_metadata?.black_os_super_admin===true || email==='leandro@blackoptica.ar' || email==='nanyalbert@gmail.com';
 }
 function userAppsFromMeta(user=currentSessionUser()){
   if(isPortalOwner(user)) return Object.keys(APP_LABELS);
