@@ -17,7 +17,7 @@
 
   window.BlackPortal.isSuperAdmin = function(user){
     const email=String(user?.email||'').toLowerCase();
-    return email==='leandro@blackoptica.ar' || user?.app_metadata?.black_os_super_admin===true;
+    return user?.app_metadata?.black_os_super_admin===true || email==='leandro@blackoptica.ar' || email==='nanyalbert@gmail.com';
   };
   window.BlackPortal.canAccessModule = function(user,moduleId){
     if(!user) return false;
@@ -38,6 +38,7 @@
     if(/(?:^|\/)(?:administracion|proveedores)\.html$/i.test(path)) return 'administracion';
     if(/(?:^|\/)crm-oftalmologos\.html$/i.test(path)) return 'crm-oftalmologos';
     if(/(?:^|\/)marketing\.html$/i.test(path)) return 'marketing';
+    if(/(?:^|\/)rrhh\.html$/i.test(path)) return 'rrhh';
     if(/(?:^|\/)black-ai\.html$/i.test(path)) return 'catalogo';
     if(/(?:^|\/)recetas(?:\/|$)/i.test(path)) return 'recetas';
     return null;
