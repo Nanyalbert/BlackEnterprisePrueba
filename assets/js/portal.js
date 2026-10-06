@@ -455,6 +455,8 @@ const nameInput=document.getElementById('modal-name');
 const emailInput=document.getElementById('modal-email');
 const passwordInput=document.getElementById('modal-password');
 const activeInput=document.getElementById('modal-active');
+const generatePasswordBtn=document.getElementById('generate-password');
+const togglePasswordBtn=document.getElementById('toggle-password');
 const btnNewUser=document.getElementById('btn-new-user');
 const modalClose=document.getElementById('modal-close');
 const modalCancel=document.getElementById('modal-cancel');
@@ -482,6 +484,29 @@ function openModal(userId=null){
   modalOverlay.classList.add('show'); setTimeout(()=>nameInput.focus(),50);
 }
 function closeModal(){ modalOverlay?.classList.remove('show'); editingUserId=null; }
+function generateTemporaryPassword(){
+  const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+  const bytes=new Uint32Array(14);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes,(n,i)=>{
+    if(i===0) return 'ABCDEFGHJKLMNPQRSTUVWXYZ'[n%24];
+    if(i===1) return 'abcdefghijkmnopqrstuvwxyz'[n%25];
+    if(i===2) return '23456789'[n%8];
+    if(i===3) return '!@#$%'[n%5];
+    return alphabet[n%alphabet.length];
+  }).join('');
+}
+generatePasswordBtn?.addEventListener('click',()=>{
+  if(!passwordInput) return;
+  passwordInput.value=generateTemporaryPassword();
+  passwordInput.type='text';
+  passwordInput.focus();
+  passwordInput.select();
+});
+togglePasswordBtn?.addEventListener('click',()=>{
+  if(!passwordInput) return;
+  passwordInput.type=passwordInput.type==='password'?'text':'password';
+});
 btnNewUser?.addEventListener('click',()=>openModal());
 modalClose?.addEventListener('click',closeModal);
 modalCancel?.addEventListener('click',closeModal);
@@ -494,7 +519,7 @@ userForm?.addEventListener('submit',async event=>{
   const email=emailInput?.value.trim().toLowerCase()||'';
   const password=passwordInput?.value||'';
   if(!nombre||!email) return;
-  if(!editingUserId && password.length<8){alert('La contraseña temporal debe tener al menos 8 caracteres.');return;}
+  if(!editingUserId && password.length<10){alert('La contraseña temporal debe tener al menos 10 caracteres.');return;}
   const config=window.BlackUserPermissions?.collect?.()||{
     permissions:{},
     branchScope:['all']
