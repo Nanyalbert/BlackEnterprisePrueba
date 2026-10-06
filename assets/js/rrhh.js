@@ -17,7 +17,7 @@
     const n=Math.max(0,Number(m)||0),h=Math.floor(n/60),min=Math.round(n%60);
     return h?(h+' h '+(min?min+' min':'')).trim():(min+' min');
   };
-  const fmtMoney=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(Number(n)||0);
+  const fmtMoney=n=>n==null?'—':new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(Number(n)||0);
   const monthKey=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
 
   qsa('.rrhh-tab').forEach(btn=>btn.addEventListener('click',()=>{
