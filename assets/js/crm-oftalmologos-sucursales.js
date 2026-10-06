@@ -1,10 +1,17 @@
 // Black OS — CRM Oftalmólogos — Comisiones por sucursal
-// Capa incremental: conserva la lógica existente y agrega General Paz / Alto Palermo.
+// Capa incremental: conserva la lógica existente y agrega General Paz / Cerro de las Rosas.
 (() => {
   const BRANCHES = {
     'general-paz': { code: 'general-paz', label: 'General Paz', short: 'GP' },
-    'alto-palermo': { code: 'alto-palermo', label: 'Alto Palermo', short: 'AP' }
+    'cerro-de-las-rosas': { code: 'cerro-de-las-rosas', label: 'Cerro de las Rosas', short: 'CR' }
   };
+  const LEGACY_CERRO_CODES = ['alto-palermo','zona-norte','cerro'];
+
+  function canonicalBranchCode(code) {
+    const value = String(code || '').trim().toLowerCase();
+    if (LEGACY_CERRO_CODES.includes(value)) return 'cerro-de-las-rosas';
+    return BRANCHES[value] ? value : 'general-paz';
+  }
 
   const IMPORT_HISTORY_KEY = 'blackoptica_commission_imports_v1';
   let activeCommissionBranch = 'all';
@@ -18,15 +25,15 @@
   const originalSaveExtra = typeof saveExtra === 'function' ? saveExtra : null;
 
   function branchLabel(code) {
-    return BRANCHES[code]?.label || 'General Paz';
+    return BRANCHES[canonicalBranchCode(code)]?.label || 'General Paz';
   }
 
   function branchCodeForRecipe(r) {
-    return r?.branch || r?.branch_code || r?.sucursal || selectedImportBranch || 'general-paz';
+    return canonicalBranchCode(r?.branch || r?.branch_code || r?.sucursal || selectedImportBranch || 'general-paz');
   }
 
   function commissionKey(medico, branch) {
-    return `${normName(medico)}|${branch}`;
+    return `${normName(medico)}|${canonicalBranchCode(branch)}`;
   }
 
   function legacyCommissionKey(medico) {
@@ -34,11 +41,19 @@
   }
 
   function getBranchCommission(medico, branch) {
-    const key = commissionKey(medico, branch);
+    const resolved = canonicalBranchCode(branch);
+    const key = commissionKey(medico, resolved);
     if (comisiones[key] !== undefined) return Number(comisiones[key]) || 0;
 
-    // Compatibilidad: los porcentajes históricos pertenecen a General Paz.
-    if (branch === 'general-paz') {
+    if (resolved === 'cerro-de-las-rosas') {
+      for (const oldCode of LEGACY_CERRO_CODES) {
+        const oldKey = `${normName(medico)}|${oldCode}`;
+        if (comisiones[oldKey] !== undefined) return Number(comisiones[oldKey]) || 0;
+      }
+    }
+
+    // Compatibilidad: los porcentajes históricos sin sucursal pertenecen a General Paz.
+    if (resolved === 'general-paz') {
       const legacy = legacyCommissionKey(medico);
       if (comisiones[legacy] !== undefined) return Number(comisiones[legacy]) || 0;
     }
@@ -47,12 +62,12 @@
   }
 
   function setBranchCommission(medico, branch, pct) {
-    comisiones[commissionKey(medico, branch)] = pct;
+    comisiones[commissionKey(medico, canonicalBranchCode(branch))] = pct;
     saveState();
   }
 
   function branchPaymentKey(medico, desde, hasta, branch) {
-    return `${normName(medico)}|${branch}|${desde}|${hasta}`;
+    return `${normName(medico)}|${canonicalBranchCode(branch)}|${desde}|${hasta}`;
   }
 
   function legacyPaymentKey(medico, desde, hasta) {
@@ -60,9 +75,16 @@
   }
 
   function isBranchPaid(medico, desde, hasta, branch) {
-    if (pagos[branchPaymentKey(medico, desde, hasta, branch)]) return true;
-    // Compatibilidad con pagos históricos, considerados General Paz.
-    return branch === 'general-paz' && !!pagos[legacyPaymentKey(medico, desde, hasta)];
+    const resolved = canonicalBranchCode(branch);
+    if (pagos[branchPaymentKey(medico, desde, hasta, resolved)]) return true;
+    if (resolved === 'cerro-de-las-rosas') {
+      for (const oldCode of LEGACY_CERRO_CODES) {
+        const oldKey = `${normName(medico)}|${oldCode}|${desde}|${hasta}`;
+        if (pagos[oldKey]) return true;
+      }
+    }
+    // Compatibilidad con pagos históricos sin sucursal: General Paz.
+    return resolved === 'general-paz' && !!pagos[legacyPaymentKey(medico, desde, hasta)];
   }
 
   function groupDoctorByBranch(d) {
@@ -208,7 +230,7 @@
     list.innerHTML = docList.map((d, idx) => {
       const grouped = groupDoctorByBranch(d);
       const branchItems = Object.values(grouped).sort((a, b) => {
-        const order = { 'general-paz': 0, 'alto-palermo': 1 };
+        const order = { 'general-paz': 0, 'cerro-de-las-rosas': 1 };
         return (order[a.branch] ?? 9) - (order[b.branch] ?? 9);
       });
       const totalCommission = branchItems.reduce((a, item) => a + item.monto * getBranchCommission(d.medico, item.branch) / 100, 0);
@@ -293,8 +315,9 @@
   }
 
   window.setCommissionBranch = function setCommissionBranch(branch) {
-    if (branch !== 'all' && !BRANCHES[branch]) return;
-    activeCommissionBranch = branch;
+    const resolved = branch === 'all' ? 'all' : canonicalBranchCode(branch);
+    if (resolved !== 'all' && !BRANCHES[resolved]) return;
+    activeCommissionBranch = resolved;
     setBranchButtonState();
     applyFilters();
   };
@@ -303,7 +326,7 @@
     const el = document.getElementById('commission-branch-context');
     if (!el) return;
     el.textContent = activeCommissionBranch === 'all'
-      ? 'Vista consolidada · General Paz + Alto Palermo'
+      ? 'Vista consolidada · General Paz + Cerro de las Rosas'
       : `Vista de ${branchLabel(activeCommissionBranch)}`;
   }
 
@@ -321,9 +344,9 @@
       <div class="branch-switch-buttons">
         <button class="branch-switch-btn active" data-commission-branch="all" onclick="setCommissionBranch('all')">Todas</button>
         <button class="branch-switch-btn" data-commission-branch="general-paz" onclick="setCommissionBranch('general-paz')">General Paz</button>
-        <button class="branch-switch-btn" data-commission-branch="alto-palermo" onclick="setCommissionBranch('alto-palermo')">Alto Palermo</button>
+        <button class="branch-switch-btn" data-commission-branch="cerro-de-las-rosas" onclick="setCommissionBranch('cerro-de-las-rosas')">Cerro de las Rosas</button>
       </div>
-      <div class="branch-context" id="commission-branch-context">Vista consolidada · General Paz + Alto Palermo</div>`;
+      <div class="branch-context" id="commission-branch-context">Vista consolidada · General Paz + Cerro de las Rosas</div>`;
 
     if (sub) sub.insertAdjacentElement('afterend', wrap);
     else header.prepend(wrap);
@@ -345,8 +368,8 @@
           <button type="button" data-import-branch="general-paz" onclick="selectImportBranch('general-paz')">
             <strong>General Paz</strong><span>Excel de General Paz</span>
           </button>
-          <button type="button" data-import-branch="alto-palermo" onclick="selectImportBranch('alto-palermo')">
-            <strong>Alto Palermo</strong><span>Excel de Alto Palermo</span>
+          <button type="button" data-import-branch="cerro-de-las-rosas" onclick="selectImportBranch('cerro-de-las-rosas')">
+            <strong>Cerro de las Rosas</strong><span>Excel de Cerro de las Rosas</span>
           </button>
         </div>
         <div class="csv-branch-help" id="csv-branch-help">Seleccioná la sucursal antes de elegir el archivo.</div>`;
@@ -383,7 +406,7 @@
   if (originalProcessExcelFile) {
     processExcelFile = function processExcelFilePorSucursal(file) {
       if (!selectedImportBranch) {
-        showToast('Elegí General Paz o Alto Palermo antes de cargar el Excel');
+        showToast('Elegí General Paz o Cerro de las Rosas antes de cargar el Excel');
         return;
       }
       currentImportFileName = file?.name || '';
@@ -515,7 +538,7 @@
   if (originalOpenExtraModal) {
     openExtraModal = function openExtraModalPorSucursal(medicoPre) {
       if (activeCommissionBranch === 'all') {
-        showToast('Elegí General Paz o Alto Palermo para sumar un monto');
+        showToast('Elegí General Paz o Cerro de las Rosas para sumar un monto');
         return;
       }
       selectedExtraBranch = activeCommissionBranch;
@@ -544,9 +567,15 @@
     let changed = false;
     recetas.forEach(r => {
       if (!r.branch && !r.branch_code && !r.sucursal) {
-        // Todo lo previo a Alto Palermo pertenece al flujo histórico de General Paz.
         r.branch = 'general-paz';
         changed = true;
+      } else {
+        const current = r.branch || r.branch_code || r.sucursal;
+        const canonical = canonicalBranchCode(current);
+        if (r.branch !== canonical) {
+          r.branch = canonical;
+          changed = true;
+        }
       }
     });
     if (changed) saveState();
