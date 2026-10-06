@@ -17,7 +17,7 @@
   const can = (user,moduleId,permission=null) => {
     if(owner(user)||accessSnapshot?.admin===true) return true;
     if(!user || user?.app_metadata?.black_os_active===false || accessSnapshot?.active===false) return false;
-    const cfg=accessSnapshot?.permissions?.[moduleId]||user?.app_metadata?.black_os_permissions?.[moduleId];
+    const cfg=accessSnapshot ? accessSnapshot?.permissions?.[moduleId] : user?.app_metadata?.black_os_permissions?.[moduleId];
     if(!cfg || cfg.level==='none') return false;
     if(!permission) return true;
     if(cfg.level==='full' || cfg.items==='*') return true;
