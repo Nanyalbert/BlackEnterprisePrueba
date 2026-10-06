@@ -40,6 +40,57 @@ function sanitizeBranches(raw:any){
 function appsFromPermissions(permissions:Record<string,any>){
   return Object.entries(permissions).filter(([,cfg])=>cfg?.level && cfg.level!=="none").map(([id])=>id);
 }
+function roleCodeFromPermissions(permissions:Record<string,any>){
+  const active=Object.values(permissions).filter((cfg:any)=>cfg?.level && cfg.level!=="none") as any[];
+  if(!active.length) return "viewer";
+  const canWrite=active.some((cfg:any)=>["operator","full","custom"].includes(String(cfg.level)));
+  return canWrite ? "operator" : "viewer";
+}
+async function syncDirectory(admin:any,user:any,permissions:Record<string,any>,branchScope:string[],active:boolean){
+  if(!user?.id) return;
+  const fullName=user.user_metadata?.full_name||user.user_metadata?.name||String(user.email||"").split("@")[0];
+
+  const {error:profileError}=await admin.from("profiles").upsert({
+    id:user.id,
+    full_name:fullName,
+    email:user.email||null,
+    active,
+    updated_at:new Date().toISOString()
+  },{onConflict:"id"});
+  if(profileError) throw profileError;
+
+  await admin.from("user_branches").delete().eq("user_id",user.id);
+  let branchCodes=branchScope.includes("all")?["general-paz","cerro-de-las-rosas"]:branchScope;
+  branchCodes=[...new Set(branchCodes.filter(Boolean))];
+  if(branchCodes.length){
+    const {data:branches,error:branchError}=await admin.from("branches").select("id,code").in("code",branchCodes).eq("active",true);
+    if(branchError) throw branchError;
+    if(branches?.length){
+      const rows=branches.map((b:any,i:number)=>({user_id:user.id,branch_id:b.id,is_primary:i===0}));
+      const {error}=await admin.from("user_branches").insert(rows);
+      if(error) throw error;
+    }
+  }
+
+  const {data:role,error:roleError}=await admin.from("roles").select("id").eq("code",roleCodeFromPermissions(permissions)).maybeSingle();
+  if(roleError) throw roleError;
+  if(role?.id){
+    await admin.from("user_roles").delete().eq("user_id",user.id);
+    const {error}=await admin.from("user_roles").insert({user_id:user.id,role_id:role.id});
+    if(error) throw error;
+  }
+}
+async function auditUserChange(admin:any,actorId:string,action:string,target:any,detail:any={}){
+  try{
+    await admin.from("black_os_user_audit").insert({
+      actor_user_id:actorId,
+      target_user_id:target?.id||null,
+      action,
+      target_email:target?.email||null,
+      detail
+    });
+  }catch(error){ console.warn("black_os_user_audit",error); }
+}
 function isOwnerByMetadata(user:any){
   const email=String(user?.email||"").toLowerCase();
   return user?.app_metadata?.black_os_super_admin===true || email==="leandro@blackoptica.ar" || email==="nanyalbert@gmail.com";
@@ -118,11 +169,12 @@ Deno.serve(async req => {
       const permissions=sanitizePermissions(body?.permissions);
       const branchScope=sanitizeBranches(body?.branchScope);
       const apps=appsFromPermissions(permissions);
+      const active=body?.activo!==false;
       const {data,error}=await admin.auth.admin.createUser({
         email,password,email_confirm:true,
         user_metadata:{full_name:nombre},
         app_metadata:{
-          black_os_active:true,
+          black_os_active:active,
           black_os_super_admin:false,
           black_os_permissions:permissions,
           black_os_branch_scope:branchScope,
@@ -130,6 +182,8 @@ Deno.serve(async req => {
         }
       });
       if(error) throw error;
+      await syncDirectory(admin,data.user,permissions,branchScope,active);
+      await auditUserChange(admin,caller.id,"create_user",data.user,{permissions,branchScope,active});
       return reply({ok:true,user:serializeUser(data.user,adminIds)});
     }
 
@@ -165,7 +219,10 @@ Deno.serve(async req => {
       }
       const {data,error}=await admin.auth.admin.updateUserById(id,attrs);
       if(error) throw error;
-      return reply({ok:true,user:serializeUser(data.user)});
+      const active=body?.activo!==false;
+      await syncDirectory(admin,data.user,permissions,branchScope,active);
+      await auditUserChange(admin,caller.id,"update_user",data.user,{permissions,branchScope,active,passwordChanged:Boolean(password)});
+      return reply({ok:true,user:serializeUser(data.user,adminIds)});
     }
 
     if(action==="delete"){
@@ -174,6 +231,10 @@ Deno.serve(async req => {
       if(id===caller.id) return reply({error:"No podés eliminar tu propio usuario"},400);
       const {data:current}=await admin.auth.admin.getUserById(id);
       if(current?.user && (isOwnerByMetadata(current.user)||adminIds.has(String(current.user.id)))) return reply({error:"No se puede eliminar al administrador principal"},400);
+      await auditUserChange(admin,caller.id,"delete_user",current?.user||{id},{});
+      await admin.from("user_branches").delete().eq("user_id",id);
+      await admin.from("user_roles").delete().eq("user_id",id);
+      await admin.from("profiles").delete().eq("id",id);
       const {error}=await admin.auth.admin.deleteUser(id);
       if(error) throw error;
       return reply({ok:true});
