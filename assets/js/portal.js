@@ -284,6 +284,10 @@ function isPortalOwner(user=currentSessionUser()){
 function userAppsFromMeta(user=currentSessionUser()){
   if(isPortalOwner(user)) return Object.keys(APP_LABELS);
   const meta=user?.app_metadata||{};
+  const hasExplicitConfig=Object.prototype.hasOwnProperty.call(meta,'black_os_apps') || Object.prototype.hasOwnProperty.call(meta,'black_os_permissions');
+  // Compatibilidad: las cuentas creadas antes del sistema granular no tenían metadata.
+  // Para no bloquear Black OS durante la migración, conservan acceso legado hasta que se les guarden permisos explícitos.
+  if(!hasExplicitConfig) return Object.keys(APP_LABELS);
   return Array.isArray(meta.black_os_apps)?meta.black_os_apps:[];
 }
 function userCanOpen(viewName,user=currentSessionUser()){
