@@ -11,10 +11,10 @@
   function rounded(v,step){const s=Math.max(1,Number(step)||1);return Math.round(Number(v||0)/s)*s}
   function priceView(x){const p=productPricing(x),base=Number(x?.base_price||0),raw=p.standard_discount_percent>=100?base:base/(1-p.standard_discount_percent/100),list=p.list_price_override&&p.list_price_override>0?p.list_price_override:rounded(raw,p.rounding_step),protect=rounded(list*(1-p.black_protect_discount_percent/100),p.rounding_step);return{...p,base,list,protect}}
 
-  function permission(user,key){
+  function permission(user,key,access=null){
     const email=String(user?.email||'').toLowerCase();
-    if(user?.app_metadata?.black_os_super_admin===true||email==='nanyalbert@gmail.com'||email==='leandro@blackoptica.ar')return true;
-    const cfg=user?.app_metadata?.black_os_permissions?.catalogo;
+    if(access?.admin===true||user?.app_metadata?.black_os_super_admin===true||email==='nanyalbert@gmail.com'||email==='leandro@blackoptica.ar')return true;
+    const cfg=access?.permissions?.catalogo||user?.app_metadata?.black_os_permissions?.catalogo;
     if(!cfg||cfg.level==='none')return false;
     if(cfg.level==='full'||cfg.items==='*')return true;
     return Array.isArray(cfg.items)&&cfg.items.includes(key);
@@ -35,14 +35,15 @@
   async function load(){
     const panel=document.getElementById('tab-catalogo');if(!panel)return;panel.innerHTML='<div class="catalog-loading">Leyendo productos desde Supabase…</div>';
     state.client=resolveClient();if(!state.client){panel.innerHTML='<div class="catalog-error">Supabase no está disponible.</div>';return}
-    const [{data:products,error},{data:settings},{data:session}]=await Promise.all([
+    const [{data:products,error},{data:settings},{data:session},{data:access}]=await Promise.all([
       state.client.from('black_ai_products').select('id,name,sku,base_price,optical_case,supply_mode,material,treatment,design,is_active,imported_at,updated_at,sphere_min,sphere_max,cylinder_min,cylinder_max,cylinder_abs_max,addition_min,addition_max,technical_family_key,requires_addition,technical_priority,metadata').order('name',{ascending:true}),
       state.client.from('black_ai_settings').select('config').eq('id','global').maybeSingle(),
-      state.client.auth.getSession()
+      state.client.auth.getSession(),
+      state.client.rpc('black_os_my_access')
     ]);
     if(error){panel.innerHTML=`<div class="catalog-error">${esc(error.message)}</div>`;return}
     state.items=products||[];state.settings=settings?.config||{};
-    if(session?.session?.user?.id){const user=session.session.user;state.canEdit=permission(user,'edit');state.canPricing=permission(user,'pricing');state.canImport=permission(user,'import');state.scannerAdmin=state.canEdit||state.canPricing||state.canImport;state.scannerPermissionError=false}
+    if(session?.session?.user?.id){const user=session.session.user;state.canEdit=permission(user,'edit',access);state.canPricing=permission(user,'pricing',access);state.canImport=permission(user,'import',access);state.scannerAdmin=state.canEdit||state.canPricing||state.canImport;state.scannerPermissionError=false}
     state.loaded=true;render();
   }
 
