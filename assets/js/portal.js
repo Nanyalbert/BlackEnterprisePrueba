@@ -218,6 +218,7 @@ function initAdministrationSubmenu(){
     .admin-subitem:hover{background:#151515;color:#d7d7d2}
     .admin-subitem.active{background:#1a1a1a;color:#f5f5f3}
     .admin-subitem-dot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.75;flex:0 0 auto}
+    .admin-nav-wrap.supplier-only .admin-nav-chevron,.admin-nav-wrap.supplier-only .admin-submenu{display:none!important}
     body.sidebar-collapsed .admin-submenu{display:none!important}
     body.sidebar-collapsed .admin-nav-chevron{display:none}
     @media(max-width:900px){.admin-submenu-inner{padding-left:35px}}
