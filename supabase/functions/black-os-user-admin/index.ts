@@ -12,6 +12,16 @@ const reply = (value: unknown, status = 200) => new Response(JSON.stringify(valu
 
 const MODULES = new Set(["crm-black","administracion","crm-oftalmologos","recetas","marketing","catalogo","turnos","rrhh"]);
 const LEVELS = new Set(["none","read","operator","full","custom"]);
+const PERMISSIONS:Record<string,Set<string>> = {
+  "crm-black":new Set(["view","create_edit","followup","automation","export"]),
+  "administracion":new Set(["summary","sales","profit_cost","cash","bank","social","suppliers","upload"]),
+  "crm-oftalmologos":new Set(["view","manage","referrals","stats"]),
+  "recetas":new Set(["view","interpret","copy"]),
+  "marketing":new Set(["view","create_edit","production","ads","results","import","settings"]),
+  "catalogo":new Set(["view","edit","pricing","import"]),
+  "turnos":new Set(["view","create","edit","status","cancel","professionals","availability","branches","public_booking"]),
+  "rrhh":new Set(["view","manage_employees","attendance","reports","salary_reference","settings"])
+};
 
 function sanitizePermissions(raw: any) {
   const out: Record<string,{level:string;items:"*"|string[]}> = {};
@@ -20,7 +30,8 @@ function sanitizePermissions(raw: any) {
     if (!MODULES.has(moduleId)) continue;
     const value:any = cfg || {};
     const level = LEVELS.has(value.level) ? value.level : "none";
-    const items = value.items === "*" ? "*" : Array.isArray(value.items) ? value.items.filter((x:any)=>typeof x==="string").slice(0,50) : [];
+    const allowed=PERMISSIONS[moduleId]||new Set<string>();
+    const items = value.items === "*" ? "*" : Array.isArray(value.items) ? value.items.filter((x:any)=>typeof x==="string"&&allowed.has(x)).slice(0,50) : [];
     out[moduleId] = { level, items };
   }
   return out;
