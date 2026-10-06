@@ -403,6 +403,10 @@ function applyPortalAccess(user=currentSessionUser()){
     const title=adminCard.querySelector('h3'),copy=adminCard.querySelector('p');
     if(title) title.textContent='Proveedores';
     if(copy) copy.textContent='Consulta y gestión de proveedores asignada a tu usuario.';
+    if(adminCard.dataset.supplierBound!=='1'){
+      adminCard.dataset.supplierBound='1';
+      adminCard.addEventListener('click',()=>setAdminSource('proveedores.html?v=20261005-suppliers-1','Proveedores'),true);
+    }
   }
 
   document.querySelectorAll('.nav-label').forEach(label=>{
