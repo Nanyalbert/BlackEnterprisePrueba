@@ -528,7 +528,6 @@ async function bootPortal(){
     const meta=session.user.app_metadata||{};
     if(meta.black_os_active===false){await supabaseClient.auth.signOut();window.location.replace('index.html?disabled=1');return;}
     applyPortalAccess(session.user);
-    MODULE_VIEWS.forEach(view=>{ if(userCanOpen(view,session.user)) ensureAuthorizedFrame(view,session.user); });
     if(isPortalOwner(session.user)) loadUsers();
     const email=session.user.email||'';
     const rawName=session.user.user_metadata?.full_name||session.user.user_metadata?.name||email.split('@')[0].replace(/[._-]+/g,' ');
