@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RRHH | Black Óptica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/rrhh.css">
+</head>
+<body class="rrhh-page">
+<main class="rrhh-shell">
+  <header class="rrhh-hero">
+    <div>
+      <p class="eyebrow">RRHH · BLACK OS</p>
+      <h1>Equipo, horarios y asistencia.</h1>
+      <p class="hero-copy">Administrá colaboradores, jornadas y fichadas desde un único lugar. El módulo de marcación externo quedará conectado a estos mismos registros.</p>
+    </div>
+    <div class="hero-actions">
+      <button class="btn btn-ghost" id="refresh-btn" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0 2 5"/><path d="M20 4v7h-7"/></svg>
+        Actualizar
+      </button>
+      <button class="btn btn-primary" id="new-employee-btn" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 19a6 6 0 0 0-12 0"/><circle cx="9" cy="8" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+        Nuevo integrante
+      </button>
+    </div>
+  </header>
+
+  <section class="rrhh-kpis" aria-label="Resumen RRHH">
+    <article class="kpi-card"><span>Equipo activo</span><strong id="kpi-active">--</strong><small>Colaboradores habilitados</small></article>
+    <article class="kpi-card"><span>Presentes hoy</span><strong id="kpi-present">--</strong><small>Con jornada abierta o registrada</small></article>
+    <article class="kpi-card"><span>Tardanzas del mes</span><strong id="kpi-late">--</strong><small>Solo primera entrada diaria</small></article>
+    <article class="kpi-card"><span>Registros a revisar</span><strong id="kpi-review">--</strong><small>Fichadas incompletas o inconsistentes</small></article>
+  </section>
+
+  <nav class="rrhh-tabs" aria-label="Secciones RRHH">
+    <button class="rrhh-tab active" data-tab="equipo">Equipo</button>
+    <button class="rrhh-tab" data-tab="asistencia">Asistencia</button>
+    <button class="rrhh-tab" data-tab="reportes">Reportes</button>
+    <button class="rrhh-tab" data-tab="configuracion">Configuración</button>
+  </nav>
+
+  <section class="rrhh-panel active" id="tab-equipo">
+    <div class="section-head">
+      <div><p class="eyebrow">EQUIPO</p><h2>Integrantes y condiciones de jornada</h2></div>
+      <div class="toolbar">
+        <label class="search-field">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="employee-search" type="search" placeholder="Buscar integrante">
+        </label>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Integrante</th><th>Sucursal</th><th>Horario</th><th>PIN fichada</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="employees-tbody"><tr><td colspan="6" class="empty-cell">Cargando equipo…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="rrhh-panel" id="tab-asistencia">
+    <div class="section-head"><div><p class="eyebrow">ASISTENCIA</p><h2>Marcaciones del día</h2></div><span class="period-label" id="today-label"></span></div>
+    <div class="table-card">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Integrante</th><th>Primera entrada</th><th>Última marca</th><th>Marcas</th><th>Min. tarde</th><th>Estado</th></tr></thead>
+          <tbody id="attendance-tbody"><tr><td colspan="6" class="empty-cell">Sin datos todavía</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="rrhh-panel" id="tab-reportes">
+    <div class="section-head"><div><p class="eyebrow">REPORTES</p><h2>Lectura mensual de asistencia</h2></div><input class="month-field" id="report-month" type="month"></div>
+    <div class="report-grid">
+      <article class="panel-card"><div class="panel-title"><h3>Horas y puntualidad</h3><span>Por integrante</span></div><div id="monthly-report" class="report-empty">Seleccioná un período para consultar el resumen.</div></article>
+      <article class="panel-card note-card"><div class="panel-title"><h3>Equivalencia económica</h3><span>Informativa</span></div><p>El sistema podrá traducir minutos de tardanza a una equivalencia monetaria usando el valor hora de referencia. Este dato será informativo y no generará descuentos automáticos.</p></article>
+    </div>
+  </section>
+
+  <section class="rrhh-panel" id="tab-configuracion">
+    <div class="section-head"><div><p class="eyebrow">CONFIGURACIÓN</p><h2>Reglas generales de RRHH</h2></div></div>
+    <div class="settings-grid">
+      <article class="panel-card"><h3>Sucursales</h3><p>General Paz y Cerro de las Rosas quedan disponibles como ubicaciones operativas.</p></article>
+      <article class="panel-card"><h3>Tolerancia</h3><p>La tolerancia se configura por integrante. La tardanza se calcula únicamente sobre la primera entrada del día.</p></article>
+      <article class="panel-card"><h3>Fichador externo</h3><p>El terminal de escritorio no administra personal: solo identifica al empleado por PIN y registra marcas contra la base central.</p></article>
+    </div>
+  </section>
+</main>
+
+<div class="modal-overlay" id="employee-modal">
+  <form class="modal" id="employee-form">
+    <div class="modal-head"><div><p class="eyebrow">RRHH</p><h3 id="employee-modal-title">Nuevo integrante</h3></div><button class="icon-button" id="employee-modal-close" type="button" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <input type="hidden" id="employee-id">
+    <div class="form-grid">
+      <label><span>Nombre completo</span><input id="employee-name" required></label>
+      <label><span>Sucursal</span><select id="employee-branch"><option value="general-paz">General Paz</option><option value="cerro">Cerro de las Rosas</option></select></label>
+      <label><span>Hora entrada</span><input id="employee-start" type="time" value="09:00" required></label>
+      <label><span>Hora salida</span><input id="employee-end" type="time" value="19:00" required></label>
+      <label><span>Tolerancia (min)</span><input id="employee-tolerance" type="number" min="0" max="120" value="10"></label>
+      <label><span>PIN fichada</span><input id="employee-pin" inputmode="numeric" pattern="[0-9]{4,6}" minlength="4" maxlength="6" placeholder="4 a 6 dígitos" required></label>
+      <label class="full"><span>Remuneración mensual de referencia</span><input id="employee-salary" type="number" min="0" step="0.01" placeholder="0"></label>
+    </div>
+    <div class="modal-actions"><button class="btn btn-ghost" id="employee-cancel" type="button">Cancelar</button><button class="btn btn-primary" type="submit">Guardar integrante</button></div>
+  </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="assets/js/supabase-config.js"></script>
+<script src="assets/js/rrhh.js"></script>
+</body>
+</html>
