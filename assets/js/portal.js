@@ -309,7 +309,7 @@ function userAppsFromMeta(user=currentSessionUser()){
 function userPermissionConfig(moduleId,user=currentSessionUser()){
   if(isPortalOwner(user)) return {level:'full',items:'*'};
   const access=currentAccessSnapshot();
-  if(access?.permissions&&Object.prototype.hasOwnProperty.call(access.permissions,moduleId)) return access.permissions[moduleId];
+  if(access) return access?.permissions?.[moduleId]||null;
   return user?.app_metadata?.black_os_permissions?.[moduleId]||null;
 }
 function userHasPermission(moduleId,permission,user=currentSessionUser()){
