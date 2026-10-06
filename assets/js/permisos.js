@@ -95,13 +95,18 @@
     full: '*'
   };
 
+  function canonicalBranchScope(value){
+    if(['zona-norte','alto-palermo','cerro'].includes(value)) return 'cerro-de-las-rosas';
+    return value;
+  }
+
   function normalizeUser(user){
     if(!user) return user;
     user.permissions=user.permissions||{};
     (user.apps||[]).forEach(app=>{
       if(!user.permissions[app]) user.permissions[app]={level:'full',items:'*'};
     });
-    user.branchScope=Array.isArray(user.branchScope)&&user.branchScope.length?user.branchScope:['all'];
+    user.branchScope=Array.isArray(user.branchScope)&&user.branchScope.length?[...new Set(user.branchScope.map(canonicalBranchScope))]:['all'];
     return user;
   }
 
