@@ -1,32 +1,88 @@
-BLACK ÓPTICA — ESTRUCTURA ORGANIZADA
+BLACK ÓPTICA — BLACK OS
 
-RAÍZ
-- index.html                     Login
-- menu.html                      Portal principal
-- crm-oftalmologos.html          Estructura HTML del CRM Oftalmólogos
+ESTADO
+- Rama de trabajo: main.
+- Black OS está conectado al proyecto Supabase BlackUsuario.
+- Las sucursales canónicas son General Paz y Cerro de las Rosas.
+- RRHH está integrado al portal.
+- Black Fichada funciona como terminal separada y comparte la base de RRHH.
+- El sistema de usuarios aplica permisos en frontend y backend.
 
-ASSETS / CSS
-- assets/css/base.css            Variables y reglas compartidas
-- assets/css/login.css           Estilos del login
-- assets/css/portal.css          Estilos del portal/menu
-- assets/css/crm-oftalmologos.css Estilos del CRM Oftalmólogos + acentos de color
+ARQUITECTURA DE ACCESO
+1. El administrador asigna módulos y funciones desde Sistema > Usuarios.
+2. Los módulos no asignados no aparecen en el menú ni en los accesos rápidos.
+3. Las funciones no asignadas se ocultan dentro de cada módulo.
+4. Los iframes de módulos no autorizados no se cargan.
+5. Supabase vuelve a validar permisos con RLS/RPC aunque se intente acceder manualmente.
+6. El alcance de sucursales puede limitarse a General Paz, Cerro de las Rosas o ambas.
+7. Los usuarios desactivados quedan bloqueados también desde la base, incluso con sesiones antiguas.
+8. Altas, cambios de permisos y bajas quedan auditados.
 
-ASSETS / JS
-- assets/js/supabase-config.js   URL/key publishable y cliente compartido
-- assets/js/login.js             Lógica de autenticación del login
-- assets/js/portal.js            Navegación del portal y sesión
-- assets/js/crm-oftalmologos.js  Agenda, médicos, recetas, CRM, comisiones, Excel, PDF, Word, backup
+USUARIOS
+- assets/js/permisos.js       Editor granular de permisos.
+- assets/js/portal.js         Visibilidad del portal, sesiones y administración de usuarios.
+- assets/js/module-access.js  Visibilidad de funciones dentro de cada módulo.
+- supabase/functions/black-os-user-admin/index.ts
+                              Alta, edición, desactivación y baja segura de usuarios.
+- docs/ACCESS_CONTROL.md      Diseño completo de acceso y seguridad.
 
-ASSETS / IMG
-- assets/img/Logo---Black.png     Logo común
+MÓDULOS
+- index.html                  Login.
+- menu.html                   Portal principal.
+- crm-clientes.html           CRM Black.
+- crm-oftalmologos.html       CRM Oftalmólogos.
+- recetas/                    Scanner e interpretación de recetas.
+- administracion.html         Administración.
+- proveedores.html            Proveedores.
+- marketing.html              Marketing.
+- rrhh.html                   RRHH.
+- black-ai.html?catalogo      Catálogo de cristales.
 
-IMPORTANTE
-1. Subir toda la estructura manteniendo las carpetas.
-2. No mover archivos individuales sin actualizar rutas relativas.
-3. La key pública/publishable de Supabase está centralizada en supabase-config.js. Nunca poner service_role en el frontend.
-4. El CRM Oftalmólogos sigue usando localStorage para sus datos de negocio hasta migrarlo a Supabase.
-5. El CRM está diseñado para abrirse embebido dentro de menu.html, conservando el menú lateral del portal.
+RRHH
+- hr_employees               Integrantes.
+- hr_employee_schedules      Jornadas programadas.
+- hr_time_marks              Marcaciones.
+- hr_terminals               Terminales autorizadas.
+- hr_audit_log               Auditoría RRHH.
+- hr_terminal_pin_attempts   Protección de PIN / rate limiting.
 
-PRÓXIMO MÓDULO
-- crm-clientes.html / assets/css/crm-clientes.css / assets/js/crm-clientes.js
-  Debe mantenerse independiente del CRM Oftalmólogos.
+BLACK FICHADA
+- Edge Function: black-fichada-mark.
+- Código servidor: supabase/functions/black-fichada-mark/index.ts.
+- El PIN nunca se consulta desde el navegador.
+- La hora se toma del servidor.
+- La secuencia es entrada > salida > reingreso > salida.
+- Las terminales usan credenciales independientes.
+- Los secretos de terminal NO deben guardarse en GitHub.
+- La administración se realiza desde RRHH, no desde el fichador.
+
+SUPABASE
+Las migraciones SQL están versionadas en /sql.
+A partir de RRHH y del sistema granular de permisos, los cambios de esquema deben aplicarse mediante migraciones y quedar reflejados en el repositorio.
+
+SEGURIDAD
+- Nunca publicar SUPABASE_SERVICE_ROLE_KEY.
+- La key publishable del frontend no reemplaza RLS.
+- No guardar contraseñas de usuarios ni PIN en texto plano.
+- No guardar secretos de Black Fichada en el repositorio.
+- Todo módulo nuevo debe implementar permisos de interfaz + permisos de base.
+- Los datos salariales de RRHH requieren permiso específico.
+- Los cambios de usuarios quedan registrados sin almacenar contraseñas.
+
+PERFORMANCE
+- Los módulos del portal se cargan bajo demanda.
+- Los índices de claves foráneas de las áreas activas fueron revisados.
+- Las políticas RLS redundantes fueron eliminadas/optimizadas.
+- No eliminar índices recién creados solo porque Supabase todavía los marque como no usados: necesitan carga real para acumular estadísticas.
+
+PENDIENTE DE CONFIGURACIÓN EXTERNA
+- Activar Leaked Password Protection desde Supabase Auth cuando esté disponible en el plan/configuración del proyecto.
+- Probar al menos un usuario real restringido antes de extender el uso a todo el equipo.
+
+REGLA PARA NUEVAS FUNCIONES
+Antes de considerar lista una herramienta:
+1. Debe aparecer solo a usuarios autorizados.
+2. Debe ocultar acciones no autorizadas.
+3. La base debe rechazar la misma acción si se llama fuera de la UI.
+4. Debe respetar la sucursal del usuario cuando corresponda.
+5. Debe dejar auditoría si modifica información sensible.
