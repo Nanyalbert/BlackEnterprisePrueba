@@ -408,6 +408,29 @@ async function callUserAdmin(action,payload={}){
   if(!data?.ok) throw new Error(data?.error||'No se pudo administrar usuarios.');
   return data;
 }
+async function loadUserAudit(){
+  if(!isPortalOwner()||!supabaseClient) return;
+  const root=document.getElementById('user-audit-list');
+  if(!root) return;
+  try{
+    const {data,error}=await supabaseClient.from('black_os_user_audit')
+      .select('id,action,target_email,detail,created_at')
+      .order('created_at',{ascending:false})
+      .limit(12);
+    if(error) throw error;
+    const labels={create_user:'Usuario creado',update_user:'Permisos actualizados',delete_user:'Usuario eliminado'};
+    root.innerHTML=(data||[]).length?(data||[]).map(row=>{
+      const when=new Date(row.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      const branch=(row.detail?.branchScope||[]).map(x=>x==='general-paz'?'General Paz':x==='cerro-de-las-rosas'?'Cerro de las Rosas':x==='all'?'Todas':x).join(' · ');
+      return `<div class="user-audit-row"><div><strong>${labels[row.action]||row.action}</strong><span>${row.target_email||'Usuario'}${branch?' · '+branch:''}</span></div><time>${when}</time></div>`;
+    }).join(''):'<div class="empty-state">Todavía no hay cambios registrados.</div>';
+  }catch(error){
+    console.warn('Auditoría de usuarios',error);
+    root.innerHTML='<div class="empty-state">No se pudo cargar la auditoría de accesos.</div>';
+  }
+}
+document.getElementById('refresh-user-audit')?.addEventListener('click',loadUserAudit);
+
 async function loadUsers(){
   if(!isPortalOwner()) return;
   usersLoading=true;
@@ -417,6 +440,7 @@ async function loadUsers(){
     const data=await callUserAdmin('list');
     usersData=data.users||[];
     renderUsers();
+    loadUserAudit();
   }catch(error){
     console.error('No se pudieron cargar usuarios:',error);
     if(tbody) tbody.innerHTML=`<tr><td colspan="5"><div class="empty-state"><strong>No se pudo conectar el administrador de usuarios.</strong><br><span>${String(error.message||error)}</span><br><small>Verificá que la Edge Function <code>black-os-user-admin</code> esté desplegada en Supabase.</small></div></td></tr>`;
@@ -443,6 +467,7 @@ function renderUsers() {
       await callUserAdmin('delete',{id:user.id});
       usersData=usersData.filter(x=>String(x.id)!==String(id));
       renderUsers();
+      loadUserAudit();
     }catch(error){alert(error.message||String(error));button.disabled=false}
   }));
 }
