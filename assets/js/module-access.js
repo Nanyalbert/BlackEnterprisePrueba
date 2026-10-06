@@ -159,6 +159,28 @@
     }catch(error){}
 
     const path=location.pathname.toLowerCase();
+    const moduleId=path.endsWith('administracion.html')||path.endsWith('proveedores.html')?'administracion':
+      path.endsWith('marketing.html')?'marketing':
+      path.endsWith('crm-clientes.html')?'crm-black':
+      path.endsWith('crm-oftalmologos.html')?'crm-oftalmologos':
+      path.endsWith('rrhh.html')?'rrhh':
+      path.endsWith('/recetas/index.html')||path.endsWith('/recetas/')?'recetas':null;
+
+    const refreshAccess=async()=>{
+      if(!moduleId) return;
+      try{
+        const access=await client.rpc('black_os_my_access');
+        if(access.error||!access.data) return;
+        accessSnapshot=access.data;
+        if(accessSnapshot.active===false||!can(user,moduleId)){
+          document.body.innerHTML='<main style="min-height:100vh;display:grid;place-items:center;background:#090909;color:#eee;font-family:system-ui;padding:24px"><div style="max-width:460px;text-align:center"><h2>Acceso restringido</h2><p style="color:#888;line-height:1.6">Esta función ya no está asignada a tu usuario.</p></div></main>';
+          try{window.parent?.postMessage({type:'blackos:access-denied',module:moduleId},'*')}catch(_){}
+        }
+      }catch(error){}
+    };
+    window.addEventListener('focus',refreshAccess);
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshAccess()});
+
     if(path.endsWith('/administracion.html')||path.endsWith('administracion.html')) applyAdministration(user);
     else if(path.endsWith('/proveedores.html')||path.endsWith('proveedores.html')) applySuppliers(user);
     else if(path.endsWith('/marketing.html')||path.endsWith('marketing.html')) applyMarketing(user);
