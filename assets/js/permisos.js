@@ -59,6 +59,18 @@
         ['settings','Administrar categorías y colores']
       ]
     },
+    rrhh: {
+      label:'RRHH',
+      icon:'RRHH',
+      permissions:[
+        ['view','Ver equipo y asistencia'],
+        ['manage_employees','Crear y editar integrantes'],
+        ['attendance','Ver fichadas'],
+        ['reports','Ver reportes'],
+        ['salary_reference','Ver remuneración de referencia'],
+        ['settings','Administrar horarios y tolerancias']
+      ]
+    },
     turnos: {
       label:'Turnos',
       icon:'TUR',
