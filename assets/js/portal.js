@@ -680,6 +680,13 @@ const logoutBtn=document.getElementById('logout-btn');
 logoutBtn?.addEventListener('click',async event=>{event.preventDefault();try{sessionStorage.removeItem(VIEW_STORAGE_KEY);}catch(error){}if(supabaseClient){try{await supabaseClient.auth.signOut();}catch(error){}}window.location.replace('index.html');});
 
 let resizeTimer = null;
+window.addEventListener('message',event=>{
+  if(event?.data?.type==='blackos:access-denied'){
+    applyPortalAccess();
+    showView('inicio');
+  }
+});
+
 window.addEventListener('resize',()=>{
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
