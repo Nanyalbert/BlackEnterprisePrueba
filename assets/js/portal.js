@@ -18,7 +18,8 @@ const TITLES = {
   'crm-oftalmologos': 'CRM Oftalmólogos',
   recetas: 'Recetas',
   catalogo: 'Catálogo de cristales',
-  marketing: 'Marketing'
+  marketing: 'Marketing',
+  rrhh: 'RRHH'
 };
 
 const MODULE_VIEWS = [
@@ -27,7 +28,8 @@ const MODULE_VIEWS = [
   'crm-oftalmologos',
   'recetas',
   'catalogo',
-  'marketing'
+  'marketing',
+  'rrhh'
 ];
 
 function isMobileLayout() {
@@ -267,6 +269,7 @@ const APP_LABELS = {
   'crm-oftalmologos':'CRM Oftalmólogos',
   recetas:'Recetas',
   marketing:'Marketing',
+  rrhh:'RRHH',
   catalogo:'Catálogo de cristales',
   turnos:'Turnos'
 };
@@ -299,7 +302,8 @@ function userCanOpen(viewName,user=currentSessionUser()){
     'crm-oftalmologos':'crm-oftalmologos',
     recetas:'recetas',
     catalogo:'catalogo',
-    marketing:'marketing'
+    marketing:'marketing',
+    rrhh:'rrhh'
   };
   const app=map[viewName];
   return !app || userAppsFromMeta(user).includes(app);
@@ -312,6 +316,7 @@ function applyPortalAccess(user=currentSessionUser()){
     recetas:['#recetas-nav','#recetas-card'],
     catalogo:['#catalogo-nav'],
     marketing:['#marketing-nav','#marketing-card'],
+    rrhh:['#rrhh-nav'],
     usuarios:['.nav-item[data-view="usuarios"]']
   };
   Object.entries(selectors).forEach(([view,items])=>{
