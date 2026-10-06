@@ -22,11 +22,14 @@
   window.BlackPortal.canAccessModule = function(user,moduleId){
     if(!user) return false;
     if(window.BlackPortal.isSuperAdmin(user)) return true;
+    const access=window.BlackPortal.accessSnapshot;
+    if(access){
+      if(access.active===false) return false;
+      if(access.admin===true) return true;
+      return Array.isArray(access.apps)&&access.apps.includes(moduleId);
+    }
     if(user?.app_metadata?.black_os_active===false) return false;
     const meta=user?.app_metadata||{};
-    const hasExplicitConfig=Object.prototype.hasOwnProperty.call(meta,'black_os_apps') || Object.prototype.hasOwnProperty.call(meta,'black_os_permissions');
-    // Usuarios históricos: hasta que tengan permisos explícitos, mantienen el acceso que ya tenían.
-    if(!hasExplicitConfig) return true;
     const apps=Array.isArray(meta.black_os_apps)?meta.black_os_apps:[];
     const cfg=meta.black_os_permissions?.[moduleId];
     return apps.includes(moduleId) || Boolean(cfg&&cfg.level&&cfg.level!=='none');
@@ -59,6 +62,10 @@
         if(refreshed?.data?.session) session=refreshed.data.session;
       }catch(error){}
       const user=session.user;
+      try{
+        const accessResult=await client.rpc('black_os_my_access');
+        if(!accessResult.error&&accessResult.data) window.BlackPortal.accessSnapshot=accessResult.data;
+      }catch(error){}
       let profileActive=true;
       try{
         const profile=await client.from('profiles').select('active').eq('id',user.id).maybeSingle();
