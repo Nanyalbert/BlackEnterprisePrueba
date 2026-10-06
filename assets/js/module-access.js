@@ -1,5 +1,6 @@
 // Black OS — visibilidad funcional según permisos
 (() => {
+  let accessSnapshot=null;
   const $all = (selector) => Array.from(document.querySelectorAll(selector));
   const hide = (selector, hidden=true) => $all(selector).forEach(el => {
     el.hidden = hidden;
@@ -14,9 +15,9 @@
     return user?.app_metadata?.black_os_super_admin===true || email==='nanyalbert@gmail.com' || email==='leandro@blackoptica.ar';
   };
   const can = (user,moduleId,permission=null) => {
-    if(owner(user)) return true;
-    if(!user || user?.app_metadata?.black_os_active===false) return false;
-    const cfg=user?.app_metadata?.black_os_permissions?.[moduleId];
+    if(owner(user)||accessSnapshot?.admin===true) return true;
+    if(!user || user?.app_metadata?.black_os_active===false || accessSnapshot?.active===false) return false;
+    const cfg=accessSnapshot?.permissions?.[moduleId]||user?.app_metadata?.black_os_permissions?.[moduleId];
     if(!cfg || cfg.level==='none') return false;
     if(!permission) return true;
     if(cfg.level==='full' || cfg.items==='*') return true;
@@ -152,6 +153,10 @@
     const {data:{session}}=await client.auth.getSession();
     const user=session?.user;
     if(!user) return;
+    try{
+      const access=await client.rpc('black_os_my_access');
+      if(!access.error&&access.data) accessSnapshot=access.data;
+    }catch(error){}
 
     const path=location.pathname.toLowerCase();
     if(path.endsWith('/administracion.html')||path.endsWith('administracion.html')) applyAdministration(user);
