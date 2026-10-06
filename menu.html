@@ -61,10 +61,10 @@
     <section class="dashboard-section" aria-labelledby="dashboard-resumen-title">
       <div class="dashboard-section-head"><div><span class="dashboard-section-kicker">Hoy</span><h2 id="dashboard-resumen-title">Resumen</h2></div><span class="dashboard-muted">Los indicadores se conectarán a las fuentes reales en una etapa posterior.</span></div>
       <div class="dashboard-kpi-grid">
-        <article class="dashboard-kpi"><div class="dashboard-kpi-top"><span>Ventas</span><span class="dashboard-kpi-tag">Hoy</span></div><strong>$ --</strong><small>Facturación del día</small></article>
-        <article class="dashboard-kpi"><div class="dashboard-kpi-top"><span>Leads</span><span class="dashboard-kpi-tag">CRM</span></div><strong>--</strong><small>Nuevos contactos</small></article>
-        <article class="dashboard-kpi"><div class="dashboard-kpi-top"><span>Turnos</span><span class="dashboard-kpi-tag">Agenda</span></div><strong>--</strong><small>Programados para hoy</small></article>
-        <article class="dashboard-kpi"><div class="dashboard-kpi-top"><span>Derivaciones</span><span class="dashboard-kpi-tag">Médicos</span></div><strong>--</strong><small>Actividad registrada</small></article>
+        <article class="dashboard-kpi" data-dashboard-module="administracion"><div class="dashboard-kpi-top"><span>Ventas</span><span class="dashboard-kpi-tag">Hoy</span></div><strong>$ --</strong><small>Facturación del día</small></article>
+        <article class="dashboard-kpi" data-dashboard-module="crm-black"><div class="dashboard-kpi-top"><span>Leads</span><span class="dashboard-kpi-tag">CRM</span></div><strong>--</strong><small>Nuevos contactos</small></article>
+        <article class="dashboard-kpi" data-dashboard-module="turnos"><div class="dashboard-kpi-top"><span>Turnos</span><span class="dashboard-kpi-tag">Agenda</span></div><strong>--</strong><small>Programados para hoy</small></article>
+        <article class="dashboard-kpi" data-dashboard-module="crm-oftalmologos"><div class="dashboard-kpi-top"><span>Derivaciones</span><span class="dashboard-kpi-tag">Médicos</span></div><strong>--</strong><small>Actividad registrada</small></article>
       </div>
     </section>
 
@@ -80,10 +80,10 @@
       <section class="dashboard-panel" aria-labelledby="dashboard-estado-title">
         <div class="dashboard-panel-head"><div><span class="dashboard-section-kicker">Sistema</span><h2 id="dashboard-estado-title">Estado de módulos</h2></div></div>
         <div class="dashboard-module-list">
-          <div class="dashboard-module-row"><span class="dashboard-module-dot ready"></span><div><strong>CRM Black</strong><small>Disponible</small></div></div>
-          <div class="dashboard-module-row"><span class="dashboard-module-dot ready"></span><div><strong>Administración</strong><small>Disponible</small></div></div>
-          <div class="dashboard-module-row"><span class="dashboard-module-dot ready"></span><div><strong>CRM Oftalmólogos</strong><small>Disponible</small></div></div>
-          <div class="dashboard-module-row"><span class="dashboard-module-dot ready"></span><div><strong>Marketing</strong><small>Disponible al preparar Supabase</small></div></div>
+          <div class="dashboard-module-row" data-dashboard-module="crm-black"><span class="dashboard-module-dot ready"></span><div><strong>CRM Black</strong><small>Disponible</small></div></div>
+          <div class="dashboard-module-row" data-dashboard-module="administracion"><span class="dashboard-module-dot ready"></span><div><strong>Administración</strong><small>Disponible</small></div></div>
+          <div class="dashboard-module-row" data-dashboard-module="crm-oftalmologos"><span class="dashboard-module-dot ready"></span><div><strong>CRM Oftalmólogos</strong><small>Disponible</small></div></div>
+          <div class="dashboard-module-row" data-dashboard-module="marketing"><span class="dashboard-module-dot ready"></span><div><strong>Marketing</strong><small>Disponible al preparar Supabase</small></div></div>
         </div>
       </section>
     </div>
@@ -96,6 +96,8 @@
         <a href="#" class="app-card" data-view="crm-oftalmologos" id="crm-oftalmologos-card"><div class="app-card-body"><span class="dashboard-app-label">Comercial</span><h3>CRM Oftalmólogos</h3><p>Profesionales, derivaciones, recetas y seguimiento.</p></div><div class="app-card-arrow">Abrir →</div></a>
         <a href="#" class="app-card" data-view="recetas" id="recetas-card"><div class="app-card-body"><span class="dashboard-app-label">Óptica</span><h3>Recetas</h3><p>Interpretación de graduaciones y opciones de cristales.</p></div><div class="app-card-arrow">Abrir →</div></a>
         <a href="#" class="app-card" data-view="marketing" id="marketing-card"><div class="app-card-body"><span class="dashboard-app-label">Comercial</span><h3>Marketing</h3><p>Calendario, producción, publicidad y resultados.</p></div><div class="app-card-arrow">Abrir →</div></a>
+        <a href="#" class="app-card" data-view="rrhh" id="rrhh-card"><div class="app-card-body"><span class="dashboard-app-label">Equipo</span><h3>RRHH</h3><p>Integrantes, horarios, asistencia y reportes.</p></div><div class="app-card-arrow">Abrir →</div></a>
+        <a href="#" class="app-card" data-view="catalogo" id="catalogo-card"><div class="app-card-body"><span class="dashboard-app-label">Óptica</span><h3>Catálogo de cristales</h3><p>Productos, rangos técnicos y precios habilitados.</p></div><div class="app-card-arrow">Abrir →</div></a>
       </div>
     </section>
   </div>
