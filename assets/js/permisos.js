@@ -3,7 +3,7 @@
   const BRANCHES = [
     {id:'all',label:'Todas las sucursales'},
     {id:'general-paz',label:'General Paz'},
-    {id:'zona-norte',label:'Zona Norte'}
+    {id:'cerro-de-las-rosas',label:'Cerro de las Rosas'}
   ];
 
   const MODULES = {
