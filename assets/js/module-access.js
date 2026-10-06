@@ -12,7 +12,7 @@
   });
   const owner = user => {
     const email=String(user?.email||'').toLowerCase();
-    return user?.app_metadata?.black_os_super_admin===true || email==='nanyalbert@gmail.com' || email==='leandro@blackoptica.ar';
+    return user?.app_metadata?.black_os_super_admin===true || accessSnapshot?.admin===true;
   };
   const can = (user,moduleId,permission=null) => {
     if(owner(user)||accessSnapshot?.admin===true) return true;
