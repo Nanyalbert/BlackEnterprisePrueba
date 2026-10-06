@@ -23,7 +23,11 @@
     if(!user) return false;
     if(window.BlackPortal.isSuperAdmin(user)) return true;
     if(user?.app_metadata?.black_os_active===false) return false;
-    const apps=Array.isArray(user?.app_metadata?.black_os_apps)?user.app_metadata.black_os_apps:[];
+    const meta=user?.app_metadata||{};
+    const hasExplicitConfig=Object.prototype.hasOwnProperty.call(meta,'black_os_apps') || Object.prototype.hasOwnProperty.call(meta,'black_os_permissions');
+    // Usuarios históricos: hasta que tengan permisos explícitos, mantienen el acceso que ya tenían.
+    if(!hasExplicitConfig) return true;
+    const apps=Array.isArray(meta.black_os_apps)?meta.black_os_apps:[];
     return apps.includes(moduleId);
   };
 
