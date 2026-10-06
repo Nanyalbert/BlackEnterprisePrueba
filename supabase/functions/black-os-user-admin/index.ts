@@ -66,6 +66,7 @@ async function syncDirectory(admin:any,user:any,permissions:Record<string,any>,b
     full_name:fullName,
     email:user.email||null,
     active,
+    all_branches:branchScope.includes("all"),
     updated_at:new Date().toISOString()
   },{onConflict:"id"});
   if(profileError) throw profileError;
