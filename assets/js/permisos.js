@@ -71,6 +71,16 @@
         ['settings','Administrar horarios y tolerancias']
       ]
     },
+    catalogo: {
+      label:'Catálogo de cristales',
+      icon:'CAT',
+      permissions:[
+        ['view','Consultar catálogo'],
+        ['edit','Crear y editar productos'],
+        ['pricing','Modificar precios'],
+        ['import','Importar catálogo y matrices']
+      ]
+    },
     turnos: {
       label:'Turnos',
       icon:'TUR',
@@ -141,6 +151,9 @@
       .branch-option{display:flex;align-items:center;gap:6px;border:1px solid #292929;border-radius:999px;padding:7px 10px;font-size:10px;color:#999}
       .permission-summary-badge{display:inline-flex;align-items:center;border:1px solid #2c2c2c;border-radius:999px;padding:4px 7px;font-size:9px;color:#aaa;margin:2px 4px 2px 0}
       .permission-summary-badge.full{background:#f1f1ed;color:#000;border-color:#f1f1ed}
+      .user-status-field{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 13px;margin-bottom:16px;border:1px solid #272727;border-radius:12px;background:#101010}
+      .user-status-field strong{display:block;font-size:12px}.user-status-field small{display:block;color:#6c6c67;font-size:10px;margin-top:3px}
+      .black-toggle{position:relative;width:42px;height:24px;flex:0 0 auto}.black-toggle input{position:absolute;opacity:0}.black-toggle span{position:absolute;inset:0;border-radius:999px;background:#2a2a2a;cursor:pointer;transition:.16s}.black-toggle span:after{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;border-radius:50%;background:#777;transition:.16s}.black-toggle input:checked+span{background:#ededE8}.black-toggle input:checked+span:after{left:21px;background:#080808}
       @media(max-width:680px){.permission-items{grid-template-columns:1fr}.permission-card-head{grid-template-columns:1fr}.permission-level{width:100%}}
     `;
     document.head.appendChild(style);
@@ -256,7 +269,8 @@
     const original=openModal;
     openModal=function(userId=null){
       original(userId);
-      const user=userId?usersData.find(x=>x.id===userId):{permissions:{},branchScope:['all']};
+      const user=userId?usersData.find(x=>String(x.id)===String(userId)):{permissions:{},branchScope:['all'],activo:true};
+      const active=document.getElementById('modal-active'); if(active) active.checked=user?.activo!==false;
       const old=document.getElementById('permission-editor');if(old)old.remove();
       const field=document.querySelector('#user-form .modal-field:last-of-type');
       if(field){
