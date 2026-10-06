@@ -156,6 +156,7 @@ function showView(viewName) {
   }
   const target = document.getElementById('view-' + viewName);
   if (!target) return;
+  ensureAuthorizedFrame(viewName);
 
   document.querySelectorAll('.view').forEach(view => {
     view.classList.remove('active');
@@ -326,6 +327,24 @@ function userCanOpen(viewName,user=currentSessionUser()){
   const app=map[viewName];
   return !app || userAppsFromMeta(user).includes(app);
 }
+function ensureAuthorizedFrame(viewName,user=currentSessionUser()){
+  const map={
+    'crm-clientes':'crm-clientes-frame',
+    administracion:'administracion-frame',
+    'crm-oftalmologos':'crm-oftalmologos-frame',
+    recetas:'recetas-frame',
+    catalogo:'catalogo-frame',
+    marketing:'marketing-frame',
+    rrhh:'rrhh-frame'
+  };
+  const id=map[viewName];
+  if(!id||!userCanOpen(viewName,user)) return;
+  const frame=document.getElementById(id);
+  if(!frame) return;
+  const desired=frame.dataset.src;
+  if(desired && (!frame.getAttribute('src') || frame.getAttribute('src')==='about:blank')) frame.src=desired;
+}
+
 function applyPortalAccess(user=currentSessionUser()){
   const selectors={
     'crm-clientes':['#crm-clientes-nav','#crm-clientes-card'],
@@ -509,6 +528,7 @@ async function bootPortal(){
     const meta=session.user.app_metadata||{};
     if(meta.black_os_active===false){await supabaseClient.auth.signOut();window.location.replace('index.html?disabled=1');return;}
     applyPortalAccess(session.user);
+    MODULE_VIEWS.forEach(view=>{ if(userCanOpen(view,session.user)) ensureAuthorizedFrame(view,session.user); });
     if(isPortalOwner(session.user)) loadUsers();
     const email=session.user.email||'';
     const rawName=session.user.user_metadata?.full_name||session.user.user_metadata?.name||email.split('@')[0].replace(/[._-]+/g,' ');
