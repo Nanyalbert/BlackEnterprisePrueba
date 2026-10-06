@@ -523,10 +523,19 @@ async function bootPortal(){
   restoreSidebarPreference();
   if(!supabaseClient){window.location.replace('index.html');return;}
   try{
-    const {data:{session},error}=await supabaseClient.auth.getSession(); if(error||!session){window.location.replace('index.html');return;}
+    let {data:{session},error}=await supabaseClient.auth.getSession(); if(error||!session){window.location.replace('index.html');return;}
+    try{
+      const refreshed=await supabaseClient.auth.refreshSession();
+      if(refreshed?.data?.session) session=refreshed.data.session;
+    }catch(refreshError){console.warn('No se pudo refrescar la sesión',refreshError)}
     window.BlackPortal=window.BlackPortal||{};window.BlackPortal.currentSession=session;
     const meta=session.user.app_metadata||{};
-    if(meta.black_os_active===false){await supabaseClient.auth.signOut();window.location.replace('index.html?disabled=1');return;}
+    let profileActive=true;
+    try{
+      const profile=await supabaseClient.from('profiles').select('active').eq('id',session.user.id).maybeSingle();
+      if(profile?.data?.active===false) profileActive=false;
+    }catch(profileError){}
+    if(meta.black_os_active===false||profileActive===false){await supabaseClient.auth.signOut();window.location.replace('index.html?disabled=1');return;}
     applyPortalAccess(session.user);
     if(isPortalOwner(session.user)) loadUsers();
     const email=session.user.email||'';
