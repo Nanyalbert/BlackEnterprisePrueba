@@ -116,7 +116,7 @@ async function auditUserChange(admin:any,actorId:string,action:string,target:any
 }
 function isOwnerByMetadata(user:any){
   const email=String(user?.email||"").toLowerCase();
-  return user?.app_metadata?.black_os_super_admin===true || email==="leandro@blackoptica.ar" || email==="nanyalbert@gmail.com";
+  return user?.app_metadata?.black_os_super_admin===true;
 }
 async function loadAdminIds(admin:any){
   const {data:role,error:roleError}=await admin.from("roles").select("id").eq("code","admin").maybeSingle();
