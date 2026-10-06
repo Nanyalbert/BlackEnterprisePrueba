@@ -249,6 +249,10 @@ function initAdministrationSubmenu(){
   };
 
   adminNav.addEventListener('click', () => {
+    if(adminNav.dataset.supplierOnly==='1'){
+      setAdminSource('proveedores.html?v=20261005-suppliers-1','Proveedores');
+      return;
+    }
     const wasOpen = wrap.classList.contains('open');
     setAdminSource('administracion.html','Administración');
     wrap.classList.toggle('open', !wasOpen);
@@ -365,10 +369,18 @@ function applyPortalAccess(user=currentSessionUser()){
   });
 
   const supplierNav=document.getElementById('proveedores-nav');
-  if(supplierNav){
-    const allowed=userHasPermission('administracion','suppliers',user);
-    supplierNav.hidden=!allowed;
-    supplierNav.setAttribute('aria-hidden',allowed?'false':'true');
+  const adminNav=document.getElementById('administracion-nav');
+  if(supplierNav&&adminNav){
+    const supplierAllowed=userHasPermission('administracion','suppliers',user);
+    const adminCore=['summary','sales','cash','bank','upload','profit_cost','social'].some(p=>userHasPermission('administracion',p,user));
+    const supplierOnly=supplierAllowed&&!adminCore&&!isPortalOwner(user);
+    supplierNav.hidden=!supplierAllowed||supplierOnly;
+    supplierNav.setAttribute('aria-hidden',(!supplierAllowed||supplierOnly)?'true':'false');
+    adminNav.dataset.supplierOnly=supplierOnly?'1':'0';
+    const textNodes=[...adminNav.childNodes].filter(n=>n.nodeType===Node.TEXT_NODE);
+    if(textNodes.length) textNodes[textNodes.length-1].nodeValue=supplierOnly?'Proveedores':'Administración';
+    const wrap=adminNav.closest('.admin-nav-wrap');
+    if(wrap) wrap.classList.toggle('supplier-only',supplierOnly);
   }
 
   document.querySelectorAll('.nav-label').forEach(label=>{
