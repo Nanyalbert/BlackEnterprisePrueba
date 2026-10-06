@@ -100,9 +100,11 @@
     <input type="hidden" id="employee-id">
     <div class="form-grid">
       <label><span>Nombre completo</span><input id="employee-name" required></label>
-      <label><span>Sucursal</span><select id="employee-branch"><option value="general-paz">General Paz</option><option value="cerro">Cerro de las Rosas</option></select></label>
+      <label><span>Sucursal</span><select id="employee-branch"><option value="general-paz">General Paz</option><option value="cerro-de-las-rosas">Cerro de las Rosas</option></select></label>
       <label><span>Hora entrada</span><input id="employee-start" type="time" value="09:00" required></label>
       <label><span>Hora salida</span><input id="employee-end" type="time" value="19:00" required></label>
+      <label><span>Sábado entrada</span><input id="employee-sat-start" type="time" value="09:00"></label>
+      <label><span>Sábado salida</span><input id="employee-sat-end" type="time" value="13:00"></label>
       <label><span>Tolerancia (min)</span><input id="employee-tolerance" type="number" min="0" max="120" value="10"></label>
       <label><span>PIN fichada</span><input id="employee-pin" inputmode="numeric" pattern="[0-9]{4,6}" minlength="4" maxlength="6" placeholder="4 a 6 dígitos" required></label>
       <label class="full"><span>Remuneración mensual de referencia</span><input id="employee-salary" type="number" min="0" step="0.01" placeholder="0"></label>
@@ -113,6 +115,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="assets/js/supabase-config.js"></script>
-<script src="assets/js/rrhh.js"></script>
+<script src="assets/js/rrhh.js?v=20261006-2"></script>
 </body>
 </html>
