@@ -356,9 +356,9 @@ function applyPortalAccess(user=currentSessionUser()){
     administracion:['#administracion-nav','#administracion-card'],
     'crm-oftalmologos':['#crm-oftalmologos-nav','#crm-oftalmologos-card'],
     recetas:['#recetas-nav','#recetas-card'],
-    catalogo:['#catalogo-nav'],
+    catalogo:['#catalogo-nav','#catalogo-card'],
     marketing:['#marketing-nav','#marketing-card'],
-    rrhh:['#rrhh-nav'],
+    rrhh:['#rrhh-nav','#rrhh-card'],
     usuarios:['.nav-item[data-view="usuarios"]']
   };
   Object.entries(selectors).forEach(([view,items])=>{
@@ -382,6 +382,27 @@ function applyPortalAccess(user=currentSessionUser()){
     if(textNodes.length) textNodes[textNodes.length-1].nodeValue=supplierOnly?'Proveedores':'Administración';
     const wrap=adminNav.closest('.admin-nav-wrap');
     if(wrap) wrap.classList.toggle('supplier-only',supplierOnly);
+  }
+
+  document.querySelectorAll('[data-dashboard-module]').forEach(el=>{
+    const moduleId=el.dataset.dashboardModule;
+    el.hidden=!userAppsFromMeta(user).includes(moduleId);
+  });
+  const moduleStatusPanel=document.querySelector('[data-dashboard-module]')?.closest('.dashboard-panel');
+  document.querySelectorAll('.dashboard-module-list').forEach(list=>{
+    const panel=list.closest('.dashboard-panel');
+    if(panel) panel.hidden=![...list.children].some(row=>!row.hidden);
+  });
+  document.querySelectorAll('.dashboard-kpi-grid').forEach(grid=>{
+    const section=grid.closest('.dashboard-section');
+    if(section) section.hidden=![...grid.children].some(card=>!card.hidden);
+  });
+
+  const adminCard=document.getElementById('administracion-card');
+  if(adminCard&&adminNav?.dataset.supplierOnly==='1'){
+    const title=adminCard.querySelector('h3'),copy=adminCard.querySelector('p');
+    if(title) title.textContent='Proveedores';
+    if(copy) copy.textContent='Consulta y gestión de proveedores asignada a tu usuario.';
   }
 
   document.querySelectorAll('.nav-label').forEach(label=>{
