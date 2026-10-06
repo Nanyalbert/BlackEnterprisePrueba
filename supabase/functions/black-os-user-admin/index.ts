@@ -83,6 +83,18 @@ async function syncDirectory(admin:any,user:any,permissions:Record<string,any>,b
     }
   }
 
+  const permissionRows=Object.entries(permissions).map(([moduleId,cfg]:any)=>({
+    user_id:user.id,
+    module_id:moduleId,
+    level:cfg?.level||"none",
+    items:cfg?.items==="*"?"*":Array.isArray(cfg?.items)?cfg.items:[]
+  }));
+  await admin.from("black_os_user_permissions").delete().eq("user_id",user.id);
+  if(permissionRows.length){
+    const {error:permissionError}=await admin.from("black_os_user_permissions").insert(permissionRows);
+    if(permissionError) throw permissionError;
+  }
+
   const {data:role,error:roleError}=await admin.from("roles").select("id").eq("code",roleCodeFromPermissions(permissions)).maybeSingle();
   if(roleError) throw roleError;
   if(role?.id){
@@ -243,6 +255,7 @@ Deno.serve(async req => {
       const {data:current}=await admin.auth.admin.getUserById(id);
       if(current?.user && (isOwnerByMetadata(current.user)||adminIds.has(String(current.user.id)))) return reply({error:"No se puede eliminar al administrador principal"},400);
       await auditUserChange(admin,caller.id,"delete_user",current?.user||{id},{});
+      await admin.from("black_os_user_permissions").delete().eq("user_id",id);
       await admin.from("user_branches").delete().eq("user_id",id);
       await admin.from("user_roles").delete().eq("user_id",id);
       await admin.from("profiles").delete().eq("id",id);
