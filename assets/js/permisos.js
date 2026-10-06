@@ -219,7 +219,14 @@
     document.querySelectorAll('[data-permission-module]').forEach(box=>{
       box.addEventListener('change',()=>{
         const card=box.closest('.permission-card'),select=card.querySelector('.permission-level');
-        if(select.value!=='none') select.value='custom';
+        const checked=[...card.querySelectorAll('[data-permission-module]:checked')];
+        if(!checked.length){
+          select.value='none';
+          card.classList.remove('open');
+          return;
+        }
+        select.value='custom';
+        card.classList.add('open');
       });
     });
     document.querySelectorAll('[data-global-preset]').forEach(btn=>btn.addEventListener('click',()=>{
