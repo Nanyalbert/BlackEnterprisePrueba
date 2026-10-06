@@ -14,7 +14,7 @@
   function permission(user,key,access=null){
     const email=String(user?.email||'').toLowerCase();
     if(access?.admin===true||user?.app_metadata?.black_os_super_admin===true)return true;
-    const cfg=access?.permissions?.catalogo||user?.app_metadata?.black_os_permissions?.catalogo;
+    const cfg=access ? access?.permissions?.catalogo : user?.app_metadata?.black_os_permissions?.catalogo;
     if(!cfg||cfg.level==='none')return false;
     if(cfg.level==='full'||cfg.items==='*')return true;
     return Array.isArray(cfg.items)&&cfg.items.includes(key);
