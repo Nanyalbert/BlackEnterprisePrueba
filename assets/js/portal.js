@@ -296,17 +296,20 @@ function isPortalOwner(user=currentSessionUser()){
   const email=String(user?.email||'').toLowerCase();
   return user?.app_metadata?.black_os_super_admin===true || email==='leandro@blackoptica.ar' || email==='nanyalbert@gmail.com';
 }
+function currentAccessSnapshot(){return window.BlackPortal?.accessSnapshot||null}
 function userAppsFromMeta(user=currentSessionUser()){
   if(isPortalOwner(user)) return Object.keys(APP_LABELS);
+  const access=currentAccessSnapshot();
+  if(access&&Array.isArray(access.apps)) return access.apps;
   const meta=user?.app_metadata||{};
   const hasExplicitConfig=Object.prototype.hasOwnProperty.call(meta,'black_os_apps') || Object.prototype.hasOwnProperty.call(meta,'black_os_permissions');
-  // Compatibilidad: las cuentas creadas antes del sistema granular no tenían metadata.
-  // Para no bloquear Black OS durante la migración, conservan acceso legado hasta que se les guarden permisos explícitos.
-  if(!hasExplicitConfig) return Object.keys(APP_LABELS);
+  if(!hasExplicitConfig) return [];
   return Array.isArray(meta.black_os_apps)?meta.black_os_apps:[];
 }
 function userPermissionConfig(moduleId,user=currentSessionUser()){
   if(isPortalOwner(user)) return {level:'full',items:'*'};
+  const access=currentAccessSnapshot();
+  if(access?.permissions&&Object.prototype.hasOwnProperty.call(access.permissions,moduleId)) return access.permissions[moduleId];
   return user?.app_metadata?.black_os_permissions?.[moduleId]||null;
 }
 function userHasPermission(moduleId,permission,user=currentSessionUser()){
@@ -623,7 +626,11 @@ async function bootPortal(){
       const profile=await supabaseClient.from('profiles').select('active').eq('id',session.user.id).maybeSingle();
       if(profile?.data?.active===false) profileActive=false;
     }catch(profileError){}
-    if(meta.black_os_active===false||profileActive===false){await supabaseClient.auth.signOut();window.location.replace('index.html?disabled=1');return;}
+    try{
+      const accessResult=await supabaseClient.rpc('black_os_my_access');
+      if(!accessResult.error&&accessResult.data) window.BlackPortal.accessSnapshot=accessResult.data;
+    }catch(accessError){console.warn('No se pudo leer el alcance del usuario',accessError)}
+    if(meta.black_os_active===false||profileActive===false||window.BlackPortal.accessSnapshot?.active===false){await supabaseClient.auth.signOut();window.location.replace('index.html?disabled=1');return;}
     applyPortalAccess(session.user);
     if(isPortalOwner(session.user)) loadUsers();
     const email=session.user.email||'';
