@@ -28,6 +28,11 @@
   };
 
   function applyAdministration(user){
+    const core=['summary','sales','profit_cost','cash','bank','social','upload'].some(p=>can(user,'administracion',p));
+    if(!core&&can(user,'administracion','suppliers')){
+      location.replace('proveedores.html?v=20261006-access-1');
+      return;
+    }
     const map={resumen:'summary',ventas:'sales',cobranzas:'cash',bancos:'bank'};
     Object.entries(map).forEach(([tab,perm])=>{
       hide('.admin-tab[data-tab="'+tab+'"]',!can(user,'administracion',perm));
