@@ -63,6 +63,7 @@
     hide('#mk-new-result',!can(user,'marketing','results'));
     hide('#mk-new-option',!can(user,'marketing','settings'));
     hide('#mk-import-canonical',!can(user,'marketing','import'));
+    hide('#mk-refresh-suggestions',!can(user,'marketing','create_edit'));
     firstVisibleClick('nav [data-tab], .mk-tabs [data-tab]');
   }
 
