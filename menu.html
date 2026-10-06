@@ -34,6 +34,7 @@
 
     <div class="nav-label" style="margin-top:20px;">Administración</div>
     <a href="#" class="nav-item" data-view="administracion" id="administracion-nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>Administración</a>
+    <a href="#" class="nav-item" data-view="rrhh" id="rrhh-nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>RRHH</a>
     <a href="#" class="nav-item" data-view="catalogo" id="catalogo-nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16v14H4zM4 10h16M9 10v9"/><path d="M12 6h5"/></svg>Catálogo de cristales</a>
 
     <div class="nav-label" style="margin-top:20px;">Sistema</div>
@@ -98,6 +99,7 @@
       </div>
     </section>
   </div>
+  <div class="view" id="view-rrhh"><div class="module-frame-wrap"><iframe class="module-frame" id="rrhh-frame" src="rrhh.html" title="RRHH Black OS"></iframe></div></div>
   <div class="view" id="view-usuarios"><div class="content-header"><h1>Usuarios</h1><p>Definí qué puede ver y qué puede hacer cada persona dentro de Black OS.</p></div><div class="section-heading"><h2 id="users-count">3 usuarios</h2><button class="btn btn-primary" id="btn-new-user">Nuevo usuario</button></div><div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Accesos</th><th>Estado</th><th></th></tr></thead><tbody id="users-tbody"></tbody></table></div></div>
   <section class="view" id="view-crm-clientes"><div class="module-frame-wrap"><iframe id="crm-clientes-frame" class="module-frame" src="crm-clientes.html" title="CRM Black" loading="eager"></iframe></div></section>
   <section class="view" id="view-administracion"><div class="module-frame-wrap"><iframe id="administracion-frame" class="module-frame" src="administracion.html" title="Administración" loading="eager" style="height:calc(100dvh - 64px)!important;min-height:calc(100dvh - 64px)!important;"></iframe></div></section>
