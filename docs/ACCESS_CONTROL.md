@@ -6,7 +6,7 @@ Black OS aplica permisos en tres capas. Ninguna capa reemplaza a las otras:
 
 1. **Portal:** un usuario solo ve los módulos que tiene asignados.
 2. **Interfaz del módulo:** dentro del módulo solo aparecen pestañas y acciones habilitadas.
-3. **Supabase / RLS:** aunque alguien intente llamar la API manualmente, la base vuelve a validar módulo, acción, sucursal y estado del usuario.
+3. **Supabase / RLS:** aunque alguien intente llamar la API manualmente, la base vuelve a validar módulo, acción, sucursal y estado del usuario. La fuente de verdad es `black_os_user_permissions` + `user_branches` + `profiles.active`, no el JWT.
 
 Los permisos nunca deben implementarse solamente ocultando botones.
 
@@ -74,3 +74,10 @@ Todo módulo nuevo debe incorporar:
 - acciones internas en `assets/js/module-access.js`;
 - RLS o RPC seguras en Supabase;
 - auditoría cuando modifique información sensible.
+
+
+## Actualización inmediata de permisos
+
+El portal consulta `black_os_my_access()` al abrirse y los módulos vuelven a consultar el mismo acceso. Las políticas RLS leen las tablas de permisos directamente. Por eso, un JWT antiguo no conserva privilegios de escritura después de que el administrador cambie el acceso en la base.
+
+`app_metadata` se sigue sincronizando para compatibilidad y navegación, pero no es la única fuente de autorización.
