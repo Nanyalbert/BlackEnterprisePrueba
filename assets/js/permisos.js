@@ -145,7 +145,7 @@
       .permission-check{display:flex;align-items:center;gap:8px;border:1px solid #242424;background:#121212;border-radius:10px;padding:9px 10px;font-size:11px;color:#aaa;cursor:pointer}
       .permission-check:hover{background:#171717;color:#fff}
       .permission-check input{accent-color:#f1f1ed}
-      .branch-scope{margin-top:12px;border-top:1px dashed #292929;padding-top:12px}
+      .branch-scope{margin:4px 0 2px;border:1px solid #292929;border-radius:12px;padding:12px;background:#101010}
       .branch-scope-title{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
       .branch-options{display:flex;gap:8px;flex-wrap:wrap}
       .branch-option{display:flex;align-items:center;gap:6px;border:1px solid #292929;border-radius:999px;padding:7px 10px;font-size:10px;color:#999}
@@ -168,6 +168,10 @@
         <button type="button" class="permission-preset" data-global-preset="full">Acceso total</button>
         <button type="button" class="permission-preset" data-global-preset="none">Quitar accesos</button>
       </div>
+      <div class="branch-scope">
+        <div class="branch-scope-title">Sucursales visibles para este usuario</div>
+        <div class="branch-options">${BRANCHES.map(b=>`<label class="branch-option"><input type="checkbox" data-branch-scope value="${b.id}" ${(user?.branchScope||['all']).includes(b.id)?'checked':''}><span>${b.label}</span></label>`).join('')}</div>
+      </div>
       ${Object.entries(MODULES).map(([id,module])=>{
         const cfg=permissions[id]||{level:'none',items:[]};
         const selected=cfg.items==='*'?module.permissions.map(([key])=>key):(cfg.items||[]);
@@ -186,10 +190,6 @@
             <div class="permission-items">
               ${module.permissions.map(([key,label])=>`<label class="permission-check"><input type="checkbox" data-permission-module="${id}" value="${key}" ${selected.includes(key)?'checked':''}><span>${label}</span></label>`).join('')}
             </div>
-            <div class="branch-scope">
-              <div class="branch-scope-title">Alcance de sucursales</div>
-              <div class="branch-options">${BRANCHES.map(b=>`<label class="branch-option"><input type="checkbox" data-branch-scope value="${b.id}" ${(user?.branchScope||['all']).includes(b.id)?'checked':''}><span>${b.label}</span></label>`).join('')}</div>
-            </div>
           </div>
         </section>`;
       }).join('')}
@@ -204,7 +204,7 @@
     if(preset==='full') boxes.forEach(b=>b.checked=true);
     else if(preset==='none') boxes.forEach(b=>b.checked=false);
     else if(preset==='read') boxes.forEach(b=>b.checked=/view|summary|sales|cash|bank|social|suppliers|stats|results/.test(b.value));
-    else if(preset==='operator') boxes.forEach(b=>b.checked=!['automation','export','profit_cost','upload','professionals','availability','branches','public_booking','manage','import','settings'].includes(b.value));
+    else if(preset==='operator') boxes.forEach(b=>b.checked=!['automation','export','profit_cost','upload','professionals','availability','branches','public_booking','manage','manage_employees','salary_reference','pricing','import','settings'].includes(b.value));
     if(!module) return;
   }
 
