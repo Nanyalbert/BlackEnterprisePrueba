@@ -1,13 +1,13 @@
 -- ============================================================
 -- BLACK OS — CRM OFTALMÓLOGOS
 -- COMISIONES POR SUCURSAL v1
--- General Paz + Alto Palermo
+-- General Paz + Cerro de las Rosas
 -- ============================================================
 
 -- 1. Normalizar nombre definitivo de la segunda sucursal.
 update public.branches
-set code = 'alto-palermo', name = 'Alto Palermo'
-where code = 'zona-norte';
+set code = 'cerro-de-las-rosas', name = 'Cerro de las Rosas'
+where code in ('alto-palermo','zona-norte','cerro');
 
 -- 2. La base de médicos es global.
 -- Recetas/derivaciones sí necesitan saber de qué sucursal provienen.
