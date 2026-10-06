@@ -39,6 +39,12 @@ function isMobileLayout() {
 function initials(name) {
   return String(name || '').trim().split(/\s+/).filter(Boolean).map(word => word[0]).join('').slice(0, 2).toUpperCase();
 }
+function formatLastSignIn(value){
+  if(!value) return '<span class="user-never">Nunca</span>';
+  const d=new Date(value);
+  if(Number.isNaN(d.getTime())) return '<span class="user-never">—</span>';
+  return '<span class="user-last-signin">'+d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})+' · '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})+'</span>';
+}
 
 function getAvailableModuleHeight() {
   const topbarHeight = topbar ? Math.round(topbar.getBoundingClientRect().height) : 64;
@@ -374,14 +380,14 @@ async function loadUsers(){
   if(!isPortalOwner()) return;
   usersLoading=true;
   const tbody=document.getElementById('users-tbody');
-  if(tbody) tbody.innerHTML='<tr><td colspan="4"><div class="empty-state">Cargando usuarios…</div></td></tr>';
+  if(tbody) tbody.innerHTML='<tr><td colspan="5"><div class="empty-state">Cargando usuarios…</div></td></tr>';
   try{
     const data=await callUserAdmin('list');
     usersData=data.users||[];
     renderUsers();
   }catch(error){
     console.error('No se pudieron cargar usuarios:',error);
-    if(tbody) tbody.innerHTML=`<tr><td colspan="4"><div class="empty-state"><strong>No se pudo conectar el administrador de usuarios.</strong><br><span>${String(error.message||error)}</span><br><small>Verificá que la Edge Function <code>black-os-user-admin</code> esté desplegada en Supabase.</small></div></td></tr>`;
+    if(tbody) tbody.innerHTML=`<tr><td colspan="5"><div class="empty-state"><strong>No se pudo conectar el administrador de usuarios.</strong><br><span>${String(error.message||error)}</span><br><small>Verificá que la Edge Function <code>black-os-user-admin</code> esté desplegada en Supabase.</small></div></td></tr>`;
   }finally{usersLoading=false}
 }
 
@@ -390,11 +396,11 @@ function renderUsers() {
   const countEl = document.getElementById('users-count');
   if (!tbody || !countEl) return;
   countEl.textContent = usersData.length + (usersData.length === 1 ? ' usuario' : ' usuarios');
-  if (!usersData.length) { tbody.innerHTML='<tr><td colspan="4"><div class="empty-state">Todavía no hay usuarios cargados.</div></td></tr>'; return; }
+  if (!usersData.length) { tbody.innerHTML='<tr><td colspan="5"><div class="empty-state">Todavía no hay usuarios cargados.</div></td></tr>'; return; }
   tbody.innerHTML = usersData.map(user => {
     const badges = user.superAdmin ? '<span class="badge super">Acceso total</span>' : (user.apps?.length ? user.apps.map(app=>`<span class="badge">${APP_LABELS[app]||app}</span>`).join('') : '<span class="badge">Sin accesos</span>');
     const locked=user.superAdmin?'disabled aria-disabled="true"':'';
-    return `<tr data-id="${user.id}"><td><div class="user-cell"><div class="avatar">${initials(user.nombre)}</div><div><div class="user-cell-name">${user.nombre}</div><div class="user-cell-email">${user.email}</div></div></div></td><td>${badges}</td><td><span class="status-dot ${user.activo?'':'inactive'}">${user.activo?'Activo':'Inactivo'}</span></td><td><div class="row-actions"><button type="button" class="edit-user" title="Editar usuario" aria-label="Editar usuario" ${locked}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button><button type="button" class="danger delete-user" title="Eliminar usuario" aria-label="Eliminar usuario" ${locked}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M8 11v7M12 11v7M16 11v7M6 7l1 14h10l1-14"/></svg></button></div></td></tr>`;
+    return `<tr data-id="${user.id}"><td><div class="user-cell"><div class="avatar">${initials(user.nombre)}</div><div><div class="user-cell-name">${user.nombre}</div><div class="user-cell-email">${user.email}</div></div></div></td><td>${badges}</td><td><span class="status-dot ${user.activo?'':'inactive'}">${user.activo?'Activo':'Inactivo'}</span></td><td>${formatLastSignIn(user.lastSignInAt)}</td><td><div class="row-actions"><button type="button" class="edit-user" title="Editar usuario" aria-label="Editar usuario" ${locked}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button><button type="button" class="danger delete-user" title="Eliminar usuario" aria-label="Eliminar usuario" ${locked}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M8 11v7M12 11v7M16 11v7M6 7l1 14h10l1-14"/></svg></button></div></td></tr>`;
   }).join('');
   tbody.querySelectorAll('.edit-user:not([disabled])').forEach(button => button.addEventListener('click',()=>openModal(button.closest('tr').dataset.id)));
   tbody.querySelectorAll('.delete-user:not([disabled])').forEach(button => button.addEventListener('click',async()=>{
