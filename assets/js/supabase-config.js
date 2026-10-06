@@ -28,7 +28,8 @@
     // Usuarios históricos: hasta que tengan permisos explícitos, mantienen el acceso que ya tenían.
     if(!hasExplicitConfig) return true;
     const apps=Array.isArray(meta.black_os_apps)?meta.black_os_apps:[];
-    return apps.includes(moduleId);
+    const cfg=meta.black_os_permissions?.[moduleId];
+    return apps.includes(moduleId) || Boolean(cfg&&cfg.level&&cfg.level!=='none');
   };
 
   const path = window.location.pathname;
@@ -48,12 +49,25 @@
     if(!moduleForPath) return;
     try{
       const client=window.BlackPortal.getSupabase();
-      const {data:{session}}=await client.auth.getSession();
+      let {data:{session}}=await client.auth.getSession();
       if(!session){
         if(window.top===window) window.location.replace('index.html');
         return;
       }
+      try{
+        const refreshed=await client.auth.refreshSession();
+        if(refreshed?.data?.session) session=refreshed.data.session;
+      }catch(error){}
       const user=session.user;
+      let profileActive=true;
+      try{
+        const profile=await client.from('profiles').select('active').eq('id',user.id).maybeSingle();
+        if(profile?.data?.active===false) profileActive=false;
+      }catch(error){}
+      if(!profileActive||user?.app_metadata?.black_os_active===false){
+        if(window.top===window) window.location.replace('index.html?disabled=1');
+        return;
+      }
       if(window.BlackPortal.canAccessModule(user,moduleForPath)) return;
       if(window.top===window){
         window.location.replace('menu.html?denied='+encodeURIComponent(moduleForPath));
