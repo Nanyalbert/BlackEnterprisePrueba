@@ -80,7 +80,7 @@
 
   if(typeof openModal==='function'){
     const previousOpenModal=openModal;
-    openModal=function(userId=null){previousOpenModal(userId);const password=$('#modal-password');if(password){password.type='password';if(!userId)password.placeholder='Mínimo 10 caracteres'}};
+    openModal=function(userId=null){previousOpenModal(userId);const password=$('#modal-password');if(password){password.type='password';if(!userId)password.placeholder='Mínimo 10 caracteres'};setTimeout(loadAccessFinalizer,0)};
   }
   if(typeof closeModal==='function'){
     const previousCloseModal=closeModal;
@@ -131,4 +131,15 @@
     if(!card||nav?.dataset.supplierOnly!=='1')return;
     event.preventDefault();event.stopImmediatePropagation();window.setAdminSource('proveedores.html?v=20261007-access-1','Proveedores');
   },true);
+
+  let accessFinalizerLoaded=false;
+  function loadAccessFinalizer(){
+    if(accessFinalizerLoaded)return;
+    accessFinalizerLoaded=true;
+    const script=document.createElement('script');
+    script.src='assets/js/access-finalizer.js?v=20261007-1';
+    script.defer=true;
+    document.head.appendChild(script);
+  }
+  loadAccessFinalizer();
 })();
