@@ -25,11 +25,12 @@
     try{return Math.max(0,Number(window.getComision?.(doctor,branchCode(recipe)))||0)}catch(_){return 20}
   }
   function rowCalc(recipe,doctor){
-    const explicitGross=Number(recipe?.monto_con_iva ?? recipe?.amount_gross ?? recipe?.monto);
-    const gross=Math.max(0,Number.isFinite(explicitGross)?explicitGross:0);
+    // El Excel de comisiones importa "Total Receta S/IVA": recipe.monto es la base neta.
     const rate=ivaRate(recipe);
-    const explicitNet=Number(recipe?.monto_sin_iva ?? recipe?.amount_net ?? recipe?.net_amount);
-    const net=Number.isFinite(explicitNet)&&explicitNet>=0 ? explicitNet : (rate>0?gross/(1+rate/100):gross);
+    const explicitNet=Number(recipe?.monto_sin_iva ?? recipe?.amount_net ?? recipe?.net_amount ?? recipe?.monto);
+    const net=Math.max(0,Number.isFinite(explicitNet)?explicitNet:0);
+    const explicitGross=Number(recipe?.monto_con_iva ?? recipe?.amount_gross);
+    const gross=Number.isFinite(explicitGross)&&explicitGross>=0 ? explicitGross : net*(1+rate/100);
     const vat=Math.max(0,gross-net);
     const pct=commissionPct(recipe,doctor);
     const explicitCommission=Number(recipe?.commission_amount ?? recipe?.importe_comision);
