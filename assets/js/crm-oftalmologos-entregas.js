@@ -39,15 +39,16 @@
       .delivery-confirm-data div{display:flex;justify-content:space-between;gap:12px;font-size:.72rem;color:var(--roble)}
       .delivery-confirm-data strong{color:var(--black);text-align:right}
       .delivery-confirm-actions{display:flex;gap:8px;margin-top:18px}
-      .commission-detail-head{display:grid;grid-template-columns:72px minmax(135px,1.6fr) 90px 90px 55px 100px;gap:8px;padding:8px 10px;margin-top:4px;border-bottom:1px solid var(--lino);font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--roble)}
-      .branch-detail-row.commission-detail-grid{display:grid;grid-template-columns:72px minmax(135px,1.6fr) 90px 90px 55px 100px;gap:8px;align-items:center}
+      .commission-detail-head{display:grid;grid-template-columns:72px minmax(135px,1.6fr) 88px 78px 88px 52px 98px;gap:8px;padding:8px 10px;margin-top:4px;border-bottom:1px solid var(--lino);font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--roble)}
+      .branch-detail-row.commission-detail-grid{display:grid;grid-template-columns:72px minmax(135px,1.6fr) 88px 78px 88px 52px 98px;gap:8px;align-items:center}
       .detail-money,.detail-pct{text-align:right;font-variant-numeric:tabular-nums}
       .detail-commission{font-weight:700;color:var(--cobre)}
       @media(max-width:760px){
         .commission-detail-head{display:none}
         .branch-detail-row.commission-detail-grid{grid-template-columns:74px minmax(0,1fr) auto;padding:10px 8px}
-        .branch-detail-row.commission-detail-grid .detail-net,.branch-detail-row.commission-detail-grid .detail-gross,.branch-detail-row.commission-detail-grid .detail-pct{font-size:.66rem}
+        .branch-detail-row.commission-detail-grid .detail-net,.branch-detail-row.commission-detail-grid .detail-vat,.branch-detail-row.commission-detail-grid .detail-gross,.branch-detail-row.commission-detail-grid .detail-pct{font-size:.66rem}
         .branch-detail-row.commission-detail-grid .detail-net:before{content:'s/IVA ';color:var(--roble)}
+        .branch-detail-row.commission-detail-grid .detail-vat:before{content:'IVA ';color:var(--roble)}
         .branch-detail-row.commission-detail-grid .detail-gross:before{content:'c/IVA ';color:var(--roble)}
         .branch-detail-row.commission-detail-grid .detail-pct:before{content:'Com. ';color:var(--roble)}
       }
@@ -91,7 +92,7 @@
     const icon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4Z"/></svg>';
     if(!phone)return '<div class="branch-delivery"><button class="delivery-btn no-phone" type="button" disabled>'+icon+'Falta WhatsApp</button><span class="delivery-state-text">Cargalo en la ficha del profesional.</span></div>';
     if(status?.status==='sent'){
-      return '<div class="branch-delivery"><button class="delivery-btn sent" type="button" onclick="BlackDoctorDelivery.send(\''+d+'\',\''+b+'\',true)">'+icon+'✓ Enviada</button><span class="delivery-state-text"><strong>'+fmtSent(status.sent_at)+'</strong> · Reenviar si hace falta</span></div>';
+      return '<div class="branch-delivery"><button class="delivery-btn sent" type="button" onclick="BlackDoctorDelivery.send(\''+d+'\',\''+b+'\',true)">'+icon+'✓ Entregada por WhatsApp</button><span class="delivery-state-text"><strong>'+fmtSent(status.sent_at)+'</strong> · Reenviar si hace falta</span></div>';
     }
     if(status?.status==='failed'){
       return '<div class="branch-delivery"><button class="delivery-btn failed" type="button" onclick="BlackDoctorDelivery.send(\''+d+'\',\''+b+'\')">'+icon+'Reintentar envío</button><span class="delivery-state-text">El intento anterior no se confirmó.</span></div>';
