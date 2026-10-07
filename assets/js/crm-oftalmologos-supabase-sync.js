@@ -154,22 +154,41 @@
     const { data, error } = await client
       .from('doctor_commission_rules')
       .select('id,doctor_id,branch_id,percentage,valid_from,valid_to,active')
-      .eq('active', true)
-      .order('valid_from', { ascending: false });
+      .order('valid_from', { ascending: true });
 
     if (error) throw error;
-    if (!data?.length) return;
+    const rows = (data || []).map(row => ({
+      ...row,
+      doctor_name: doctorNameById[row.doctor_id] || '',
+      branch_code: branchCodeById[row.branch_id] || ''
+    })).filter(row => row.doctor_name && row.branch_code);
 
+    const activeRows = rows.filter(row => row.active !== false).sort((a,b) => String(b.valid_from).localeCompare(String(a.valid_from)));
     const seen = new Set();
-    data.forEach(row => {
-      const name = doctorNameById[row.doctor_id];
-      const branch = branchCodeById[row.branch_id];
-      if (!name || !branch) return;
-      const key = `${normName(name)}|${branch}`;
+    activeRows.forEach(row => {
+      const key = `${normName(row.doctor_name)}|${row.branch_code}`;
       if (seen.has(key)) return;
       seen.add(key);
       comisiones[key] = Number(row.percentage) || 0;
     });
+
+    window.BlackCommissionRules = {
+      rows,
+      getPct(medico, branchCode, fecha) {
+        const branch = ['alto-palermo','zona-norte','cerro'].includes(branchCode) ? 'cerro-de-las-rosas' : branchCode;
+        const doctorKey = normName(medico);
+        const date = toIsoDate(fecha) || String(fecha || '').slice(0,10);
+        const candidates = rows
+          .filter(r => normName(r.doctor_name) === doctorKey && r.branch_code === branch)
+          .sort((a,b) => String(a.valid_from).localeCompare(String(b.valid_from)));
+        if (!candidates.length) return getComision(medico, branch);
+        const exact = candidates.filter(r => String(r.valid_from || '') <= date && (!r.valid_to || String(r.valid_to) >= date));
+        if (exact.length) return Number(exact[exact.length - 1].percentage) || 0;
+        const before = candidates.filter(r => String(r.valid_from || '') <= date);
+        if (before.length) return Number(before[before.length - 1].percentage) || 0;
+        return Number(candidates[0].percentage) || 0;
+      }
+    };
 
     localStorage.setItem('blackoptica_comisiones', JSON.stringify(comisiones));
   }
