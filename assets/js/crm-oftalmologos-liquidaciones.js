@@ -1,5 +1,5 @@
 // Black Óptica — Liquidaciones médicas imprimibles
-// Sobrescribe únicamente la salida Word del CRM de Oftalmólogos.
+// Capa de salida documental: genera un anexo A4 listo para imprimir y adjuntar a una carta.
 (() => {
   const IVA_DEFAULT = 21;
 
@@ -16,28 +16,37 @@
   }
   function branchName(recipe){ return branchCode(recipe)==='cerro-de-las-rosas'?'Cerro de las Rosas':'General Paz'; }
   function ivaRate(recipe){
-    const candidate=Number(recipe?.iva_rate ?? recipe?.iva ?? recipe?.alicuota_iva ?? IVA_DEFAULT);
+    const candidate=Number(recipe?.iva_rate ?? recipe?.alicuota_iva ?? recipe?.vat_rate ?? IVA_DEFAULT);
     return Number.isFinite(candidate)&&candidate>=0&&candidate<=100?candidate:IVA_DEFAULT;
   }
   function commissionPct(recipe,doctor){
+    const saved=Number(recipe?.commission_pct ?? recipe?.porcentaje_comision);
+    if(Number.isFinite(saved)&&saved>=0) return saved;
     try{return Math.max(0,Number(window.getComision?.(doctor,branchCode(recipe)))||0)}catch(_){return 20}
   }
   function rowCalc(recipe,doctor){
-    const gross=Math.max(0,Number(recipe?.monto)||0);
+    const explicitGross=Number(recipe?.monto_con_iva ?? recipe?.amount_gross ?? recipe?.monto);
+    const gross=Math.max(0,Number.isFinite(explicitGross)?explicitGross:0);
     const rate=ivaRate(recipe);
-    const net=rate>0?gross/(1+rate/100):gross;
-    const vat=gross-net;
+    const explicitNet=Number(recipe?.monto_sin_iva ?? recipe?.amount_net ?? recipe?.net_amount);
+    const net=Number.isFinite(explicitNet)&&explicitNet>=0 ? explicitNet : (rate>0?gross/(1+rate/100):gross);
+    const vat=Math.max(0,gross-net);
     const pct=commissionPct(recipe,doctor);
-    const commission=net*pct/100;
+    const explicitCommission=Number(recipe?.commission_amount ?? recipe?.importe_comision);
+    const commission=Number.isFinite(explicitCommission)&&explicitCommission>=0 ? explicitCommission : net*pct/100;
     return {gross,rate,net,vat,pct,commission};
   }
-  function isoToDate(value){
+  function parseDate(value){
     const raw=String(value||'').trim();
-    if(!raw)return '';
-    if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(raw))return raw;
+    if(!raw)return null;
+    const dmY=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(dmY) return new Date(Number(dmY[3]),Number(dmY[2])-1,Number(dmY[1]));
     const date=new Date(raw.includes('T')?raw:raw+'T00:00:00');
-    if(Number.isNaN(date.getTime()))return raw;
-    return date.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    return Number.isNaN(date.getTime())?null:date;
+  }
+  function displayDate(value){
+    const date=parseDate(value);
+    return date?date.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}):String(value||'');
   }
   function paragraph(text,{size=20,bold=false,color='1C1C1C',align='left',before=0,after=80,keep=false}={}){
     return `<w:p><w:pPr><w:jc w:val="${align}"/><w:spacing w:before="${before}" w:after="${after}"/>${keep?'<w:keepNext/>':''}</w:pPr><w:r><w:rPr>${bold?'<w:b/>':''}<w:color w:val="${color}"/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr><w:t xml:space="preserve">${xml(text)}</w:t></w:r></w:p>`;
@@ -52,7 +61,7 @@
     recipes.forEach((r,index)=>{
       const c=rowCalc(r,doctor);
       const fill=index%2===0?'F8F8F6':'FFFFFF';
-      const values=[isoToDate(r.fecha),r.paciente||'—',branchName(r),money(c.gross),money(c.vat),money(c.net),`${c.pct.toFixed(c.pct%1?1:0)}%`,money(c.commission)];
+      const values=[displayDate(r.fecha),r.paciente||'—',branchName(r),money(c.gross),money(c.vat),money(c.net),`${c.pct.toFixed(c.pct%1?1:0)}%`,money(c.commission)];
       rows+=`<w:tr>${values.map((v,i)=>cell(v,widths[i],{fill,align:i>=3?'right':'left',bold:i===7,size:14})).join('')}</w:tr>`;
     });
     return `<w:tbl><w:tblPr><w:tblW w:w="10100" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="single" w:sz="4" w:color="D8D8D3"/><w:left w:val="single" w:sz="4" w:color="D8D8D3"/><w:bottom w:val="single" w:sz="4" w:color="D8D8D3"/><w:right w:val="single" w:sz="4" w:color="D8D8D3"/><w:insideH w:val="single" w:sz="3" w:color="E5E5E1"/><w:insideV w:val="single" w:sz="3" w:color="E5E5E1"/></w:tblBorders></w:tblPr><w:tblGrid>${widths.map(w=>`<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>${rows}</w:tbl>`;
@@ -76,7 +85,7 @@
     let body='';
     const doctors=Object.keys(byDoc).sort((a,b)=>a.localeCompare(b,'es'));
     doctors.forEach((doctor,index)=>{
-      const recipes=(byDoc[doctor]||[]).filter(r=>r&&!r.extra).slice().sort((a,b)=>(new Date(a.fecha||0))-(new Date(b.fecha||0)));
+      const recipes=(byDoc[doctor]||[]).filter(r=>r&&!r.extra).slice().sort((a,b)=>(parseDate(a.fecha)||0)-(parseDate(b.fecha)||0));
       if(!recipes.length)return;
       const branches=[...new Set(recipes.map(branchName))];
       body+=paragraph('BLACK ÓPTICA',{size:18,bold:true,color:'111111',after:30,keep:true});
@@ -113,6 +122,35 @@
     });
     return {periodo,doctorFilter,byDoc};
   }
+  function isIndividualMode(){
+    return document.getElementById('word-opt-individual')?.classList.contains('selected')===true;
+  }
+  function polishWordModal(){
+    const modal=document.getElementById('modal-word');
+    if(!modal)return;
+    const title=modal.querySelector('.modal-title');
+    if(title)title.textContent='Generar anexo de liquidación';
+    const intro=modal.querySelector('.modal-body > p');
+    if(intro)intro.textContent='Generá un anexo A4 listo para imprimir y adjuntar a la carta del profesional, con detalle receta por receta, IVA, base neta y comisión.';
+    const all=modal.querySelector('#word-opt-todos');
+    if(all){
+      const titleNode=all.querySelector('.word-option-text');
+      const sub=all.querySelector('.word-option-sub');
+      if(titleNode)titleNode.textContent='Anexos en un solo archivo';
+      if(sub)sub.textContent='Un médico por página, listo para imprimir.';
+    }
+    const individual=modal.querySelector('#word-opt-individual');
+    if(individual){
+      const titleNode=individual.querySelector('.word-option-text');
+      const sub=individual.querySelector('.word-option-sub');
+      if(titleNode)titleNode.textContent='Archivo individual por médico';
+      if(sub)sub.textContent='Genera un ZIP con una liquidación separada para cada profesional.';
+    }
+    const periodLabel=[...modal.querySelectorAll('.form-label')].find(x=>/Período/.test(x.textContent||''));
+    if(periodLabel)periodLabel.textContent='Período que figurará en el anexo';
+    const button=modal.querySelector('button.btn-primary[onclick="generateWord()"]');
+    if(button)button.textContent='Generar anexo Word';
+  }
 
   window.generateWord=function(){
     const {periodo,doctorFilter,byDoc}=buildData();
@@ -121,7 +159,7 @@
     const safe=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
     if(doctorFilter){
       window.generateWordDoc(byDoc,periodo,`${safe(doctorFilter)}_${safe(periodo)||'liquidacion'}.docx`);
-    }else if(window.wordOpt==='individual'){
+    }else if(isIndividualMode()){
       window.generateAllWordDocs(byDoc,periodo);
     }else{
       window.generateWordDoc(byDoc,periodo,`Liquidaciones_medicas_${safe(periodo)||'periodo'}.docx`);
@@ -150,4 +188,6 @@
     window.downloadBlob(bundle,`Liquidaciones_medicas_${String(periodo||'periodo').replace(/\s+/g,'_')}.zip`);
     window.showToast?.('Anexos individuales generados ✓');
   };
+
+  polishWordModal();
 })();
