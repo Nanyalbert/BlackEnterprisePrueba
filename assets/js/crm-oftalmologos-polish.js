@@ -24,21 +24,21 @@
 
       btn.classList.add('delivery-check-btn');
       btn.setAttribute('aria-pressed', isPaid ? 'true' : 'false');
-      btn.setAttribute('title', isPaid ? 'Comisión entregada. Tocá para desmarcar.' : 'Marcar comisión como entregada');
+      btn.setAttribute('title', isPaid ? 'Comisión pagada. Tocá para volver a pendiente.' : 'Marcar comisión como pagada');
       btn.innerHTML = `
         <span class="delivery-check-box" aria-hidden="true">
           ${isPaid ? '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
         </span>
         <span class="delivery-check-copy">
-          <strong>${isPaid ? 'Entregada' : 'No entregada'}</strong>
-          <small>Comisión</small>
+          <strong>${isPaid ? 'Pagada' : 'Pendiente'}</strong>
+          <small>Pago</small>
         </span>`;
     });
   }
 
   function refineLabels() {
     const subtitle = document.querySelector('#page-comisiones .comisiones-header-sub');
-    const desiredSubtitle = 'Facturación, liquidaciones y estado de entrega por oftalmólogo';
+    const desiredSubtitle = 'Facturación neta, liquidaciones por WhatsApp y estado de pago por oftalmólogo';
     if (subtitle && subtitle.textContent !== desiredSubtitle) subtitle.textContent = desiredSubtitle;
 
     const importBtn = document.querySelector('#page-comisiones .import-csv-btn');
