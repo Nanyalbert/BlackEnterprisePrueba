@@ -53,11 +53,12 @@
 
   function tableHtml(rows){
     if(!rows.length)return '<div class="report-empty">No hay datos para este período.</div>';
-    return '<div class="table-scroll"><table class="daily-report-table"><thead><tr><th>Fecha</th><th>Programado</th><th>Entrada</th><th>Salida final</th><th>Trabajado</th><th>Tardanza</th><th>Salida anticipada</th><th>Balance</th><th>Estado</th></tr></thead><tbody>'+rows.map(r=>{
+    return '<div class="table-scroll"><table class="daily-report-table"><thead><tr><th>Fecha</th><th>Programado</th><th>Entrada</th><th>Salida final</th><th>Marcas</th><th>Trabajado</th><th>Cumplimiento</th><th>Tardanza</th><th>Salida anticipada</th><th>Balance</th><th>Estado</th></tr></thead><tbody>'+rows.map(r=>{
       const meta=statusMeta(r.status);
       const date=new Date(String(r.work_date)+'T12:00:00').toLocaleDateString('es-AR',{weekday:'short',day:'2-digit',month:'2-digit'});
       const schedule=r.scheduled?fmtTime(r.scheduled_start)+'–'+fmtTime(r.scheduled_end):'—';
-      return '<tr><td><strong>'+esc(date)+'</strong></td><td>'+schedule+'</td><td>'+localTime(r.first_entry)+'</td><td>'+localTime(r.last_mark)+'</td><td>'+fmtMinutes(r.worked_minutes)+'</td><td class="'+(Number(r.late_minutes)>0?'metric-bad':'')+'">'+(Number(r.late_minutes)>0?fmtMinutes(r.late_minutes):'—')+'</td><td class="'+(Number(r.early_leave_minutes)>0?'metric-warn':'')+'">'+(Number(r.early_leave_minutes)>0?fmtMinutes(r.early_leave_minutes):'—')+'</td><td class="'+(Number(r.balance_minutes)<0?'metric-bad':Number(r.balance_minutes)>0?'metric-ok':'')+'">'+signedMinutes(r.balance_minutes)+'</td><td><span class="report-status '+meta[1]+'">'+meta[0]+'</span></td></tr>';
+      const compliance=Number(r.expected_minutes)>0?Math.round(Number(r.worked_minutes||0)/Number(r.expected_minutes)*100):null;
+      return '<tr><td><strong>'+esc(date)+'</strong></td><td>'+schedule+'</td><td>'+localTime(r.first_entry)+'</td><td>'+localTime(r.last_mark)+'</td><td>'+Number(r.mark_count||0)+'</td><td>'+fmtMinutes(r.worked_minutes)+'</td><td>'+(compliance==null?'—':compliance+'%')+'</td><td class="'+(Number(r.late_minutes)>0?'metric-bad':'')+'">'+(Number(r.late_minutes)>0?fmtMinutes(r.late_minutes):'—')+'</td><td class="'+(Number(r.early_leave_minutes)>0?'metric-warn':'')+'">'+(Number(r.early_leave_minutes)>0?fmtMinutes(r.early_leave_minutes):'—')+'</td><td class="'+(Number(r.balance_minutes)<0?'metric-bad':Number(r.balance_minutes)>0?'metric-ok':'')+'">'+signedMinutes(r.balance_minutes)+'</td><td><span class="report-status '+meta[1]+'">'+meta[0]+'</span></td></tr>';
     }).join('')+'</tbody></table></div>';
   }
 
