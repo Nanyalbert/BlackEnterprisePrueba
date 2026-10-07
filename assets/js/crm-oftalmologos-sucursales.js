@@ -192,6 +192,7 @@
     const com = item.monto * pct / 100;
     const paid = isBranchPaid(d.medico, desde, hasta, item.branch);
     const nonExtra = item.recetas.filter(r => !r.extra).length;
+    const delivery = window.BlackDoctorDelivery?.buttonHTML?.(d.medico, item.branch) || '';
 
     return `
       <div class="branch-summary ${paid ? 'is-paid' : ''}">
@@ -200,7 +201,10 @@
             <span class="branch-chip branch-${item.branch}">${branchLabel(item.branch)}</span>
             <span class="branch-summary-meta">${nonExtra} receta${nonExtra !== 1 ? 's' : ''}</span>
           </div>
-          <div class="branch-summary-amount">$${formatNum(item.monto)}</div>
+          <div>
+            <div class="branch-summary-amount">${formatNum(item.monto)}</div>
+            <div class="branch-summary-meta" style="text-align:right;margin-top:2px">Base s/IVA</div>
+          </div>
         </div>
         <div class="branch-summary-commission">
           <div class="branch-pct-wrap">
@@ -209,14 +213,15 @@
               onchange="updateBranchComision('${escAttr(d.medico)}','${item.branch}',this.value,this)" />
             <span>%</span>
           </div>
-          <strong>$${formatNum(com, true)}</strong>
+          <strong>${formatNum(com, true)}</strong>
         </div>
         <div class="branch-summary-actions">
           <button class="branch-extra-btn" onclick="openBranchExtraModal('${escAttr(d.medico)}','${item.branch}')">+ Monto</button>
           <button class="branch-paid-btn ${paid ? 'is-paid' : ''}" onclick="toggleBranchPago('${escAttr(d.medico)}','${item.branch}')">
-            ${paid ? '✓ Pagado' : 'Pendiente'}
+            ${paid ? '✓ Pagado' : 'Pendiente de pago'}
           </button>
         </div>
+        ${delivery}
       </div>`;
   }
 
@@ -243,15 +248,20 @@
         .sort((a, b) => (parseDate(a.fecha) || 0) - (parseDate(b.fecha) || 0))
         .map(r => {
           const branch = branchCodeForRecipe(r);
+          const net = Number(r.monto) || 0;
+          const vatRate = Number(r.vat_rate ?? r.iva_rate ?? 21) || 21;
+          const gross = net * (1 + vatRate / 100);
+          const pct = getBranchCommission(d.medico, branch);
+          const commission = net * pct / 100;
           const deleteBtn = r.extra ? `<button class="extra-del" onclick="delExtra('${r.xid}')" title="Eliminar">✕</button>` : '';
-          const extraTag = r.extra ? '<span class="extra-tag">＋</span>' : '';
-          return `<div class="detalle-row branch-detail-row ${r.extra ? 'extra' : ''}">
+          const label = r.extra ? '<span class="extra-tag">＋</span>' : '';
+          return `<div class="detalle-row branch-detail-row commission-detail-grid ${r.extra ? 'extra' : ''}">
             <span class="detalle-fecha">${fmtFecha(r.fecha)}</span>
-            ${extraTag}
-            <span class="detalle-pac">${escHtml(r.paciente)}</span>
-            <span class="branch-chip branch-${branch}">${branchLabel(branch)}</span>
-            <span class="detalle-monto">$${formatNum(r.monto)}</span>
-            ${deleteBtn}
+            <span class="detalle-pac">${label}${escHtml(r.paciente)}<small style="display:block;margin-top:2px;color:var(--roble)">${branchLabel(branch)}</small></span>
+            <span class="detail-money detail-net">${formatNum(net, true)}</span>
+            <span class="detail-money detail-gross">${formatNum(gross, true)}</span>
+            <span class="detail-pct">${pct}%</span>
+            <span class="detail-money detail-commission">${formatNum(commission, true)}${deleteBtn}</span>
           </div>`;
         }).join('');
 
@@ -262,7 +272,7 @@
           <div class="commission-avatar">${initials(d.medico)}</div>
           <div class="commission-card-identity">
             <div class="commission-name">${escHtml(d.medico)}</div>
-            <div class="commission-card-sub">${nonExtra} receta${nonExtra !== 1 ? 's' : ''} · Facturación $${formatNum(d.monto)}</div>
+            <div class="commission-card-sub">${nonExtra} receta${nonExtra !== 1 ? 's' : ''} · Base s/IVA ${formatNum(d.monto)}</div>
           </div>
           <div class="commission-total-box">
             <span>Comisión total</span>
@@ -278,7 +288,10 @@
         <div class="commission-footer branch-card-footer">
           <button class="btn-detalle" onclick="toggleDetalle(${idx})">Detalle de pacientes</button>
         </div>
-        <div class="detalle-recetas" id="detalle-${idx}">${recetasHtml}</div>
+        <div class="detalle-recetas" id="detalle-${idx}">
+          <div class="commission-detail-head"><span>Fecha</span><span>Paciente</span><span style="text-align:right">Monto s/IVA</span><span style="text-align:right">Monto c/IVA</span><span style="text-align:right">%</span><span style="text-align:right">Comisión</span></div>
+          ${recetasHtml}
+        </div>
       </div>`;
     }).join('');
   };
