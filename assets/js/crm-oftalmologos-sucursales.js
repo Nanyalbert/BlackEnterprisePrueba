@@ -250,7 +250,8 @@
           const branch = branchCodeForRecipe(r);
           const net = Number(r.monto) || 0;
           const vatRate = Number(r.vat_rate ?? r.iva_rate ?? 21) || 21;
-          const gross = net * (1 + vatRate / 100);
+          const vat = net * vatRate / 100;
+          const gross = net + vat;
           const pct = getBranchCommission(d.medico, branch);
           const commission = net * pct / 100;
           const deleteBtn = r.extra ? `<button class="extra-del" onclick="delExtra('${r.xid}')" title="Eliminar">✕</button>` : '';
@@ -259,6 +260,7 @@
             <span class="detalle-fecha">${fmtFecha(r.fecha)}</span>
             <span class="detalle-pac">${label}${escHtml(r.paciente)}<small style="display:block;margin-top:2px;color:var(--roble)">${branchLabel(branch)}</small></span>
             <span class="detail-money detail-net">${formatNum(net, true)}</span>
+            <span class="detail-money detail-vat">${formatNum(vat, true)}</span>
             <span class="detail-money detail-gross">${formatNum(gross, true)}</span>
             <span class="detail-pct">${pct}%</span>
             <span class="detail-money detail-commission">${formatNum(commission, true)}${deleteBtn}</span>
@@ -289,7 +291,7 @@
           <button class="btn-detalle" onclick="toggleDetalle(${idx})">Detalle de pacientes</button>
         </div>
         <div class="detalle-recetas" id="detalle-${idx}">
-          <div class="commission-detail-head"><span>Fecha</span><span>Paciente</span><span style="text-align:right">Monto s/IVA</span><span style="text-align:right">Monto c/IVA</span><span style="text-align:right">%</span><span style="text-align:right">Comisión</span></div>
+          <div class="commission-detail-head"><span>Fecha</span><span>Paciente</span><span style="text-align:right">Monto s/IVA</span><span style="text-align:right">IVA</span><span style="text-align:right">Monto c/IVA</span><span style="text-align:right">%</span><span style="text-align:right">Comisión</span></div>
           ${recetasHtml}
         </div>
       </div>`;
