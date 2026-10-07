@@ -60,8 +60,8 @@
     if(error)throw error;
     state.doctors.clear();
     (data||[]).forEach(d=>state.doctors.set(String(window.normName?.(d.full_name)||d.full_name||''),d));
-    if(Array.isArray(window.doctors)){
-      window.doctors.forEach(local=>{
+    if(typeof doctors!=='undefined' && Array.isArray(doctors)){
+      doctors.forEach(local=>{
         const cloud=state.doctors.get(String(window.normName?.(local.nombre)||local.nombre||''));
         if(cloud){local.telefono=cloud.phone||local.telefono||'';local._supabaseId=cloud.id;}
       });
