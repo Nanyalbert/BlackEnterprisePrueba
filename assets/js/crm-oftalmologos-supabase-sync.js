@@ -354,9 +354,10 @@
       if (!d) return false;
       return d >= new Date(desde + 'T00:00:00') && d <= new Date(hasta + 'T23:59:59');
     });
-    const base = relevant.reduce((a, r) => a + (Number(r.monto) || 0), 0);
-    const pct = getComision(medico, branchCode);
-    const amount = base * pct / 100;
+    const amount = relevant.reduce((sum, r) => {
+      const pct = window.BlackCommissionRules?.getPct?.(medico, branchCode, r.fecha) ?? getComision(medico, branchCode);
+      return sum + (Number(r.monto) || 0) * (Number(pct) || 0) / 100;
+    }, 0);
 
     const { error } = await client
       .from('doctor_commission_payments')
