@@ -160,7 +160,7 @@
     if(!sb)return alert('Supabase no está disponible.');
     const id=qs('#employee-id').value||null;
     const pin=qs('#employee-pin').value.trim();
-    if(pin&&!/^\\d{4,6}$/.test(pin))return alert('El PIN debe tener entre 4 y 6 dígitos.');
+    if(pin&&!/^\d{4,6}$/.test(pin))return alert('El PIN debe tener entre 4 y 6 dígitos.');
     const payload={
       full_name:qs('#employee-name').value.trim(),
       branch_code:canonicalBranch(qs('#employee-branch').value),
