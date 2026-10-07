@@ -86,7 +86,7 @@
     let body='';
     const doctors=Object.keys(byDoc).sort((a,b)=>a.localeCompare(b,'es'));
     doctors.forEach((doctor,index)=>{
-      const recipes=(byDoc[doctor]||[]).filter(r=>r&&!r.extra).slice().sort((a,b)=>(parseDate(a.fecha)||0)-(parseDate(b.fecha)||0));
+      const recipes=(byDoc[doctor]||[]).filter(Boolean).slice().sort((a,b)=>(parseDate(a.fecha)||0)-(parseDate(b.fecha)||0));
       if(!recipes.length)return;
       const branches=[...new Set(recipes.map(branchName))];
       body+=paragraph('BLACK ÓPTICA',{size:18,bold:true,color:'111111',after:30,keep:true});
@@ -117,7 +117,6 @@
     const filtered=window.filterRecetas(desde,hasta,inst);
     const byDoc={};
     filtered.forEach(r=>{
-      if(r.extra)return;
       if(doctorFilter&&window.normName(r.medico)!==window.normName(doctorFilter))return;
       (byDoc[r.medico]??=[]).push(r);
     });
@@ -130,15 +129,15 @@
     const modal=document.getElementById('modal-word');
     if(!modal)return;
     const title=modal.querySelector('.modal-title');
-    if(title)title.textContent='Generar anexo de liquidación';
+    if(title)title.textContent='Respaldo detallado de liquidación';
     const intro=modal.querySelector('.modal-body > p');
-    if(intro)intro.textContent='Generá un anexo A4 listo para imprimir y adjuntar a la carta del profesional, con detalle receta por receta, IVA, base neta y comisión.';
+    if(intro)intro.textContent='Descargá una copia editable de respaldo con el mismo detalle económico que se envía por WhatsApp. La entrega principal se realiza desde la tarjeta del profesional.';
     const all=modal.querySelector('#word-opt-todos');
     if(all){
       const titleNode=all.querySelector('.word-option-text');
       const sub=all.querySelector('.word-option-sub');
-      if(titleNode)titleNode.textContent='Anexos en un solo archivo';
-      if(sub)sub.textContent='Un médico por página, listo para imprimir.';
+      if(titleNode)titleNode.textContent='Liquidaciones en un solo archivo';
+      if(sub)sub.textContent='Un médico por página, como respaldo administrativo.';
     }
     const individual=modal.querySelector('#word-opt-individual');
     if(individual){
@@ -150,7 +149,7 @@
     const periodLabel=[...modal.querySelectorAll('.form-label')].find(x=>/Período/.test(x.textContent||''));
     if(periodLabel)periodLabel.textContent='Período que figurará en el anexo';
     const button=modal.querySelector('button.btn-primary[onclick="generateWord()"]');
-    if(button)button.textContent='Generar anexo Word';
+    if(button)button.textContent='Descargar respaldo Word';
   }
 
   window.generateWord=function(){
@@ -188,6 +187,68 @@
     const bundle=await main.generateAsync({type:'blob'});
     window.downloadBlob(bundle,`Liquidaciones_medicas_${String(periodo||'periodo').replace(/\s+/g,'_')}.zip`);
     window.showToast?.('Anexos individuales generados ✓');
+  };
+
+  window.generatePdf=function(){
+    if(!window.jspdf){window.showToast?.('No se pudo iniciar el generador PDF.');return;}
+    const from=document.getElementById('periodo-desde')?.value||'';
+    const to=document.getElementById('periodo-hasta')?.value||'';
+    const inst=document.getElementById('filter-institucion')?.value||'';
+    const activeBranch=document.querySelector('[data-commission-branch].active')?.dataset?.commissionBranch||'all';
+    let rows=window.filterRecetas(from,to,inst);
+    if(activeBranch!=='all')rows=rows.filter(r=>branchCode(r)===activeBranch);
+    const byDoc={};
+    rows.forEach(r=>(byDoc[r.medico]??=[]).push(r));
+    if(!Object.keys(byDoc).length){window.showToast?.('Sin datos para generar el PDF.');return;}
+
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const pw=297,ph=210,margin=12;
+    const safe=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+
+    Object.keys(byDoc).sort((a,b)=>a.localeCompare(b,'es')).forEach((doctor,index)=>{
+      if(index)pdf.addPage('a4','landscape');
+      const recipes=byDoc[doctor].slice().sort((a,b)=>(parseDate(a.fecha)||0)-(parseDate(b.fecha)||0));
+      const totals=recipes.reduce((a,r)=>{const x=rowCalc(r,doctor);a.net+=x.net;a.vat+=x.vat;a.gross+=x.gross;a.commission+=x.commission;return a},{net:0,vat:0,gross:0,commission:0});
+      let y=0;
+      const pageHeader=()=>{
+        pdf.setFillColor(18,18,18);pdf.rect(0,0,pw,25,'F');
+        pdf.setTextColor(211,189,145);pdf.setFont('helvetica','bold');pdf.setFontSize(13);pdf.text('BLACK ÓPTICA',margin,10);
+        pdf.setTextColor(255,255,255);pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.text('Liquidación de comisiones médicas',margin,16);
+        pdf.setTextColor(25,25,25);pdf.setFont('helvetica','bold');pdf.setFontSize(12);pdf.text(doctor,margin,34);
+        pdf.setFont('helvetica','normal');pdf.setFontSize(7.8);pdf.setTextColor(100,100,95);
+        pdf.text('Período: '+(from?displayDate(from):'—')+' al '+(to?displayDate(to):'—'),margin,40);
+        y=49;
+      };
+      const tableHeader=()=>{
+        pdf.setFillColor(35,35,35);pdf.rect(margin,y,pw-margin*2,8,'F');
+        pdf.setFont('helvetica','bold');pdf.setFontSize(6.7);pdf.setTextColor(255,255,255);
+        const xs=[margin+2,margin+22,margin+88,margin+126,margin+160,margin+195,margin+210,margin+245];
+        ['Fecha','Paciente','Sucursal','Monto s/IVA','IVA','Monto c/IVA','%','Comisión'].forEach((h,i)=>pdf.text(h,xs[i],y+5.2));
+        y+=10;return xs;
+      };
+      pageHeader();let xs=tableHeader();
+      recipes.forEach(r=>{
+        if(y>177){pdf.addPage('a4','landscape');pageHeader();xs=tableHeader();}
+        const x=rowCalc(r,doctor);
+        pdf.setFillColor(249,249,246);pdf.rect(margin,y-1,pw-margin*2,8,'F');
+        pdf.setFont('helvetica','normal');pdf.setFontSize(6.6);pdf.setTextColor(45,45,43);
+        const patient=String(r.paciente||'—').slice(0,37);
+        [displayDate(r.fecha),patient,branchName(r),money(x.net),money(x.vat),money(x.gross),x.pct+'%',money(x.commission)].forEach((v,i)=>{
+          pdf.setFont('helvetica',i===7?'bold':'normal');pdf.text(String(v),xs[i],y+4.2,{maxWidth:i===1?62:undefined});
+        });
+        y+=8.7;
+      });
+      y=Math.min(Math.max(y+7,145),181);
+      pdf.setDrawColor(210,210,205);pdf.line(margin,y,pw-margin,y);y+=7;
+      pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);pdf.setTextColor(80,80,76);
+      pdf.text('Base comisionable s/IVA',margin,y);pdf.setFont('helvetica','bold');pdf.setTextColor(25,25,25);pdf.text(money(totals.net),margin+55,y);
+      pdf.setFont('helvetica','normal');pdf.setTextColor(80,80,76);pdf.text('IVA incluido',margin+105,y);pdf.setFont('helvetica','bold');pdf.setTextColor(25,25,25);pdf.text(money(totals.vat),margin+138,y);
+      pdf.setFont('helvetica','normal');pdf.setTextColor(80,80,76);pdf.text('Total c/IVA',margin+184,y);pdf.setFont('helvetica','bold');pdf.setTextColor(25,25,25);pdf.text(money(totals.gross),margin+213,y);
+      y+=8;pdf.setFillColor(25,25,25);pdf.rect(margin,y-5,95,10,'F');pdf.setTextColor(255,255,255);pdf.setFont('helvetica','bold');pdf.setFontSize(8.5);pdf.text('TOTAL COMISIÓN',margin+4,y+1.5);pdf.text(money(totals.commission),margin+62,y+1.5);
+    });
+    pdf.save('Liquidaciones_'+safe(from||'periodo')+'_'+safe(to||'actual')+'.pdf');
+    window.showToast?.('PDF de respaldo generado ✓');
   };
 
   polishWordModal();
