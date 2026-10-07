@@ -280,10 +280,11 @@
     const doctorId = await ensureDoctorId(medico);
     if (!branchId || !doctorId) return;
 
-    const today = new Intl.DateTimeFormat('en-CA', {
+    const todayParts = new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/Argentina/Cordoba',
       year: 'numeric', month: '2-digit', day: '2-digit'
-    }).format(new Date());
+    }).formatToParts(new Date()).reduce((acc,part)=>{ if(part.type!=='literal') acc[part.type]=part.value; return acc; },{});
+    const today = `${todayParts.year}-${todayParts.month}-${todayParts.day}`;
     const yesterdayDate = new Date(today + 'T12:00:00');
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
     const yesterday = [
