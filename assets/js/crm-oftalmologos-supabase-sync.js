@@ -261,9 +261,21 @@
     const doctorId = await ensureDoctorId(medico);
     if (!branchId || !doctorId) return;
 
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Argentina/Cordoba',
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date());
+    const yesterdayDate = new Date(today + 'T12:00:00');
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterday = [
+      yesterdayDate.getFullYear(),
+      String(yesterdayDate.getMonth() + 1).padStart(2, '0'),
+      String(yesterdayDate.getDate()).padStart(2, '0')
+    ].join('-');
+
     const { data: existing, error: readError } = await client
       .from('doctor_commission_rules')
-      .select('id')
+      .select('id,percentage,valid_from')
       .eq('doctor_id', doctorId)
       .eq('branch_id', branchId)
       .eq('active', true)
@@ -271,25 +283,38 @@
       .limit(1);
 
     if (readError) throw readError;
+    const current = existing?.[0] || null;
+    if (current && Number(current.percentage) === Number(pct)) return;
 
-    if (existing?.length) {
+    // Si el porcentaje cambia el mismo día, corregimos la regla del día.
+    // Si cambia en otra fecha, cerramos la anterior para conservar el histórico.
+    if (current?.valid_from === today) {
       const { error } = await client
         .from('doctor_commission_rules')
         .update({ percentage: pct })
-        .eq('id', existing[0].id);
+        .eq('id', current.id);
       if (error) throw error;
-    } else {
-      const { error } = await client
-        .from('doctor_commission_rules')
-        .insert({
-          doctor_id: doctorId,
-          branch_id: branchId,
-          percentage: pct,
-          valid_from: new Date().toISOString().slice(0, 10),
-          active: true
-        });
-      if (error) throw error;
+      return;
     }
+
+    if (current) {
+      const { error: closeError } = await client
+        .from('doctor_commission_rules')
+        .update({ active: false, valid_to: yesterday })
+        .eq('id', current.id);
+      if (closeError) throw closeError;
+    }
+
+    const { error } = await client
+      .from('doctor_commission_rules')
+      .insert({
+        doctor_id: doctorId,
+        branch_id: branchId,
+        percentage: pct,
+        valid_from: today,
+        active: true
+      });
+    if (error) throw error;
   }
 
   async function persistPayment(medico, branchCode) {
