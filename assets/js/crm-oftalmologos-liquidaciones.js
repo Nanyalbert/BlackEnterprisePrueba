@@ -73,7 +73,7 @@
     const totals=recipes.reduce((a,r)=>{const c=rowCalc(r,doctor);a.gross+=c.gross;a.vat+=c.vat;a.net+=c.net;a.commission+=c.commission;a.pcts.add(c.pct);return a},{gross:0,vat:0,net:0,commission:0,pcts:new Set()});
     const pctLabel=totals.pcts.size===1?`${[...totals.pcts][0]}%`:'Según detalle';
     const items=[
-      ['Recetas incluidas',String(recipes.length)],
+      ['Operaciones incluidas',String(recipes.length)],
       ['Total facturado c/IVA',money(totals.gross)],
       ['IVA incluido',money(totals.vat)],
       ['Base comisionable s/IVA',money(totals.net)],
