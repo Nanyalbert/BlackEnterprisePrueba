@@ -64,6 +64,7 @@
 
     doctorIdByNormName = {};
     doctorNameById = {};
+    const contactBackfill = [];
     (dbDoctors || []).forEach(d => {
       const key = normName(d.full_name);
       doctorIdByNormName[key] = d.id;
@@ -71,12 +72,30 @@
       const local = doctors.find(x => normName(x.nombre) === key);
       if (local) {
         local._supabaseId = d.id;
-        local.telefono = d.phone || local.telefono || '';
-        local.cumple = d.birthday || local.cumple || '';
+        const localPhone = String(local.telefono || '').trim();
+        const localBirthday = local.cumple || null;
+        local.telefono = d.phone || localPhone || '';
+        local.cumple = d.birthday || localBirthday || '';
         local.servicio = d.service || local.servicio || 'OFTALMOLOGIA-JR';
         if (d.notes && !local.notas) local.notas = d.notes;
+
+        // Migración suave: si el CRM histórico tenía contacto local y Supabase aún no,
+        // lo subimos una sola vez para habilitar entregas por WhatsApp.
+        const patch = {};
+        if (!d.phone && localPhone) patch.phone = localPhone;
+        if (!d.birthday && localBirthday) patch.birthday = localBirthday;
+        if (!d.notes && local.notas) patch.notes = local.notas;
+        if (Object.keys(patch).length) {
+          patch.updated_at = new Date().toISOString();
+          contactBackfill.push(client.from('doctors').update(patch).eq('id', d.id));
+        }
       }
     });
+    if (contactBackfill.length) {
+      const results = await Promise.all(contactBackfill);
+      const failed = results.find(x => x.error);
+      if (failed?.error) console.warn('No se pudieron migrar algunos contactos locales:', failed.error);
+    }
   }
 
   async function ensureDoctorId(name) {
