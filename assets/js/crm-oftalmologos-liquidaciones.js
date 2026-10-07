@@ -92,7 +92,7 @@
       if(!recipes.length)return;
       const branches=[...new Set(recipes.map(branchName))];
       body+=paragraph('BLACK ÓPTICA',{size:18,bold:true,color:'111111',after:30,keep:true});
-      body+=paragraph('ANEXO — LIQUIDACIÓN DE COMISIONES MÉDICAS',{size:28,bold:true,color:'111111',after:180,keep:true});
+      body+=paragraph('RESPALDO — LIQUIDACIÓN DE COMISIONES MÉDICAS',{size:28,bold:true,color:'111111',after:180,keep:true});
       body+=`<w:tbl><w:tblPr><w:tblW w:w="10100" w:type="dxa"/><w:tblBorders><w:bottom w:val="single" w:sz="5" w:color="D8D8D3"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="2200"/><w:gridCol w:w="7900"/></w:tblGrid>`+
         `<w:tr>${cell('Profesional',2200,{bold:true,color:'666660',size:15})}${cell(doctor,7900,{bold:true,size:17})}</w:tr>`+
         `<w:tr>${cell('Período',2200,{bold:true,color:'666660',size:15})}${cell(periodText(periodo),7900,{size:15})}</w:tr>`+
