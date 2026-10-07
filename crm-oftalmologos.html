@@ -193,7 +193,7 @@
 
     <!-- KPI Summary -->
     <div class="stats-summary" id="stats-summary">
-      <div class="stat-card"><div class="stat-card-num" id="kpi-facturacion">$0</div><div class="stat-card-label">Facturación total</div><div class="stat-card-trend" id="kpi-trend"></div></div>
+      <div class="stat-card"><div class="stat-card-num" id="kpi-facturacion">$0</div><div class="stat-card-label">Base facturada s/IVA</div><div class="stat-card-trend" id="kpi-trend"></div></div>
       <div class="stat-card"><div class="stat-card-num" id="kpi-comisiones">$0</div><div class="stat-card-label">Comisiones totales</div><div class="stat-card-trend" id="kpi-pendiente"></div></div>
       <div class="stat-card"><div class="stat-card-num" id="kpi-pacientes">0</div><div class="stat-card-label">Recetas procesadas</div></div>
       <div class="stat-card"><div class="stat-card-num" id="kpi-medicos">0</div><div class="stat-card-label">Médicos activos</div></div>
@@ -376,7 +376,7 @@
     <div class="modal-handle"></div>
     <div class="modal-header"><span class="modal-title">Respaldo de datos</span><button class="modal-close" onclick="closeModal('modal-backup')">✕</button></div>
     <div class="modal-body">
-      <p style="font-size:.82rem;color:var(--roble);margin-bottom:16px;line-height:1.6">Los datos viven en este navegador. Si borrás el historial o cambiás de teléfono, se pierden. Descargá un respaldo cada tanto y guardalo en Drive o donde prefieras.</p>
+      <p style="font-size:.82rem;color:var(--roble);margin-bottom:16px;line-height:1.6">Los datos principales se sincronizan con Supabase. Este archivo funciona como respaldo adicional de la configuración y del estado local del CRM.</p>
       <div class="backup-btn-row">
         <button class="btn-primary" onclick="exportBackup()">⬇ Descargar respaldo (.json)</button>
         <button class="btn-secondary-out" style="width:100%" onclick="document.getElementById('backup-input').click()">⬆ Restaurar desde un respaldo</button>
