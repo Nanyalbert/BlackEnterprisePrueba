@@ -92,7 +92,7 @@
     const icon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4Z"/></svg>';
     if(!phone)return '<div class="branch-delivery"><button class="delivery-btn no-phone" type="button" disabled>'+icon+'Falta WhatsApp</button><span class="delivery-state-text">Cargalo en la ficha del profesional.</span></div>';
     if(status?.status==='sent'){
-      return '<div class="branch-delivery"><button class="delivery-btn sent" type="button" onclick="BlackDoctorDelivery.send(\''+d+'\',\''+b+'\',true)">'+icon+'✓ Entregada por WhatsApp</button><span class="delivery-state-text"><strong>'+fmtSent(status.sent_at)+'</strong> · Reenviar si hace falta</span></div>';
+      return '<div class="branch-delivery"><button class="delivery-btn sent" type="button" onclick="BlackDoctorDelivery.send(\''+d+'\',\''+b+'\',true)">'+icon+'✓ Enviada por WhatsApp</button><span class="delivery-state-text"><strong>'+fmtSent(status.sent_at)+'</strong> · Reenviar si hace falta</span></div>';
     }
     if(status?.status==='failed'){
       return '<div class="branch-delivery"><button class="delivery-btn failed" type="button" onclick="BlackDoctorDelivery.send(\''+d+'\',\''+b+'\')">'+icon+'Reintentar envío</button><span class="delivery-state-text">El intento anterior no se confirmó.</span></div>';
@@ -130,7 +130,7 @@
     window.showToast?.('Generando y enviando liquidación…');
     try{
       const {data,error}=await client.functions.invoke('black-doctor-commission-send',{body:{
-        doctor_id:doctorId,branch_code:canonicalBranch(branch),period_from:from,period_to:to
+        doctor_id:doctorId,branch_code:canonicalBranch(branch),period_from:from,period_to:to,force_resend:Boolean(reSend)
       }});
       if(error)throw error;
       if(!data?.ok)throw new Error(data?.error||'Evolution no confirmó el envío.');
