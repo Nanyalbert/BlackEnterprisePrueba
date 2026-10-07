@@ -33,8 +33,10 @@ export function evaluateProduct(product, pair, add, matrixResult = null) {
   if (!pair) return { status: "review", reason: "Faltan valores confirmados en uno de los ojos." };
   const needsAdd = product.optical_case === "multifocal" || product.optical_case === "bifocal" || product.requires_addition;
   const addition = asNumber(add);
-  if (needsAdd && (addition === null || product.addition_min == null || product.addition_max == null))
-    return { status: "review", reason: "Falta la ADD o su rango técnico en la ficha." };
+  if (needsAdd && addition === null)
+    return { status: "review", reason: "Falta confirmar la ADD de la receta." };
+  if (needsAdd && (product.addition_min == null || product.addition_max == null))
+    return { status: "review", reason: "La ficha no tiene cargado el rango de ADD; requiere validación técnica." };
   if (needsAdd && (addition < Number(product.addition_min) || addition > Number(product.addition_max)))
     return { status: "out", reason: "La ADD está fuera del rango configurado." };
   if (product.technical_family_key) {
@@ -61,11 +63,9 @@ export function evaluateProduct(product, pair, add, matrixResult = null) {
   return { status: "compatible", mode: product.supply_mode || "laboratory", reason: "Ambos ojos están dentro de los rangos cargados." };
 }
 
-const labels = ["Premium", "Recomendado", "Acceso"];
+const labels = ["Premium", "Mejor opción", "Acceso"];
 const plain = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-// El administrador puede fijar la familia comercial y el orden en metadata.scanner.
-// Esas preferencias nunca reemplazan el filtro previo de compatibilidad técnica.
 export function commercialFamily(offer, context) {
   const product = offer.product || {};
   const configured = plain(product.metadata?.scanner?.family);
@@ -98,35 +98,50 @@ function commercialValue(offer, context, answers) {
   return values[family] ?? 40;
 }
 
-export function selectThreeOffers(offers, context, answers = {}) {
-  const ranked = [...offers].sort((a, b) => commercialValue(b, context, answers) - commercialValue(a, context, answers) ||
-    Number(a.product?.technical_priority ?? 100) - Number(b.product?.technical_priority ?? 100) ||
-    String(a.sku || a.name).localeCompare(String(b.sku || b.name)));
-  const chosen = [], families = new Set();
-  for (const offer of ranked) {
-    const family = commercialFamily(offer, context);
-    if (families.has(family)) continue;
-    chosen.push(offer); families.add(family);
-    if (chosen.length === 3) break;
-  }
-  for (const offer of ranked) {
-    if (chosen.length === 3) break;
-    if (!chosen.includes(offer)) chosen.push(offer);
-  }
-  return {
-    slots: labels.map((tier, index) => ({ tier, offer: chosen[index] || null })),
-    alternatives: ranked.filter(offer => !chosen.includes(offer)),
-  };
-}
-
 export function scoreProduct(product, answers) {
   const priority = Number.isFinite(Number(product.technical_priority)) ? Number(product.technical_priority) : 100;
   const price = Number(product.base_price);
   let score = priority;
-  if (answers.priority === "budget" && price > 0) score += price / 100000;
-  if (answers.priority === "comfort" && /premium|free|ailens|personaliz/i.test(`${product.design || ""} ${product.name || ""}`)) score -= 12;
-  if (answers.use === "screen" && /ocupacional|office|intermedia/i.test(`${product.design || ""} ${product.name || ""}`)) score -= 5;
+  if (answers.priority === "budget" && price > 0) score += Math.min(80, price / 25000);
+  if (answers.priority === "comfort" && /premium|free|ailens|personaliz|unique|precise/i.test(`${product.design || ""} ${product.name || ""}`)) score -= 20;
+  if (answers.use === "screen" && (product.optical_case === "occupational" || /ocupacional|office|intermedia/i.test(`${product.design || ""} ${product.name || ""}`))) score -= 14;
   return score;
+}
+
+function bestFitScore(offer, context, answers) {
+  return scoreProduct(offer.product || {}, answers) - commercialValue(offer, context, answers) * .32;
+}
+
+function firstDistinct(list, usedFamilies, context) {
+  return list.find(offer => !usedFamilies.has(commercialFamily(offer, context))) || list[0] || null;
+}
+
+export function selectThreeOffers(offers, context, answers = {}) {
+  const unique = [...new Set(offers)];
+  const bestRanked = [...unique].sort((a, b) => bestFitScore(a, context, answers) - bestFitScore(b, context, answers) ||
+    Number(a.product?.technical_priority ?? 100) - Number(b.product?.technical_priority ?? 100) ||
+    Number(a.product?.base_price || Infinity) - Number(b.product?.base_price || Infinity));
+  const best = bestRanked[0] || null;
+
+  const used = new Set(best ? [commercialFamily(best, context)] : []);
+  const premiumRanked = [...unique].filter(x => x !== best).sort((a, b) =>
+    commercialValue(b, context, answers) - commercialValue(a, context, answers) ||
+    bestFitScore(a, context, answers) - bestFitScore(b, context, answers));
+  const premium = firstDistinct(premiumRanked, used, context);
+  if (premium) used.add(commercialFamily(premium, context));
+
+  const accessRanked = [...unique].filter(x => x !== best && x !== premium).sort((a, b) => {
+    const pa = Number(a.product?.base_price), pb = Number(b.product?.base_price);
+    const aa = Number.isFinite(pa) && pa > 0 ? pa : Infinity, bb = Number.isFinite(pb) && pb > 0 ? pb : Infinity;
+    return aa - bb || bestFitScore(a, context, answers) - bestFitScore(b, context, answers);
+  });
+  const access = firstDistinct(accessRanked, used, context);
+
+  const chosen = [premium, best, access].filter(Boolean);
+  return {
+    slots: labels.map((tier, index) => ({ tier, offer: [premium, best, access][index] || null })),
+    alternatives: bestRanked.filter(offer => !chosen.includes(offer)),
+  };
 }
 
 export function explainOffer(product, answers, evaluation, kind) {
