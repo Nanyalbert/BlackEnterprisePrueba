@@ -22,6 +22,8 @@
   function commissionPct(recipe,doctor){
     const saved=Number(recipe?.commission_pct ?? recipe?.porcentaje_comision);
     if(Number.isFinite(saved)&&saved>=0) return saved;
+    const historical=window.BlackCommissionRules?.getPct?.(doctor,branchCode(recipe),recipe?.fecha);
+    if(Number.isFinite(Number(historical))) return Math.max(0,Number(historical));
     try{return Math.max(0,Number(window.getComision?.(doctor,branchCode(recipe)))||0)}catch(_){return 20}
   }
   function rowCalc(recipe,doctor){
@@ -102,7 +104,7 @@
       body+=summaryTable(recipes,doctor);
       body+=paragraph('Criterio de cálculo',{size:16,bold:true,before:210,after:45,keep:true});
       body+=paragraph('La comisión se calcula sobre el importe efectivamente facturado al paciente, neto de IVA. Los descuentos comerciales aplicados al paciente reducen la base comisionable. Los costos financieros, aranceles o cargos asociados al medio de pago no se descuentan de dicha base.',{size:14,color:'666660',after:40});
-      body+=paragraph('Documento complementario para anexar a la comunicación de liquidación. Los importes se detallan receta por receta para facilitar su verificación.',{size:13,color:'777772',after:0});
+      body+=paragraph('Respaldo administrativo de la liquidación digital. Los importes se detallan operación por operación para facilitar su verificación.',{size:13,color:'777772',after:0});
       if(index<doctors.length-1) body+='<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
     });
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" mc:Ignorable="w14"><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="850" w:right="900" w:bottom="850" w:left="900" w:header="400" w:footer="400"/><w:cols w:space="720"/><w:docGrid w:linePitch="360"/></w:sectPr></w:body></w:document>`;
