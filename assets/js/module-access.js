@@ -203,3 +203,20 @@
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot,{once:true});
   else boot();
 })();
+
+// CRM Oftalmólogos: cargar primero la capa de sucursales y luego el anexo Word/PDF imprimible.
+(() => {
+  if(!location.pathname.toLowerCase().endsWith('crm-oftalmologos.html')) return;
+  const load = (src) => new Promise((resolve,reject) => {
+    if(document.querySelector(`script[data-black-addon="${src}"]`)){ resolve(); return; }
+    const script=document.createElement('script');
+    script.src=src;
+    script.dataset.blackAddon=src;
+    script.onload=resolve;
+    script.onerror=reject;
+    document.head.appendChild(script);
+  });
+  load('assets/js/crm-oftalmologos-sucursales.js?v=20261007-1')
+    .then(()=>load('assets/js/crm-oftalmologos-liquidaciones.js?v=20261007-1'))
+    .catch(error=>console.error('No se pudo cargar una mejora del CRM Oftalmólogos',error));
+})();
