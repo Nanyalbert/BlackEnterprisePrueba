@@ -150,14 +150,52 @@
     return true;
   }
 
-  async function loadCommissionRules() {
+  async function loadCommissionRules(allowBackfill = true) {
     const { data, error } = await client
       .from('doctor_commission_rules')
       .select('id,doctor_id,branch_id,percentage,valid_from,valid_to,active')
       .order('valid_from', { ascending: true });
 
     if (error) throw error;
-    const rows = (data || []).map(row => ({
+    let sourceRows = data || [];
+
+    // Migración suave de porcentajes que antes vivían solo en localStorage.
+    // Solo crea una regla si existe un valor local explícito y Supabase no tiene regla activa.
+    if (allowBackfill) {
+      const todayParts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Argentina/Cordoba',
+        year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(new Date()).reduce((acc,part)=>{ if(part.type!=='literal') acc[part.type]=part.value; return acc; },{});
+      const today = `${todayParts.year}-${todayParts.month}-${todayParts.day}`;
+      const inserts = [];
+      doctors.forEach(doc => {
+        const doctorId = doctorIdByNormName[normName(doc.nombre)];
+        if (!doctorId) return;
+        ['general-paz','cerro-de-las-rosas'].forEach(branch => {
+          const branchId = branchIdByCode[branch];
+          if (!branchId) return;
+          const branchKey = `${normName(doc.nombre)}|${branch}`;
+          let localPct = comisiones[branchKey];
+          if (localPct === undefined && branch === 'general-paz') localPct = comisiones[normName(doc.nombre)];
+          if (localPct === undefined) return;
+          const exists = sourceRows.some(r => r.doctor_id === doctorId && r.branch_id === branchId && r.active !== false);
+          if (!exists) inserts.push({
+            doctor_id: doctorId,
+            branch_id: branchId,
+            percentage: Number(localPct) || 0,
+            valid_from: today,
+            active: true
+          });
+        });
+      });
+      if (inserts.length) {
+        const { error: insertError } = await client.from('doctor_commission_rules').insert(inserts);
+        if (insertError) throw insertError;
+        return loadCommissionRules(false);
+      }
+    }
+
+    const rows = sourceRows.map(row => ({
       ...row,
       doctor_name: doctorNameById[row.doctor_id] || '',
       branch_code: branchCodeById[row.branch_id] || ''
