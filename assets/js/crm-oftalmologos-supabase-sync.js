@@ -16,6 +16,7 @@
   const originalToggleBranchPago = window.toggleBranchPago;
   const originalSaveExtra = window.saveExtra;
   const originalDelExtra = window.delExtra;
+  const originalSaveDoctor = window.saveDoctor;
 
   function currentBranchFromUI() {
     const active = document.querySelector('[data-commission-branch].active');
@@ -47,8 +48,8 @@
 
   async function loadCatalogs() {
     const [{ data: branches, error: branchError }, { data: dbDoctors, error: doctorError }] = await Promise.all([
-      client.from('branches').select('id,code,name').in('code', ['general-paz', 'alto-palermo']),
-      client.from('doctors').select('id,full_name')
+      client.from('branches').select('id,code,name').in('code', ['general-paz', 'cerro-de-las-rosas']),
+      client.from('doctors').select('id,full_name,phone,birthday,service,notes,active')
     ]);
 
     if (branchError) throw branchError;
@@ -64,8 +65,17 @@
     doctorIdByNormName = {};
     doctorNameById = {};
     (dbDoctors || []).forEach(d => {
-      doctorIdByNormName[normName(d.full_name)] = d.id;
+      const key = normName(d.full_name);
+      doctorIdByNormName[key] = d.id;
       doctorNameById[d.id] = d.full_name;
+      const local = doctors.find(x => normName(x.nombre) === key);
+      if (local) {
+        local._supabaseId = d.id;
+        local.telefono = d.phone || local.telefono || '';
+        local.cumple = d.birthday || local.cumple || '';
+        local.servicio = d.service || local.servicio || 'OFTALMOLOGIA-JR';
+        if (d.notes && !local.notas) local.notas = d.notes;
+      }
     });
   }
 
@@ -93,7 +103,7 @@
   async function loadPrescriptions() {
     const { data, error } = await client
       .from('prescriptions')
-      .select('id,branch_id,doctor_id,prescription_date,patient_name,amount,source,import_fingerprint')
+      .select('id,branch_id,doctor_id,prescription_date,patient_name,amount,vat_rate,source,import_fingerprint')
       .order('prescription_date', { ascending: true });
 
     if (error) throw error;
@@ -107,6 +117,7 @@
         paciente: row.patient_name || '',
         medico: doctorNameById[row.doctor_id] || 'Médico sin nombre',
         monto: Number(row.amount) || 0,
+        vat_rate: Number(row.vat_rate ?? 21) || 21,
         institucion: '',
         branch,
         extra: isExtra,
@@ -205,6 +216,7 @@
         prescription_date: toIsoDate(r.fecha),
         patient_name: r.paciente || 'Paciente',
         amount: Number(r.monto) || 0,
+        vat_rate: Number(r.vat_rate ?? 21) || 21,
         source: r.extra ? 'manual-extra' : 'excel',
         created_by: userId,
         import_fingerprint: stableFingerprint(r)
@@ -375,6 +387,48 @@
     } finally {
       syncing = false;
     }
+  }
+
+  if (typeof originalSaveDoctor === 'function') {
+    window.saveDoctor = async function saveDoctorSupabase() {
+      const name = document.getElementById('input-nombre')?.value.trim() || '';
+      const phone = document.getElementById('input-telefono')?.value.trim() || '';
+      const birthday = document.getElementById('input-cumple')?.value || null;
+      const service = document.getElementById('input-servicio')?.value || 'OFTALMOLOGIA-JR';
+      if (!name) {
+        originalSaveDoctor();
+        return;
+      }
+
+      originalSaveDoctor();
+
+      try {
+        await loadCatalogs();
+        const doctorId = await ensureDoctorId(name);
+        const local = doctors.find(d => normName(d.nombre) === normName(name));
+        const { error } = await client.from('doctors').update({
+          full_name: name,
+          phone: phone || null,
+          birthday: birthday || null,
+          service,
+          notes: local?.notas || null,
+          updated_at: new Date().toISOString()
+        }).eq('id', doctorId);
+        if (error) throw error;
+        if (local) {
+          local._supabaseId = doctorId;
+          local.telefono = phone;
+          local.cumple = birthday || '';
+        }
+        saveState();
+        setSyncBadge('ok', 'Profesional sincronizado');
+        window.BlackDoctorDelivery?.hydrate?.();
+      } catch (err) {
+        console.error(err);
+        setSyncBadge('error', 'Profesional pendiente de sincronizar');
+        showToast('El profesional quedó guardado localmente, pero sus datos de contacto no pudieron sincronizarse.');
+      }
+    };
   }
 
   if (typeof originalConfirmCsvImport === 'function') {
