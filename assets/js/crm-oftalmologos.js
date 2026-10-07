@@ -638,6 +638,10 @@ function processExcelFile(file){
       const clienteCol=headers.findIndex(h=>h.toLowerCase().includes("cliente"));
       const medicoCol =headers.findIndex(h=>h.toLowerCase().includes("medico")||h.toLowerCase().includes("médico"));
       const montoCol  =headers.findIndex(h=>h.toLowerCase().includes("total receta"));
+      const ivaCol=headers.findIndex(h=>{
+        const key=String(h||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
+        return key.includes("alicuota iva")||key==="iva %"||key==="iva%"||key==="porcentaje iva";
+      });
 
       parsedCsvData=[];
       const newDoctors=new Set();
@@ -650,6 +654,7 @@ function processExcelFile(file){
         const cliente =String(row[clienteCol]||"").trim();
         const medico  =String(row[medicoCol]||"").trim();
         const montoRaw=row[montoCol];
+        const ivaRaw=ivaCol>=0?row[ivaCol]:21;
 
         if(!medico||medico===""||medico.toUpperCase().includes("MINISTERIO")||medico.toUpperCase().includes("CONSUMIDOR")) return;
         if(!fecha) return;
@@ -657,9 +662,11 @@ function processExcelFile(file){
         const monto=typeof montoRaw==="number"?montoRaw:parseFloat(String(montoRaw).replace(/[$,]/g,""))||0;
         if(monto<=0) return;
 
-        const paciente=cliente.split(",")[0].trim();
+        const paciente=cliente.replace(/\s+/g," ").trim()||"Paciente";
+        const vatRateRaw=parseFloat(String(ivaRaw??21).replace("%","").replace(",","."));
+        const vat_rate=Number.isFinite(vatRateRaw)&&vatRateRaw>=0&&vatRateRaw<=100?vatRateRaw:21;
 
-        parsedCsvData.push({fecha,paciente,medico,monto,institucion:""});
+        parsedCsvData.push({fecha,paciente,medico,monto,vat_rate,institucion:""});
 
         const exists=doctors.some(d=>normName(d.nombre)===normName(medico));
         if(!exists) newDoctors.add(medico);
