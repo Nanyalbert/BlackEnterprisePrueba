@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/base.css">
-<link rel="stylesheet" href="assets/css/rrhh.css">
+<link rel="stylesheet" href="assets/css/rrhh.css?v=20261007-5">
 </head>
 <body class="rrhh-page">
 <main class="rrhh-shell">
@@ -77,10 +77,58 @@
   </section>
 
   <section class="rrhh-panel" id="tab-reportes">
-    <div class="section-head"><div><p class="eyebrow">REPORTES</p><h2>Lectura mensual de asistencia</h2></div><input class="month-field" id="report-month" type="month"></div>
+    <div class="section-head">
+      <div><p class="eyebrow">REPORTES</p><h2>Seguimiento individual y cumplimiento horario</h2><p class="section-copy">Elegí una persona y cualquier rango de fechas para analizar su asistencia día por día. Este reporte mide cumplimiento horario y puntualidad; no reemplaza una evaluación de desempeño laboral.</p></div>
+    </div>
+
+    <article class="panel-card individual-report-card">
+      <div class="report-filter-grid">
+        <label><span>Integrante</span><select id="individual-employee"><option value="">Seleccionar integrante</option></select></label>
+        <label><span>Desde</span><input id="individual-from" type="date"></label>
+        <label><span>Hasta</span><input id="individual-to" type="date"></label>
+        <button class="btn btn-primary" id="individual-run" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
+          Ver reporte
+        </button>
+      </div>
+
+      <div class="individual-report-head">
+        <div>
+          <p class="eyebrow">EVALUACIÓN INDIVIDUAL</p>
+          <h3 id="individual-title">Seleccioná un integrante</h3>
+          <p id="individual-period" class="report-subtitle">Podés consultar desde un día puntual hasta un año completo.</p>
+        </div>
+        <div class="report-actions">
+          <button class="btn btn-ghost" id="individual-export" type="button" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M5 21h14"/></svg>
+            Exportar CSV
+          </button>
+          <button class="btn btn-ghost" id="individual-print" type="button" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg>
+            Imprimir / PDF
+          </button>
+        </div>
+      </div>
+
+      <div class="individual-kpis" id="individual-kpis">
+        <article><span>Días programados</span><strong>—</strong><small>Dentro del período</small></article>
+        <article><span>Horas trabajadas</span><strong>—</strong><small>Tiempo fichado válido</small></article>
+        <article><span>Cumplimiento horario</span><strong>—</strong><small>Trabajadas / esperadas</small></article>
+        <article><span>Puntualidad</span><strong>—</strong><small>Primera entrada diaria</small></article>
+        <article><span>Tardanza acumulada</span><strong>—</strong><small>Fuera de tolerancia</small></article>
+        <article><span>Balance horario</span><strong>—</strong><small>Exceso o faltante</small></article>
+      </div>
+
+      <div id="individual-report" class="report-empty individual-report-empty">Seleccioná integrante y fechas para ver el detalle diario.</div>
+    </article>
+
+    <div class="section-head monthly-head">
+      <div><p class="eyebrow">RESUMEN MENSUAL</p><h2>Comparativa general del equipo</h2></div>
+      <input class="month-field" id="report-month" type="month">
+    </div>
     <div class="report-grid">
       <article class="panel-card"><div class="panel-title"><h3>Horas y puntualidad</h3><span>Por integrante</span></div><div id="monthly-report" class="report-empty">Seleccioná un período para consultar el resumen.</div></article>
-      <article class="panel-card note-card"><div class="panel-title"><h3>Equivalencia económica</h3><span>Informativa</span></div><p>El sistema podrá traducir minutos de tardanza a una equivalencia monetaria usando el valor hora de referencia. Este dato será informativo y no generará descuentos automáticos.</p></article>
+      <article class="panel-card note-card"><div class="panel-title"><h3>Lectura responsable</h3><span>Importante</span></div><p>“Cumplimiento horario” compara minutos trabajados contra minutos programados. Una diferencia no implica por sí sola bajo rendimiento: puede haber vacaciones, licencias, feriados, tareas externas o ajustes pendientes. Los registros incompletos quedan señalados para revisión.</p></article>
     </div>
   </section>
 
@@ -115,7 +163,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="assets/js/supabase-config.js"></script>
-<script src="assets/js/rrhh.js?v=20261007-3"></script>
+<script src="assets/js/rrhh.js?v=20261007-5"></script>
 <script src="assets/js/module-access.js?v=20261006-3"></script>
 </body>
 </html>
