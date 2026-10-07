@@ -189,7 +189,9 @@
 
   function branchSummaryHTML(d, item, desde, hasta) {
     const pct = getBranchCommission(d.medico, item.branch);
-    const com = item.monto * pct / 100;
+    const linePcts = item.recetas.map(r => window.BlackCommissionRules?.getPct?.(d.medico, item.branch, r.fecha) ?? pct);
+    const com = item.recetas.reduce((sum, r, i) => sum + (Number(r.monto) || 0) * (Number(linePcts[i]) || 0) / 100, 0);
+    const mixedPct = new Set(linePcts.map(Number)).size > 1;
     const paid = isBranchPaid(d.medico, desde, hasta, item.branch);
     const nonExtra = item.recetas.filter(r => !r.extra).length;
     const delivery = window.BlackDoctorDelivery?.buttonHTML?.(d.medico, item.branch) || '';
@@ -238,7 +240,10 @@
         const order = { 'general-paz': 0, 'cerro-de-las-rosas': 1 };
         return (order[a.branch] ?? 9) - (order[b.branch] ?? 9);
       });
-      const totalCommission = branchItems.reduce((a, item) => a + item.monto * getBranchCommission(d.medico, item.branch) / 100, 0);
+      const totalCommission = branchItems.reduce((sum, item) => sum + item.recetas.reduce((subtotal, r) => {
+        const pct = window.BlackCommissionRules?.getPct?.(d.medico, item.branch, r.fecha) ?? getBranchCommission(d.medico, item.branch);
+        return subtotal + (Number(r.monto) || 0) * (Number(pct) || 0) / 100;
+      }, 0), 0);
       const paidCount = branchItems.filter(item => isBranchPaid(d.medico, desde, hasta, item.branch)).length;
       const paymentLabel = paidCount === branchItems.length ? 'Pagado' : paidCount > 0 ? 'Pago parcial' : 'Pendiente';
       const paymentClass = paidCount === branchItems.length ? 'paid' : paidCount > 0 ? 'partial' : 'pending';
@@ -252,7 +257,7 @@
           const vatRate = Number(r.vat_rate ?? r.iva_rate ?? 21) || 21;
           const vat = net * vatRate / 100;
           const gross = net + vat;
-          const pct = getBranchCommission(d.medico, branch);
+          const pct = window.BlackCommissionRules?.getPct?.(d.medico, branch, r.fecha) ?? getBranchCommission(d.medico, branch);
           const commission = net * pct / 100;
           const deleteBtn = r.extra ? `<button class="extra-del" onclick="delExtra('${r.xid}')" title="Eliminar">✕</button>` : '';
           const label = r.extra ? '<span class="extra-tag">＋</span>' : '';
