@@ -20,6 +20,10 @@ test("ADD y ambos ojos deben entrar en la ficha", () => {
   assert.equal(evaluateProduct(minmax, { ...pair, oi: { ...pair.oi, sphere: 6 } }, "+2.00").status, "out");
 });
 
+test("un multifocal sin rango de ADD nunca se declara compatible", () => {
+  assert.equal(evaluateProduct({ ...minmax, addition_min: null, addition_max: null }, pair, "+2.00").status, "review");
+});
+
 test("la matriz no redondea una graduación intermedia ni considera laboratorio como apto", () => {
   const product = { ...minmax, technical_family_key: "organic_standard_149_156" };
   const matrix = { status: "resolved", final_supply_mode: "stock" };
@@ -36,32 +40,43 @@ test("artículos vencidos o inactivos no se ofrecen", () => {
 
 const item = (name, kind = "far", extra = {}) => ({ name, sku: name, kind, product: { name, treatment: "antirreflejo", optical_case: kind === "both" ? "multifocal" : "monofocal", ...extra } });
 
-test("lejos elige tres gamas superiores y destaca la intermedia", () => {
+test("la opción central es la mejor coincidencia y se mantienen premium y acceso", () => {
   const offers = [item("Orgánico blanco"), item("Orgánico antirreflejo"), item("Blue antirreflejo 1.56"), item("Super Blue antirreflejo"), item("Black Blue 1.67")];
-  const selection = selectThreeOffers(offers, "far", { use: "driving", priority: "budget" });
-  assert.deepEqual(selection.slots.map(slot => slot.offer?.name), ["Black Blue 1.67", "Super Blue antirreflejo", "Blue antirreflejo 1.56"]);
-  assert.equal(selection.slots[1].tier, "Recomendado");
+  const selection = selectThreeOffers(offers, "far", { use: "driving", priority: "comfort" });
+  assert.deepEqual(selection.slots.map(slot => slot.tier), ["Premium", "Mejor opción", "Acceso"]);
+  assert.equal(selection.slots[1].offer.name, "Black Blue 1.67");
+  assert.equal(selection.slots.filter(slot => slot.offer).length, 3);
   assert.equal(selection.alternatives.length, 2);
 });
 
-test("cerca con pantallas da prioridad ocupacional si la ficha ya fue validada", () => {
+test("presupuesto modifica la mejor opción usando el precio cargado", () => {
+  const offers = [
+    item("Super Blue antirreflejo", "far", { base_price: 300000 }),
+    item("Blue antirreflejo 1.56", "far", { base_price: 70000 }),
+    item("Orgánico antirreflejo", "far", { base_price: 45000 }),
+  ];
+  const selection = selectThreeOffers(offers, "far", { use: "driving", priority: "budget" });
+  assert.equal(selection.slots[1].offer.name, "Blue antirreflejo 1.56");
+});
+
+test("cerca con pantallas ubica el ocupacional como mejor opción si ya fue validado", () => {
   const offers = [item("Blue antirreflejo"), item("Super Blue antirreflejo"), item("Ocupacional digital", "near")];
-  assert.equal(selectThreeOffers(offers, "near", { use: "screen" }).slots[0].offer.name, "Ocupacional digital");
+  assert.equal(selectThreeOffers(offers, "near", { use: "screen" }).slots[1].offer.name, "Ocupacional digital");
   assert.equal(selectThreeOffers(offers, "near", { use: "reading" }).slots[2].offer.name, "Ocupacional digital");
 });
 
-test("multifocal ordena premium, intermedio y base; administrador puede reordenar", () => {
+test("multifocal ubica la familia de mayor ajuste en el centro; rank del administrador puede reordenar", () => {
   const offers = [item("Multifocal ONE", "both"), item("Multifocal NEW", "both"), item("Multifocal FREE", "both")];
-  assert.deepEqual(selectThreeOffers(offers, "both").slots.map(slot => slot.offer.name), ["Multifocal FREE", "Multifocal NEW", "Multifocal ONE"]);
+  assert.equal(selectThreeOffers(offers, "both").slots[1].offer.name, "Multifocal FREE");
   offers[0].product.metadata = { scanner: { rank: 99 } };
-  assert.equal(selectThreeOffers(offers, "both").slots[0].offer.name, "Multifocal ONE");
+  assert.equal(selectThreeOffers(offers, "both").slots[1].offer.name, "Multifocal ONE");
 });
 
 test("sin tres fichas se mantienen tres lugares sin inventar artículos", () => {
   const selection = selectThreeOffers([item("Super Blue antirreflejo")], "far");
   assert.equal(selection.slots.length, 3);
   assert.equal(selection.slots.filter(slot => slot.offer).length, 1);
-  assert.equal(selection.slots[1].offer, null);
+  assert.equal(selection.slots[1].offer.name, "Super Blue antirreflejo");
 });
 
 test("matriz extendida no habilita artículo marcado solo stock", () => {
