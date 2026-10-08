@@ -56,7 +56,7 @@
       client.from('branches').select('id,code,name').in('code', ['general-paz', 'cerro-de-las-rosas']),
       client.from('doctors').select('id,full_name,phone,birthday,service,notes,active'),
       client.from('institutions').select('id,name,active').eq('active', true),
-      client.from('doctor_schedules').select('doctor_id,institution_id,day_of_week,appointment_type,start_time,end_time,duration_minutes,active').eq('active', true)
+      client.from('doctor_schedules').select('doctor_id,institution_id,day_of_week,appointment_type,start_time,end_time,duration_minutes,availability_text,active').eq('active', true)
     ]);
 
     if (branchError) throw branchError;
@@ -90,7 +90,8 @@
         tipo: s.appointment_type || 'Indistinto',
         desde: String(s.start_time || '').slice(0,5),
         hasta: String(s.end_time || '').slice(0,5),
-        duracion: Number(s.duration_minutes) || 15
+        duracion: s.duration_minutes == null ? null : Number(s.duration_minutes),
+        availability_text: s.availability_text || ''
       });
     });
 
