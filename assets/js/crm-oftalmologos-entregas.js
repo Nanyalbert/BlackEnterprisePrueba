@@ -134,7 +134,7 @@
     window.showToast?.('Generando y enviando liquidación…');
     try{
       const {data,error}=await client.functions.invoke('black-doctor-commission-send',{body:{
-        doctor_id:doctorId,branch_code:canonicalBranch(branch),period_from:from,period_to:to,force_resend:Boolean(reSend)
+        doctor_id:doctorId,doctor_name:doctor,branch_code:canonicalBranch(branch),period_from:from,period_to:to,force_resend:Boolean(reSend)
       }});
       if(error)throw error;
       if(!data?.ok)throw new Error(data?.error||'Evolution no confirmó el envío.');
@@ -143,7 +143,14 @@
       window.showToast?.('✓ Liquidación enviada por WhatsApp');
     }catch(error){
       console.error('Liquidación WhatsApp',error);
-      window.showToast?.(error?.context?.error||error?.message||'No se pudo enviar la liquidación.');
+      let message=error?.message||'No se pudo enviar la liquidación.';
+      try{
+        if(error?.context && typeof error.context.json==='function'){
+          const payload=await error.context.clone().json();
+          if(payload?.error) message=payload.error;
+        }
+      }catch(_){}
+      window.showToast?.(message);
       await loadStatuses().catch(()=>{});
       try{window.applyFilters?.()}catch(_){}
     }finally{state.loading=false}
