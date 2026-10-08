@@ -47,13 +47,22 @@
   }
 
   async function loadCatalogs() {
-    const [{ data: branches, error: branchError }, { data: dbDoctors, error: doctorError }] = await Promise.all([
+    const [
+      { data: branches, error: branchError },
+      { data: dbDoctors, error: doctorError },
+      { data: dbInstitutions, error: institutionError },
+      { data: dbSchedules, error: scheduleError }
+    ] = await Promise.all([
       client.from('branches').select('id,code,name').in('code', ['general-paz', 'cerro-de-las-rosas']),
-      client.from('doctors').select('id,full_name,phone,birthday,service,notes,active')
+      client.from('doctors').select('id,full_name,phone,birthday,service,notes,active'),
+      client.from('institutions').select('id,name,active').eq('active', true),
+      client.from('doctor_schedules').select('doctor_id,institution_id,day_of_week,appointment_type,start_time,end_time,duration_minutes,active').eq('active', true)
     ]);
 
     if (branchError) throw branchError;
     if (doctorError) throw doctorError;
+    if (institutionError) throw institutionError;
+    if (scheduleError) throw scheduleError;
 
     branchIdByCode = {};
     branchCodeById = {};
@@ -64,6 +73,26 @@
 
     doctorIdByNormName = {};
     doctorNameById = {};
+
+    const institutionNameById = Object.fromEntries(
+      (dbInstitutions || []).map(i => [i.id, i.name])
+    );
+    const dayNameByNumber = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const schedulesByDoctor = new Map();
+    (dbSchedules || []).forEach(s => {
+      if (!s.doctor_id) return;
+      const institutionName = institutionNameById[s.institution_id] || 'Black Optica';
+      if (!schedulesByDoctor.has(s.doctor_id)) schedulesByDoctor.set(s.doctor_id, new Map());
+      const byInstitution = schedulesByDoctor.get(s.doctor_id);
+      if (!byInstitution.has(institutionName)) byInstitution.set(institutionName, []);
+      byInstitution.get(institutionName).push({
+        dia: dayNameByNumber[Number(s.day_of_week)] || 'Lunes',
+        tipo: s.appointment_type || 'Indistinto',
+        desde: String(s.start_time || '').slice(0,5),
+        hasta: String(s.end_time || '').slice(0,5),
+        duracion: Number(s.duration_minutes) || 15
+      });
+    });
 
     const initialByName = new Map(
       (typeof INITIAL_DOCTORS !== 'undefined' ? INITIAL_DOCTORS : [])
@@ -109,7 +138,19 @@
       local.cumple = d.birthday || localBirthday || '';
       local.servicio = d.service || local.servicio || 'OFTALMOLOGIA-JR';
       if (d.notes) local.notas = d.notes;
-      if (!Array.isArray(local.instituciones)) local.instituciones = [];
+      const scheduleGroups = schedulesByDoctor.get(d.id);
+      if (scheduleGroups?.size) {
+        local.instituciones = [...scheduleGroups.entries()].map(([nombre, turnos]) => ({
+          nombre,
+          turnos: turnos.sort((a,b) => {
+            const dayOrder = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+            const dayDiff = dayOrder.indexOf(a.dia) - dayOrder.indexOf(b.dia);
+            return dayDiff || String(a.desde).localeCompare(String(b.desde));
+          })
+        }));
+      } else if (!Array.isArray(local.instituciones)) {
+        local.instituciones = [];
+      }
 
       // Migración suave: si el CRM histórico tenía contacto local y Supabase aún no,
       // lo subimos una sola vez para habilitar entregas por WhatsApp.
