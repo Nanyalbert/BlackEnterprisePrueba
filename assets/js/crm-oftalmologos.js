@@ -276,8 +276,15 @@ function getDoctorsForDay(day) {
     return {...doc,institucionesDelDia,turnosDelDia:allTurnos};
   }).filter(d=>d.turnosDelDia.length>0).sort((a,b)=>Math.min(...a.turnosDelDia.map(t=>timeToMin(t.desde)))-Math.min(...b.turnosDelDia.map(t=>timeToMin(t.desde))));
 }
-function timeToMin(t){const[h,m]=t.split(":").map(Number);return h*60+m;}
-function calcTurns(t){return Math.max(1,Math.floor((timeToMin(t.hasta)-timeToMin(t.desde))/t.duracion));}
+function timeToMin(t){
+  if(!t || !String(t).includes(":")) return Number.POSITIVE_INFINITY;
+  const[h,m]=String(t).split(":").map(Number);
+  return h*60+m;
+}
+function calcTurns(t){
+  if(!t?.desde || !t?.hasta || !Number(t?.duracion)) return null;
+  return Math.max(1,Math.floor((timeToMin(t.hasta)-timeToMin(t.desde))/Number(t.duracion)));
+}
 function badgeClass(tipo){if(tipo==="Ulterior / Control")return"badge-ulterior";if(tipo==="Indistinto con prácticas")return"badge-practicas";if(tipo==="Práctica")return"badge-practica";return"badge-indistinto";}
 function initials(n){const p=n.split(/[,\s]+/).filter(Boolean);return p.length>=2?(p[0][0]+p[1][0]).toUpperCase():n[0].toUpperCase();}
 function renderSchedule() {
@@ -290,7 +297,15 @@ function renderSchedule() {
     return;
   }
   document.getElementById("schedule-list").innerHTML = docsForDay.map((doc,idx)=>{
-    const instHTML = doc.institucionesDelDia.map(inst=>`<div class="inst-block"><div class="inst-label"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>${inst.nombre}</div><div class="turno-list">${inst.turnos.map(t=>`<div class="turno-row"><div class="turno-time"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${t.desde}</div><div style="font-size:.78rem;color:var(--roble);font-weight:500">→</div><div class="turno-time">${t.hasta}</div><div class="turno-sep"></div><div class="turno-badges"><span class="badge ${badgeClass(t.tipo)}">${t.tipo}</span><span class="badge badge-duracion">${t.duracion}min · ~${calcTurns(t)}</span></div></div>`).join("")}</div></div>`).join("");
+    const instHTML = doc.institucionesDelDia.map(inst=>`<div class="inst-block"><div class="inst-label"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>${inst.nombre}</div><div class="turno-list">${inst.turnos.map(t=>{
+      const flexible=t.availability_text && (!t.desde || !t.hasta);
+      const turns=calcTurns(t);
+      const horario = flexible
+        ? `<div class="turno-time flexible-time" style="grid-column:1/4">${escHtml(t.availability_text)}</div>`
+        : `<div class="turno-time"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${t.desde||"—"}</div><div style="font-size:.78rem;color:var(--roble);font-weight:500">→</div><div class="turno-time">${t.hasta||"—"}</div>`;
+      const duracion = turns ? `<span class="badge badge-duracion">${t.duracion}min · ~${turns}</span>` : "";
+      return `<div class="turno-row">${horario}<div class="turno-sep"></div><div class="turno-badges"><span class="badge ${badgeClass(t.tipo)}">${t.tipo}</span>${duracion}</div></div>`;
+    }).join("")}</div></div>`).join("");
     const isDemanda=doc.servicio.includes("DEMANDA");
     return `<div class="doctor-card" style="animation-delay:${idx*60}ms"><div class="doctor-card-header"><div class="doctor-avatar">${initials(doc.nombre)}</div><div class="doctor-info"><div class="doctor-name">${doc.nombre}</div><span class="doctor-service${isDemanda?" demanda":""}">${doc.servicio}</span></div></div>${instHTML}</div>`;
   }).join("");
@@ -305,7 +320,11 @@ function shareDaySchedule(){
     txt += `*${doc.nombre}*\n`;
     doc.institucionesDelDia.forEach(inst=>{
       inst.turnos.forEach(t=>{
-        txt += `  ${t.desde} a ${t.hasta} · ${t.tipo} (${t.duracion}min)\n`;
+        const horario=t.availability_text && (!t.desde || !t.hasta)
+          ? t.availability_text
+          : `${t.desde||"—"} a ${t.hasta||"—"}`;
+        const duracion=t.duracion?` (${t.duracion}min)`:"";
+        txt += `  ${horario} · ${t.tipo}${duracion}\n`;
       });
     });
     txt += `\n`;
