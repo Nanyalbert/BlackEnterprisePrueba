@@ -64,38 +64,82 @@
 
     doctorIdByNormName = {};
     doctorNameById = {};
+
+    const initialByName = new Map(
+      (typeof INITIAL_DOCTORS !== 'undefined' ? INITIAL_DOCTORS : [])
+        .map(d => [normName(d.nombre), d])
+    );
+    const localByName = new Map(
+      (Array.isArray(doctors) ? doctors : [])
+        .filter(d => d?.nombre)
+        .map(d => [normName(d.nombre), d])
+    );
+    const cloudNames = new Set();
+    const mergedDoctors = [];
     const contactBackfill = [];
-    (dbDoctors || []).forEach(d => {
+
+    (dbDoctors || []).filter(d => d.active !== false).forEach(d => {
       const key = normName(d.full_name);
+      cloudNames.add(key);
       doctorIdByNormName[key] = d.id;
       doctorNameById[d.id] = d.full_name;
-      const local = doctors.find(x => normName(x.nombre) === key);
-      if (local) {
-        local._supabaseId = d.id;
-        const localPhone = String(local.telefono || '').trim();
-        const localBirthday = local.cumple || null;
-        local.telefono = d.phone || localPhone || '';
-        local.cumple = d.birthday || localBirthday || '';
-        local.servicio = d.service || local.servicio || 'OFTALMOLOGIA-JR';
-        if (d.notes && !local.notas) local.notas = d.notes;
 
-        // Migración suave: si el CRM histórico tenía contacto local y Supabase aún no,
-        // lo subimos una sola vez para habilitar entregas por WhatsApp.
-        const patch = {};
-        if (!d.phone && localPhone) patch.phone = localPhone;
-        if (!d.birthday && localBirthday) patch.birthday = localBirthday;
-        if (!d.notes && local.notas) patch.notes = local.notas;
-        if (Object.keys(patch).length) {
-          patch.updated_at = new Date().toISOString();
-          contactBackfill.push(client.from('doctors').update(patch).eq('id', d.id));
-        }
+      let local = localByName.get(key);
+      if (!local) {
+        const initial = initialByName.get(key);
+        local = initial
+          ? JSON.parse(JSON.stringify(initial))
+          : {
+              id: 'cloud-' + d.id,
+              nombre: d.full_name,
+              servicio: d.service || 'OFTALMOLOGIA-JR',
+              telefono: '',
+              cumple: '',
+              notas: '',
+              instituciones: []
+            };
       }
+
+      local.nombre = d.full_name || local.nombre;
+      local._supabaseId = d.id;
+
+      const localPhone = String(local.telefono || '').trim();
+      const localBirthday = local.cumple || null;
+      local.telefono = d.phone || localPhone || '';
+      local.cumple = d.birthday || localBirthday || '';
+      local.servicio = d.service || local.servicio || 'OFTALMOLOGIA-JR';
+      if (d.notes) local.notas = d.notes;
+      if (!Array.isArray(local.instituciones)) local.instituciones = [];
+
+      // Migración suave: si el CRM histórico tenía contacto local y Supabase aún no,
+      // lo subimos una sola vez para habilitar entregas por WhatsApp.
+      const patch = {};
+      if (!d.phone && localPhone) patch.phone = localPhone;
+      if (!d.birthday && localBirthday) patch.birthday = localBirthday;
+      if (!d.notes && local.notas) patch.notes = local.notas;
+      if (Object.keys(patch).length) {
+        patch.updated_at = new Date().toISOString();
+        contactBackfill.push(client.from('doctors').update(patch).eq('id', d.id));
+      }
+
+      mergedDoctors.push(local);
     });
+
+    // Nunca borrar un médico local que todavía no llegó a sincronizarse.
+    (Array.isArray(doctors) ? doctors : []).forEach(local => {
+      const key = normName(local?.nombre);
+      if (key && !cloudNames.has(key)) mergedDoctors.push(local);
+    });
+
+    doctors = mergedDoctors.sort((a,b) => String(a.nombre||'').localeCompare(String(b.nombre||''),'es'));
+
     if (contactBackfill.length) {
       const results = await Promise.all(contactBackfill);
       const failed = results.find(x => x.error);
       if (failed?.error) console.warn('No se pudieron migrar algunos contactos locales:', failed.error);
     }
+
+    saveState();
   }
 
   async function ensureDoctorId(name) {
@@ -472,15 +516,28 @@
 
     try {
       await loadCatalogs();
+
+      // Los profesionales vienen de Supabase como fuente principal y se reconstruyen
+      // aunque el localStorage se haya borrado o esté vacío.
+      try {
+        renderHero?.();
+        renderDaySelector?.();
+        renderSchedule?.();
+        renderDoctorsList?.();
+        renderBirthdays?.();
+      } catch (renderError) {
+        console.warn('No se pudo refrescar alguna vista de profesionales:', renderError);
+      }
+
       const hasCloudRecipes = await loadPrescriptions();
       await Promise.all([loadCommissionRules(), loadPayments(), loadImportHistory()]);
 
       // Si Supabase todavía está vacío, no borramos el respaldo local actual.
+      saveState();
+      applyFilters();
       if (!hasCloudRecipes) {
-        setSyncBadge('ok', 'Supabase listo · sin recetas en nube');
+        setSyncBadge('ok', 'Supabase listo · profesionales sincronizados');
       } else {
-        saveState();
-        applyFilters();
         setSyncBadge('ok', 'Supabase sincronizado');
       }
     } catch (err) {
