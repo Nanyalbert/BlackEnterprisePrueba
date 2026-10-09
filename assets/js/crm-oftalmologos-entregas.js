@@ -90,75 +90,65 @@
   function doctorIdFor(doctor){return state.doctors.get(String(window.normName?.(doctor)||doctor||''))?.id||null}
   function statusFor(doctor,branch){return state.statuses.get(key(doctor,branch))||null}
 
-  function buttonHTML(doctor,branch){
-    const phone=phoneFor(doctor),status=statusFor(doctor,branch);
-    const d=escAttr(doctor),b=escAttr(canonicalBranch(branch));
-    const icon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4Z"/></svg>';
-    if(!phone)return '<div class="branch-delivery"><button class="delivery-btn no-phone" type="button" disabled>'+icon+'Falta WhatsApp</button><span class="delivery-state-text">Cargalo en la ficha del profesional.</span></div>';
-    if(status?.status==='sent'){
-      return '<div class="branch-delivery"><button class="delivery-btn sent" type="button" onclick="BlackDoctorDelivery.send(\''+d+'\',\''+b+'\',true)">'+icon+'✓ Enviada por WhatsApp</button><span class="delivery-state-text"><strong>'+fmtSent(status.sent_at)+'</strong> · Reenviar si hace falta</span></div>';
-    }
-    if(status?.status==='failed'){
-      return '<div class="branch-delivery"><button class="delivery-btn failed" type="button" onclick="BlackDoctorDelivery.send(\''+d+'\',\''+b+'\')">'+icon+'Reintentar envío</button><span class="delivery-state-text">El intento anterior no se confirmó.</span></div>';
-    }
-    return '<div class="branch-delivery"><button class="delivery-btn" type="button" onclick="BlackDoctorDelivery.send(\''+d+'\',\''+b+'\')">'+icon+'Abrir WhatsApp con detalle</button><span class="delivery-state-text">Usa el período seleccionado.</span></div>';
+  function normalizeWaPhone(value){
+    let d=String(value||'').replace(/\D/g,'');
+    if(d.startsWith('54')) d=d.slice(2);
+    if(d.startsWith('0')) d=d.slice(1);
+    if(d.startsWith('9') && d.length===11) return '54'+d;
+    if(d.length===10) return '549'+d;
+    return '';
   }
-
-  function confirmSend(doctor,branch,reSend=false){
-    return new Promise(resolve=>{
-      const from=document.getElementById('periodo-desde')?.value||'',to=document.getElementById('periodo-hasta')?.value||'';
-      const phone=phoneFor(doctor);
-      const overlay=document.createElement('div');overlay.className='delivery-confirm-overlay';
-      overlay.innerHTML='<div class="delivery-confirm" role="dialog" aria-modal="true"><span class="delivery-confirm-kicker">WhatsApp · Evolution API</span><h3>'+(reSend?'Reenviar liquidación':'Enviar liquidación')+'</h3><p>Black OS va a generar el PDF con el detalle económico y enviarlo al WhatsApp cargado del profesional. El estado cambia a entregada solo si Evolution confirma el envío.</p><div class="delivery-confirm-data"><div><span>Profesional</span><strong></strong></div><div><span>Sucursal</span><strong></strong></div><div><span>Período</span><strong></strong></div><div><span>WhatsApp</span><strong></strong></div></div><div class="delivery-confirm-actions"><button type="button" class="btn-secondary-out" data-cancel style="flex:1">Cancelar</button><button type="button" class="btn-primary" data-send style="flex:1">Enviar por WhatsApp</button></div></div>';
-      const values=overlay.querySelectorAll('.delivery-confirm-data strong');
-      values[0].textContent=doctor;values[1].textContent=canonicalBranch(branch)==='cerro-de-las-rosas'?'Cerro de las Rosas':'General Paz';
-      values[2].textContent=(from||'—')+' → '+(to||'—');values[3].textContent=phone||'—';
-      const done=value=>{overlay.remove();resolve(value)};
-      overlay.querySelector('[data-cancel]').addEventListener('click',()=>done(false));
-      overlay.querySelector('[data-send]').addEventListener('click',()=>done(true));
-      overlay.addEventListener('click',e=>{if(e.target===overlay)done(false)});
-      document.body.appendChild(overlay);
+  function directRows(doctor,branch){
+    const from=document.getElementById('periodo-desde')?.value||'';
+    const to=document.getElementById('periodo-hasta')?.value||'';
+    const inst=document.getElementById('filter-institucion')?.value||'';
+    const all=typeof window.filterRecetas==='function'?window.filterRecetas(from,to,inst):[];
+    const dk=String(window.normName?.(doctor)||doctor||'');
+    return (all||[]).filter(r=>String(window.normName?.(r.medico)||r.medico||'')===dk && canonicalBranch(window.branchCodeForRecipe?.(r)||r.branch||r.sucursal||'general-paz')===canonicalBranch(branch));
+  }
+  function directMessage(doctor,branch){
+    const from=document.getElementById('periodo-desde')?.value||'';
+    const to=document.getElementById('periodo-hasta')?.value||'';
+    const rows=directRows(doctor,branch);
+    const money=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(n)||0);
+    const dmy=v=>{const p=String(v||'').slice(0,10).split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:String(v||'')};
+    let total=0,netTotal=0;
+    const detail=[];
+    rows.forEach(r=>{
+      const net=Number(r.monto)||0;
+      const pct=Number(window.BlackCommissionRules?.getPct?.(doctor,canonicalBranch(branch),r.fecha) ?? window.getComision?.(doctor,canonicalBranch(branch)) ?? 20)||20;
+      const commission=net*pct/100;
+      netTotal+=net; total+=commission;
+      detail.push(dmy(r.fecha)+' · '+(r.paciente||'Paciente')+' · '+money(net)+' s/IVA · '+pct+'% · comisión '+money(commission));
     });
+    const branchName=canonicalBranch(branch)==='cerro-de-las-rosas'?'Cerro de las Rosas':'General Paz';
+    let msg='Hola Dr./Dra. '+doctor+'. Le compartimos el detalle de su liquidación de comisiones de Black Óptica.\n\n';
+    msg+='Período: '+dmy(from)+' al '+dmy(to)+'\nSucursal: '+branchName+'\nOperaciones: '+rows.length+'\nBase s/IVA: '+money(netTotal)+'\n*Total comisión: '+money(total)+'*';
+    if(detail.length){msg+='\n\n*Detalle*\n'+detail.join('\n');}
+    msg+='\n\nBlack Óptica';
+    return {msg,rows};
   }
 
-  async function send(doctor,branch,reSend=false){
-    if(state.loading)return;
+  function buttonHTML(doctor,branch){
+    const phone=phoneFor(doctor);
+    const d=escAttr(doctor),b=escAttr(canonicalBranch(branch));
+    const icon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 3.5a10 10 0 0 0-15.7 12L3 21l5.7-1.5a10 10 0 1 0 11.8-16Z"/><path d="M8.5 8.5c.6 3 2.8 5.2 5.9 6.1"/></svg>';
+    if(!phone)return '<div class="branch-delivery"><button class="delivery-btn no-phone" type="button" disabled>'+icon+'Falta WhatsApp</button><span class="delivery-state-text">Cargalo en la ficha del profesional.</span></div>';
+    return '<div class="branch-delivery"><button class="delivery-btn" type="button" onclick="BlackDoctorDelivery.send(\''+d+'\',\''+b+'\')">'+icon+'Enviar detalle por WhatsApp</button><span class="delivery-state-text">Abre el chat con el período seleccionado.</span></div>';
+  }
+
+  async function send(doctor,branch){
     const from=document.getElementById('periodo-desde')?.value||'',to=document.getElementById('periodo-hasta')?.value||'';
-    if(!from||!to){window.showToast?.('Definí Desde y Hasta antes de enviar.');return}
-    const doctorId=doctorIdFor(doctor);
-    if(!doctorId){window.showToast?.('No pude vincular este profesional con Supabase.');return}
-    if(!phoneFor(doctor)){window.showToast?.('Cargá el WhatsApp del profesional en su ficha.');return}
-    if(!(await confirmSend(doctor,branch,reSend)))return;
-
-    state.loading=true;
-    window.showToast?.('Generando y enviando liquidación…');
-    try{
-      const {data,error}=await client.functions.invoke('black-doctor-commission-send',{body:{
-        doctor_id:doctorId,doctor_name:doctor,branch_code:canonicalBranch(branch),period_from:from,period_to:to,force_resend:Boolean(reSend)
-      }});
-      if(error)throw error;
-      if(!data?.ok)throw new Error(data?.error||'Evolution no confirmó el envío.');
-      await loadStatuses();
-      try{window.applyFilters?.()}catch(_){}
-      window.showToast?.('✓ Liquidación enviada por WhatsApp');
-    }catch(error){
-      console.error('Liquidación WhatsApp',error);
-      let message=error?.message||'No se pudo enviar la liquidación.';
-      try{
-        if(error?.context && typeof error.context.json==='function'){
-          const payload=await error.context.clone().json();
-          if(payload?.error) message=payload.error;
-        }
-      }catch(_){}
-      window.showToast?.(message);
-      await loadStatuses().catch(()=>{});
-      try{window.applyFilters?.()}catch(_){}
-    }finally{state.loading=false}
+    if(!from||!to){window.showToast?.('Definí Desde y Hasta antes de abrir WhatsApp.');return}
+    const phone=normalizeWaPhone(phoneFor(doctor));
+    if(!phone){window.showToast?.('Revisá el WhatsApp cargado en la ficha del profesional.');return}
+    const data=directMessage(doctor,branch);
+    if(!data.rows.length){window.showToast?.('No hay operaciones para ese profesional en el período seleccionado.');return}
+    window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(data.msg),'_blank','noopener,noreferrer');
   }
-
   async function hydrate(){
     try{
-      await Promise.all([loadDoctors(),loadStatuses()]);
+      await loadDoctors();
       try{window.applyFilters?.()}catch(_){}
     }catch(error){console.warn('Entrega de liquidaciones',error)}
   }
@@ -168,13 +158,13 @@
     window.applyFilters=function(){
       const value=originalApplyFilters.apply(this,arguments);
       clearTimeout(window.__doctorDeliveryTimer);
-      window.__doctorDeliveryTimer=setTimeout(()=>loadStatuses().then(()=>originalApplyFilters()).catch(()=>{}),180);
+      window.__doctorDeliveryTimer=setTimeout(()=>originalApplyFilters(),180);
       return value;
     };
   }
   ['periodo-desde','periodo-hasta'].forEach(id=>document.getElementById(id)?.addEventListener('change',()=>setTimeout(hydrate,50)));
 
-  window.BlackDoctorDelivery={send,statusFor,phoneFor,doctorIdFor,buttonHTML,hydrate};
+  window.BlackDoctorDelivery={send,phoneFor,doctorIdFor,buttonHTML,hydrate,directMessage};
   injectStyles();
   setTimeout(hydrate,250);
 })();
