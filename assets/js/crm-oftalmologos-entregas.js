@@ -101,7 +101,7 @@
     if(status?.status==='failed'){
       return '<div class="branch-delivery"><button class="delivery-btn failed" type="button" onclick="BlackDoctorDelivery.send(\''+d+'\',\''+b+'\')">'+icon+'Reintentar envío</button><span class="delivery-state-text">El intento anterior no se confirmó.</span></div>';
     }
-    return '<div class="branch-delivery"><button class="delivery-btn" type="button" onclick="BlackDoctorDelivery.send(\''+d+'\',\''+b+'\')">'+icon+'Enviar liquidación por WhatsApp</button><span class="delivery-state-text">PDF + detalle del período.</span></div>';
+    return '<div class="branch-delivery"><button class="delivery-btn" type="button" onclick="BlackDoctorDelivery.send(\''+d+'\',\''+b+'\')">'+icon+'Abrir WhatsApp con detalle</button><span class="delivery-state-text">Usa el período seleccionado.</span></div>';
   }
 
   function confirmSend(doctor,branch,reSend=false){
