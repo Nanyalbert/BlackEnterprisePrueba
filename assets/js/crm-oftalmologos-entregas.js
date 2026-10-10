@@ -112,20 +112,43 @@
     const rows=directRows(doctor,branch);
     const money=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(Number(n)||0);
     const dmy=v=>{const p=String(v||'').slice(0,10).split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:String(v||'')};
-    let total=0,netTotal=0;
+    const cleanDoctorName=value=>{
+      const raw=String(value||'').replace(/\s+/g,' ').trim();
+      const parts=raw.split(',').map(x=>x.trim()).filter(Boolean);
+      if(parts.length===2 && String(window.normName?.(parts[0])||parts[0])===String(window.normName?.(parts[1])||parts[1])) return parts[0];
+      const words=raw.split(' ');
+      if(words.length%2===0){
+        const half=words.length/2;
+        const a=words.slice(0,half).join(' '),b=words.slice(half).join(' ');
+        if(String(window.normName?.(a)||a)===String(window.normName?.(b)||b)) return a;
+      }
+      return raw;
+    };
+    let total=0,netTotal=0,vatTotal=0,grossTotal=0;
     const detail=[];
     rows.forEach(r=>{
       const net=Number(r.monto)||0;
+      const rate=Math.max(0,Math.min(100,Number(r.vat_rate??r.iva_rate??21)||21));
+      const vat=net*rate/100;
+      const gross=net+vat;
       const pct=Number(window.BlackCommissionRules?.getPct?.(doctor,canonicalBranch(branch),r.fecha) ?? window.getComision?.(doctor,canonicalBranch(branch)) ?? 20)||20;
       const commission=net*pct/100;
-      netTotal+=net; total+=commission;
-      detail.push(dmy(r.fecha)+' · '+(r.paciente||'Paciente')+' · '+money(net)+' s/IVA · '+pct+'% · comisión '+money(commission));
+      netTotal+=net; vatTotal+=vat; grossTotal+=gross; total+=commission;
+      detail.push('• '+dmy(r.fecha)+' · *'+(r.paciente||'Paciente')+'*\n  Base s/IVA: '+money(net)+' · '+pct+'%\n  Comisión: *'+money(commission)+'*');
     });
     const branchName=canonicalBranch(branch)==='cerro-de-las-rosas'?'Cerro de las Rosas':'General Paz';
-    let msg='Hola Dr./Dra. '+doctor+'. Le compartimos el detalle de su liquidación de comisiones de Black Óptica.\n\n';
-    msg+='Período: '+dmy(from)+' al '+dmy(to)+'\nSucursal: '+branchName+'\nOperaciones: '+rows.length+'\nBase s/IVA: '+money(netTotal)+'\n*Total comisión: '+money(total)+'*';
-    if(detail.length){msg+='\n\n*Detalle*\n'+detail.join('\n');}
-    msg+='\n\nBlack Óptica';
+    const displayDoctor=cleanDoctorName(doctor);
+    let msg='Hola Dr./Dra. '+displayDoctor+'. Le compartimos su *liquidación de comisiones de Black Óptica*.\n\n';
+    msg+='*Período:* '+dmy(from)+' al '+dmy(to)+'\n';
+    msg+='*Sucursal:* '+branchName+'\n';
+    msg+='*Operaciones:* '+rows.length+'\n\n';
+    msg+='*Resumen*\n';
+    msg+='Base s/IVA: '+money(netTotal)+'\n';
+    msg+='IVA incluido: '+money(vatTotal)+'\n';
+    msg+='Total c/IVA: '+money(grossTotal)+'\n';
+    msg+='*TOTAL COMISIÓN: '+money(total)+'*';
+    if(detail.length){msg+='\n\n*Detalle por paciente*\n'+detail.join('\n\n');}
+    msg+='\n\n_Black Óptica_';
     return {msg,rows};
   }
 
