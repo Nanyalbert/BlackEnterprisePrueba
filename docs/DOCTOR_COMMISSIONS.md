@@ -27,54 +27,37 @@ La liquidación enviada usa el porcentaje que correspondía a la fecha de cada o
 
 ## Entrega por WhatsApp
 
-La entrega principal se realiza desde la tarjeta de comisiones de cada profesional y sucursal.
+La entrega operativa se realiza mediante **WhatsApp directo**, sin Evolution API.
 
-Flujo:
-1. Seleccionar Desde / Hasta.
-2. Revisar detalle por paciente.
-3. Presionar **Enviar liquidación por WhatsApp**.
-4. Confirmar profesional, sucursal, período y destino.
-5. La Edge Function `black-doctor-commission-send` vuelve a calcular los datos desde Supabase.
-6. Se genera un PDF server-side.
-7. Evolution API envía el PDF como documento.
-8. Solo después de una respuesta exitosa de Evolution la liquidación queda como **Enviada por WhatsApp**.
+Flujo actual:
+1. Seleccionar **Desde / Hasta**.
+2. Revisar la comisión del profesional y sucursal.
+3. Presionar **Enviar detalle por WhatsApp**.
+4. Black OS arma el mensaje usando exclusivamente el período seleccionado.
+5. Se abre la conversación del profesional en WhatsApp con el texto precargado.
+6. El usuario revisa o edita el mensaje y decide desde qué cuenta de WhatsApp enviarlo.
 
-El envío no marca la comisión como pagada. **Entrega** y **pago** son estados independientes.
+Black OS **no envía automáticamente** el mensaje y no marca una entrega como confirmada. El número emisor depende de la sesión de WhatsApp que esté abierta en la computadora o dispositivo.
 
-## PDF enviado
-
-Incluye, por operación:
-
-- Fecha
-- Paciente
-- Monto s/IVA
-- IVA
-- Monto c/IVA
-- Porcentaje de comisión
-- Comisión
-
-Resumen:
-
-- operaciones incluidas;
+El mensaje incluye:
+- período;
+- sucursal;
+- cantidad de operaciones;
 - base total s/IVA;
-- IVA incluido;
-- total c/IVA;
-- total de comisión.
-
-## Auditoría
-
-`doctor_commission_deliveries` conserva el envío y el identificador del proveedor.
-
-`doctor_commission_delivery_lines` conserva un snapshot de cada línea:
-- paciente;
-- fecha;
-- base neta;
 - IVA;
-- bruto;
-- porcentaje;
-- comisión.
+- total c/IVA;
+- total de comisión;
+- detalle por paciente con fecha, base, porcentaje y comisión.
 
-Las tablas no están disponibles directamente al navegador. La interfaz consulta el estado mediante RPC con permisos.
+Los botones Word/PDF siguen disponibles como respaldo manual. Un enlace directo de WhatsApp puede precargar texto y destinatario, pero no adjuntar automáticamente un PDF.
+
+## Estados de pago
+
+El estado **Pagado / Pendiente** es independiente del envío por WhatsApp. Marcar una comisión como pagada no depende de Evolution ni de un estado de entrega.
+
+## Arquitectura anterior
+
+La Edge Function `black-doctor-commission-send` y las tablas de snapshot de entrega pueden permanecer como infraestructura histórica, pero la interfaz operativa actual no depende de ese circuito para compartir comisiones.
 
 ## Contacto del profesional
 
