@@ -922,23 +922,42 @@ function setChartMode(mode,btn){
 }
 
 function renderBarChart(docList){
-  if(!docList.length){document.getElementById("bar-chart").innerHTML='<div style="text-align:center;color:var(--roble);font-size:.82rem;padding:20px">Sin datos. Importá un Excel para ver el ranking.</div>';return;}
+  const chart=document.getElementById("bar-chart");
+  if(!docList.length){
+    chart.innerHTML='<div style="text-align:center;color:var(--roble);font-size:.82rem;padding:20px">Sin datos. Importá un Excel para ver el ranking.</div>';
+    return;
+  }
+
   const sorted=[...docList].sort((a,b)=>{
-    if(chartMode==="comision")return comisionDe(b)-comisionDe(a);
-    if(chartMode==="pacientes")return b.count-a.count;
+    if(chartMode==="comision") return comisionDe(b)-comisionDe(a);
+    if(chartMode==="pacientes") return b.count-a.count;
     return b.monto-a.monto;
   });
-  const max=sorted[0]?( chartMode==="comision"?comisionDe(sorted[0]): chartMode==="pacientes"?sorted[0].count:sorted[0].monto ):1;
-  document.getElementById("bar-chart").innerHTML=sorted.map((d,i)=>{
-    const val=chartMode==="comision"?comisionDe(d):chartMode==="pacientes"?d.count:d.monto;
+
+  const valueOf=d=>chartMode==="comision"?comisionDe(d):chartMode==="pacientes"?d.count:d.monto;
+  const max=sorted[0]?valueOf(sorted[0]):1;
+
+  chart.innerHTML=sorted.map((d,i)=>{
+    const val=valueOf(d);
     const pct=max>0?Math.max(5,val/max*100):5;
     const label=chartMode==="pacientes"?d.count+" pac":"$"+formatNum(val,true);
+    const fullLabel=chartMode==="pacientes"?d.count+" paciente"+(d.count===1?"":"s")+"":"$"+formatNum(val);
     const cls=i===0?" highlight":i===sorted.length-1?" lowlight":"";
-    const shortName=d.medico.split(",")[0];
-    return `<div class="bar-row${cls}"><div class="bar-label">${shortName}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%"><span class="bar-val">${label}</span></div></div></div>`;
+    const displayName=String(d.medico||"").replace(/\s+/g," ").trim();
+    return `<div class="bar-row${cls}">
+      <div class="bar-rank" aria-hidden="true">#${i+1}</div>
+      <div class="bar-content">
+        <div class="bar-mobile-head">
+          <div class="bar-label" title="${escAttr(displayName)}">${escHtml(displayName)}</div>
+          <div class="bar-mobile-value">${fullLabel}</div>
+        </div>
+        <div class="bar-track" aria-label="${escAttr(displayName)}: ${escAttr(fullLabel)}">
+          <div class="bar-fill" style="width:${pct}%"><span class="bar-val">${label}</span></div>
+        </div>
+      </div>
+    </div>`;
   }).join("");
 }
-
 function renderCommissionCards(docList, desde, hasta){
   if(!docList.length){document.getElementById("commission-list").innerHTML='<div class="empty-state"><div class="empty-title">Sin datos de recetas</div><div class="empty-sub">Importá un Excel para ver las comisiones.</div></div>';return;}
   document.getElementById("commission-list").innerHTML=docList.map((d,idx)=>{
