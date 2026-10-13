@@ -19,7 +19,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="stylesheet" href="assets/css/base.css">
-<link rel="stylesheet" href="assets/css/crm-oftalmologos.css?v=20261013-mobile-ranking-1">
+<link rel="stylesheet" href="assets/css/crm-oftalmologos.css?v=20261013-mobile-ranking-2">
 <link rel="stylesheet" href="assets/css/crm-oftalmologos-sucursales.css?v=20261007-1">
 <link rel="stylesheet" href="assets/css/crm-oftalmologos-polish.css?v=20261007-1">
 
@@ -173,22 +173,31 @@
         <option value="Salvador">Salvador</option>
         <option value="Lista Oftalmologia">Lista Oftalmologia</option>
       </select>
-      <button class="import-csv-btn" onclick="openCsvModal()">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        Importar Excel
-      </button>
-      <button class="word-btn" onclick="openWordModal()">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        Word
-      </button>
-      <button class="word-btn" onclick="openExtraModal()">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Sumar monto
-      </button>
-      <button class="word-btn" onclick="generatePdf()">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-        PDF
-      </button>
+
+      <details class="comisiones-tools">
+        <summary class="comisiones-tools-toggle">
+          <span>Herramientas</span>
+          <svg class="tools-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="comisiones-tools-panel">
+          <button class="import-csv-btn" onclick="openCsvModal()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Importar Excel
+          </button>
+          <button class="word-btn" onclick="openWordModal()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Word
+          </button>
+          <button class="word-btn" onclick="openExtraModal()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Sumar monto
+          </button>
+          <button class="word-btn" onclick="generatePdf()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            PDF
+          </button>
+        </div>
+      </details>
     </div>
 
     <!-- KPI Summary -->
@@ -431,7 +440,7 @@
 
 
 <script src="assets/js/supabase-config.js"></script>
-<script src="assets/js/crm-oftalmologos.js?v=20261013-mobile-ranking-1"></script>
+<script src="assets/js/crm-oftalmologos.js?v=20261013-mobile-ranking-2"></script>
 <script src="assets/js/crm-oftalmologos-sucursales.js?v=20261007-1"></script>
 <script src="assets/js/crm-oftalmologos-supabase-sync.js?v=20261008-3"></script>
 <script src="assets/js/crm-oftalmologos-liquidaciones.js?v=20261007-1"></script>
