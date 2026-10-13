@@ -118,6 +118,10 @@ Deno.serve(async(req)=>{
     mark_type:mark?.mark_type||"",
     marked_at:mark?.marked_at||new Date().toISOString(),
     next_type:mark?.next_type||"",
+    warning:mark?.warning||"",
+    scheduled_today:mark?.scheduled_today!==false,
+    schedule_start:mark?.schedule_start||null,
+    schedule_end:mark?.schedule_end||null,
     branch_name:terminalRow.branch_name,
     terminal_name:terminalRow.terminal_name,
     today_marks:history.map((x:any)=>({type:x.mark_type,at:x.marked_at}))
