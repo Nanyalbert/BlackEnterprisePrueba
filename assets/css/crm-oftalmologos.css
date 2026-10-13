@@ -819,3 +819,95 @@ svg[stroke="var(--arena)"], svg[fill="var(--arena)"]{stroke:var(--portal-text-3)
   .comisiones-tools-toggle span{display:none}
   .comisiones-tools-panel{right:0;min-width:min(230px,calc(100vw - 24px))}
 }
+
+
+/* ── SCHEDULE FILTERS 2026-10-13 ── */
+.schedule-filters{
+  margin:14px 22px 0;
+  padding:15px;
+  border:1px solid rgba(201,169,110,.22);
+  border-radius:18px;
+  background:var(--marfil);
+  box-shadow:var(--shadow-card);
+}
+.schedule-filter-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.schedule-filter-kicker{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--espresso)}
+.schedule-filter-hint{font-size:.68rem;color:var(--roble);margin-top:3px}
+.schedule-filter-more{
+  min-height:36px;padding:0 11px;border-radius:11px;border:1px solid var(--arena);background:transparent;
+  color:var(--cobre);font-family:var(--font-body);font-size:.68rem;font-weight:700;display:flex;align-items:center;
+  gap:6px;cursor:pointer;white-space:nowrap
+}
+.schedule-filter-more.active{border-color:var(--dorado);background:rgba(201,169,110,.10)}
+.schedule-filter-badge{
+  min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--espresso);color:var(--champagne);
+  display:inline-flex;align-items:center;justify-content:center;font-size:.59rem
+}
+.schedule-inst-chips{
+  display:flex;gap:7px;overflow-x:auto;padding:1px 1px 4px;scrollbar-width:none;scroll-snap-type:x proximity
+}
+.schedule-inst-chips::-webkit-scrollbar{display:none}
+.schedule-inst-chip{
+  flex:0 0 auto;max-width:240px;min-height:36px;padding:0 10px 0 12px;border:1px solid var(--arena);border-radius:999px;
+  background:var(--alabaster);color:var(--roble);font-family:var(--font-body);font-size:.69rem;font-weight:650;
+  display:flex;align-items:center;gap:8px;cursor:pointer;scroll-snap-align:start;transition:.18s ease
+}
+.schedule-inst-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.schedule-inst-chip b{
+  min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:rgba(139,111,71,.10);display:inline-flex;
+  align-items:center;justify-content:center;font-size:.6rem;font-variant-numeric:tabular-nums
+}
+.schedule-inst-chip.active{background:var(--espresso);border-color:var(--espresso);color:var(--champagne)}
+.schedule-inst-chip.active b{background:rgba(255,255,255,.10);color:#fff}
+.schedule-filter-panel{
+  margin-top:12px;padding-top:12px;border-top:1px solid var(--lino);display:grid;gap:10px
+}
+.schedule-filter-panel[hidden]{display:none!important}
+.schedule-search{
+  height:42px;border:1px solid var(--arena);border-radius:12px;background:var(--alabaster);
+  display:flex;align-items:center;gap:8px;padding:0 12px;color:var(--roble)
+}
+.schedule-search input{
+  min-width:0;width:100%;border:0;outline:0;background:transparent;color:var(--black);
+  font:inherit;font-size:.78rem
+}
+.schedule-search input::placeholder{color:rgba(139,111,71,.72)}
+.schedule-time-filter{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.schedule-time-filter button{
+  min-height:36px;padding:6px 8px;border:1px solid var(--arena);border-radius:10px;background:transparent;
+  color:var(--roble);font-family:var(--font-body);font-size:.66rem;font-weight:650;cursor:pointer
+}
+.schedule-time-filter button.active{background:var(--espresso);border-color:var(--espresso);color:var(--champagne)}
+.schedule-time-filter button:disabled{opacity:.35;cursor:not-allowed}
+.schedule-filter-panel-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:27px}
+.schedule-filter-panel-footer span{font-size:.66rem;color:var(--roble);line-height:1.4}
+.schedule-filter-clear,.schedule-empty-clear{
+  border:0;background:transparent;color:var(--cobre);font-family:var(--font-body);font-size:.67rem;font-weight:700;cursor:pointer
+}
+.schedule-empty-clear{
+  margin-top:14px;padding:9px 13px;border:1px solid var(--arena);border-radius:999px;background:var(--marfil)
+}
+.schedule-card-actions{display:flex;gap:7px;margin-top:13px;padding-top:12px;border-top:1px solid var(--lino)}
+.schedule-card-actions button{
+  flex:1;min-height:36px;border-radius:11px;border:1px solid var(--arena);background:transparent;color:var(--cobre);
+  font-family:var(--font-body);font-size:.68rem;font-weight:700;cursor:pointer
+}
+.schedule-card-actions .schedule-wa-btn{border-color:rgba(53,189,104,.35);color:#249653;background:rgba(53,189,104,.06)}
+.schedule-card-actions button:disabled{opacity:.35;cursor:not-allowed}
+
+@media(max-width:640px){
+  .schedule-filters{margin:10px 12px 0;padding:12px;border-radius:16px}
+  .schedule-filter-top{margin-bottom:10px}
+  .schedule-filter-hint{display:none}
+  .schedule-filter-more{width:38px;padding:0;justify-content:center}
+  .schedule-filter-more>span:not(.schedule-filter-badge){display:none}
+  .schedule-filter-kicker{font-size:.68rem}
+  .schedule-inst-chip{max-width:205px;min-height:34px;font-size:.66rem}
+  .schedule-time-filter{grid-template-columns:1fr 1fr}
+  .schedule-filter-panel-footer{align-items:flex-start}
+  .schedule-wrap{padding-left:12px;padding-right:12px}
+  .doctor-card{padding:16px}
+  .turno-row{gap:7px;padding:10px}
+  .turno-badges{width:100%;justify-content:flex-start;margin-top:2px}
+  .schedule-card-actions{position:sticky;bottom:calc(72px + var(--safe-bottom));background:var(--marfil);z-index:1}
+}
