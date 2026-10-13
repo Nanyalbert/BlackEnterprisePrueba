@@ -58,3 +58,15 @@
   body.print-individual .daily-report-table th,body.print-individual .daily-report-table td{color:#111;border-color:#ddd;padding:5px 6px}
   body.print-individual .daily-report-table th{background:#111;color:#fff!important}
 }
+
+.schedule-editor{border:1px solid #292929;border-radius:14px;padding:14px;background:#101010}
+.schedule-editor-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:12px}
+.schedule-editor-head>div{display:grid;gap:5px}.schedule-editor-head span{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#686864}.schedule-editor-head small{font-size:10px;color:#777;line-height:1.5}
+.schedule-copy-weekdays{white-space:nowrap}
+.schedule-days{display:grid;gap:8px}
+.schedule-day{display:grid;grid-template-columns:minmax(130px,1fr) 120px 18px 120px;gap:8px;align-items:center;padding:9px 10px;border:1px solid #252525;border-radius:11px;background:#131313}
+.schedule-day .day-toggle{display:flex;align-items:center;gap:8px}.schedule-day .day-toggle input{width:15px;height:15px}.schedule-day .day-toggle strong{font-size:11px;font-weight:600;color:#ddd}
+.schedule-day>span{font-size:11px;color:#666;text-align:center}.schedule-day input[type="time"]{height:36px;border:1px solid #2b2b2b;border-radius:9px;background:#0f0f0f;color:#eee;padding:0 9px}
+.schedule-day.disabled{opacity:.55}.schedule-day.disabled input[type="time"]{cursor:not-allowed}
+.mark-actions{display:flex;gap:6px;justify-content:flex-end}.row-btn.danger{color:#d96b62;border-color:rgba(217,107,98,.28)}.row-btn.danger:hover{background:rgba(217,107,98,.08)}
+@media(max-width:680px){.schedule-editor-head{flex-direction:column}.schedule-copy-weekdays{width:100%}.schedule-day{grid-template-columns:1fr 1fr 16px 1fr}.schedule-day .day-toggle{grid-column:1/-1}}
