@@ -73,8 +73,15 @@ Deno.serve(async(req)=>{
       });
       return reply({ok:false,error:"PIN incorrecto. Verificá los dígitos e intentá nuevamente.",code:"invalid_pin"},401);
     }
-    if(/Esperá unos segundos/i.test(msg)){
-      return reply({ok:false,error:"La marcación ya fue recibida. Esperá unos segundos antes de volver a marcar.",code:"duplicate"},409);
+    if(/Marcación duplicada|Esperá unos segundos/i.test(msg)){
+      const seconds=Number((msg.match(/hace\s+(\d+)\s+segundos/i)||[])[1]||0);
+      const wait=Math.max(1,90-seconds);
+      return reply({
+        ok:false,
+        error:"Ya existe una marcación reciente. No registramos otra para evitar un doble fichaje. Esperá "+wait+" segundos y volvé a intentar solo si realmente necesitás hacer otro movimiento.",
+        code:"duplicate",
+        retry_after_seconds:wait
+      },409);
     }
     console.error("black-fichada-mark",markError);
     return reply({ok:false,error:"No pudimos registrar la marcación. Intentá nuevamente.",code:"mark_failed"},500);
