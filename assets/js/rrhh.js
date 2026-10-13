@@ -6,7 +6,7 @@
     'zona-norte':'Cerro de las Rosas',
     'cerro':'Cerro de las Rosas'
   };
-  const state={employees:[],attendance:[],summary:[],canAdjustMarks:false};
+  const state={employees:[],attendance:[],summary:[],schedules:[],canAdjustMarks:false,canDeleteMarks:false};
   let sb=null;
   try{sb=window.BlackPortal?.getSupabase?.()||null}catch(e){console.error(e)}
 
@@ -31,6 +31,68 @@
     if(['alto-palermo','zona-norte','cerro'].includes(code)) return 'cerro-de-las-rosas';
     return code||'general-paz';
   }
+  const DAY_LABELS={0:'Dom',1:'Lun',2:'Mar',3:'Mié',4:'Jue',5:'Vie',6:'Sáb'};
+  function scheduleRows(){return qsa('#employee-schedule-days .schedule-day')}
+  function setScheduleRowEnabled(row,enabled){
+    const check=row.querySelector('.schedule-enabled');
+    const inputs=row.querySelectorAll('.schedule-start,.schedule-end');
+    if(check)check.checked=Boolean(enabled);
+    row.classList.toggle('disabled',!enabled);
+    inputs.forEach(input=>input.disabled=!enabled);
+  }
+  function resetScheduleEditor(){
+    scheduleRows().forEach(row=>{
+      const day=Number(row.dataset.weekday);
+      const weekday=day>=1&&day<=5;
+      row.querySelector('.schedule-start').value=day===6||day===0?'09:00':'09:00';
+      row.querySelector('.schedule-end').value=day===6||day===0?'13:00':'19:00';
+      setScheduleRowEnabled(row,weekday);
+    });
+  }
+  function loadScheduleEditor(employeeId){
+    resetScheduleEditor();
+    if(!employeeId)return;
+    const rows=state.schedules.filter(s=>String(s.employee_id)===String(employeeId));
+    scheduleRows().forEach(row=>setScheduleRowEnabled(row,false));
+    rows.forEach(s=>{
+      const row=qs('#employee-schedule-days .schedule-day[data-weekday="'+Number(s.weekday)+'"]');
+      if(!row)return;
+      row.querySelector('.schedule-start').value=fmtTime(s.start_time);
+      row.querySelector('.schedule-end').value=fmtTime(s.end_time);
+      setScheduleRowEnabled(row,true);
+    });
+  }
+  function collectSchedules(){
+    const out=[];
+    for(const row of scheduleRows()){
+      const enabled=row.querySelector('.schedule-enabled')?.checked;
+      if(!enabled)continue;
+      const start=row.querySelector('.schedule-start')?.value||'';
+      const end=row.querySelector('.schedule-end')?.value||'';
+      if(!start||!end)throw new Error('Completá entrada y salida para cada día seleccionado.');
+      if(end<=start)throw new Error('La salida debe ser posterior a la entrada en '+(row.querySelector('.day-toggle strong')?.textContent||'el día seleccionado')+'.');
+      out.push({weekday:Number(row.dataset.weekday),start_time:start,end_time:end});
+    }
+    if(!out.length)throw new Error('Seleccioná al menos un día de trabajo.');
+    return out;
+  }
+  scheduleRows().forEach(row=>{
+    const checkbox=row.querySelector('.schedule-enabled');
+    checkbox?.addEventListener('change',()=>setScheduleRowEnabled(row,checkbox.checked));
+  });
+  qs('#copy-weekdays-btn')?.addEventListener('click',()=>{
+    const monday=qs('#employee-schedule-days .schedule-day[data-weekday="1"]');
+    const start=monday?.querySelector('.schedule-start')?.value||'09:00';
+    const end=monday?.querySelector('.schedule-end')?.value||'19:00';
+    for(let day=1;day<=5;day++){
+      const row=qs('#employee-schedule-days .schedule-day[data-weekday="'+day+'"]');
+      if(!row)continue;
+      row.querySelector('.schedule-start').value=start;
+      row.querySelector('.schedule-end').value=end;
+      setScheduleRowEnabled(row,true);
+    }
+  });
+
   function openModal(employee){
     form.reset(); qs('#employee-id').value=employee?.id||'';
     qs('#employee-modal-title').textContent=employee?'Editar integrante':'Nuevo integrante';
@@ -38,10 +100,7 @@
     qs('#employee-branch').value=canonicalBranch(employee?.branch_code||'general-paz');
     qs('#employee-email').value=employee?.email||'';
     qs('#employee-active').value=employee?.active===false?'false':'true';
-    qs('#employee-start').value=fmtTime(employee?.scheduled_start||'09:00');
-    qs('#employee-end').value=fmtTime(employee?.scheduled_end||'19:00');
-    qs('#employee-sat-start').value=fmtTime(employee?.sat_start||'09:00');
-    qs('#employee-sat-end').value=fmtTime(employee?.sat_end||'13:00');
+    loadScheduleEditor(employee?.id||null);
     qs('#employee-tolerance').value=employee?.tolerance_minutes??10;
     qs('#employee-pin').value='';
     qs('#employee-pin').required=!employee;
@@ -92,11 +151,15 @@
   modal.addEventListener('click',e=>{if(e.target===modal)closeModal()});
 
   function employeeRow(e){
-    const weekday=fmtTime(e.scheduled_start)+'–'+fmtTime(e.scheduled_end);
-    const saturday=e.sat_start&&e.sat_end?' · Sáb '+fmtTime(e.sat_start)+'–'+fmtTime(e.sat_end):'';
+    const employeeSchedules=state.schedules
+      .filter(s=>String(s.employee_id)===String(e.id))
+      .sort((a,b)=>{const order=[1,2,3,4,5,6,0];return order.indexOf(Number(a.weekday))-order.indexOf(Number(b.weekday))});
+    const scheduleText=employeeSchedules.length
+      ? employeeSchedules.map(s=>DAY_LABELS[Number(s.weekday)]+' '+fmtTime(s.start_time)+'–'+fmtTime(s.end_time)).join(' · ')
+      : 'Sin días asignados';
     return '<tr><td><div class="employee-cell"><strong>'+esc(e.full_name)+'</strong><small>'+esc(e.email||'Sin usuario Black OS asociado')+'</small></div></td>'+
       '<td>'+esc(e.branch_name||BRANCH_LABELS[canonicalBranch(e.branch_code)]||e.branch_code||'—')+'</td>'+
-      '<td>'+weekday+saturday+' · '+Number(e.tolerance_minutes||0)+' min</td>'+
+      '<td>'+esc(scheduleText)+' · '+Number(e.tolerance_minutes||0)+' min</td>'+
       '<td>••••</td><td><span class="status-pill '+(e.active===false?'inactive':'')+'">'+(e.active===false?'Inactivo':'Activo')+'</span></td>'+
       '<td><button class="row-btn edit-employee" data-id="'+esc(e.id)+'" title="Editar" aria-label="Editar"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button></td></tr>';
   }
@@ -114,13 +177,17 @@
       qs('#employees-tbody').innerHTML='<tr><td colspan="6" class="empty-cell">No se pudo conectar Supabase.</td></tr>';
       return;
     }
-    const {data,error}=await sb.rpc('hr_list_employees');
-    if(error){
-      console.warn(error);
+    const [{data,error},{data:scheduleData,error:scheduleError}]=await Promise.all([
+      sb.rpc('hr_list_employees'),
+      sb.rpc('hr_list_employee_schedules')
+    ]);
+    if(error||scheduleError){
+      console.warn(error||scheduleError);
       qs('#employees-tbody').innerHTML='<tr><td colspan="6" class="empty-cell">No se pudo cargar RRHH. Verificá permisos o la migración de base de datos.</td></tr>';
       return;
     }
     state.employees=(data||[]).map(e=>({...e,branch_code:canonicalBranch(e.branch_code)}));
+    state.schedules=scheduleData||[];
     renderEmployees();
     await loadMarkCapability();
     await Promise.all([loadToday(),loadSummaryKpis()]);
@@ -165,18 +232,36 @@
       const dt=new Date(m.marked_at);
       const when=Number.isNaN(dt.getTime())?'—':dt.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})+' · '+dt.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
       const source=m.is_manual?'Ajustada manualmente':(m.source==='terminal'?'Black Fichada':(m.source||'—'));
-      const action=state.canAdjustMarks?'<button class="row-btn edit-mark" data-id="'+esc(m.id)+'" title="Corregir marcación" aria-label="Corregir marcación"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button>':'';
+      const edit=state.canAdjustMarks?'<button class="row-btn edit-mark" data-id="'+esc(m.id)+'" title="Corregir marcación" aria-label="Corregir marcación"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button>':'';
+      const del=state.canDeleteMarks?'<button class="row-btn danger delete-mark" data-id="'+esc(m.id)+'" title="Eliminar marcación" aria-label="Eliminar marcación"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M8 11v7M12 11v7M16 11v7M6 7l1 14h10l1-14"/></svg></button>':'';
+      const action=(edit||del)?'<div class="mark-actions">'+edit+del+'</div>':'';
       return '<tr><td><strong>'+esc(m.employee_name)+'</strong></td><td>'+esc(when)+'</td><td><span class="status-pill">'+esc(String(m.mark_type||'').toUpperCase())+'</span></td><td>'+esc(source)+'</td><td>'+esc(m.note||'—')+'</td><td>'+action+'</td></tr>';
     }).join(''):'<tr><td colspan="6" class="empty-cell">Todavía no hay marcaciones hoy.</td></tr>';
     qsa('.edit-mark').forEach(btn=>btn.addEventListener('click',()=>openMarkModal(state.attendance.find(m=>String(m.id)===String(btn.dataset.id)))));
+    qsa('.delete-mark').forEach(btn=>btn.addEventListener('click',async()=>{
+      const mark=state.attendance.find(m=>String(m.id)===String(btn.dataset.id));
+      if(!mark||!state.canDeleteMarks)return;
+      const reason=prompt('Motivo de eliminación de la marcación:');
+      if(reason===null)return;
+      if(reason.trim().length<4){alert('Indicá un motivo de al menos 4 caracteres.');return}
+      if(!confirm('¿Eliminar esta marcación? El movimiento se quitará del cómputo, pero quedará registrado en la auditoría.'))return;
+      btn.disabled=true;
+      const {error}=await sb.rpc('hr_delete_time_mark',{p_mark_id:Number(mark.id),p_reason:reason.trim()});
+      if(error){btn.disabled=false;alert(error.message||'No se pudo eliminar la marcación.');return}
+      await Promise.all([loadToday(),loadSummaryKpis()]);
+    }));
   }
 
   async function loadMarkCapability(){
     if(!sb)return;
     try{
-      const {data,error}=await sb.rpc('black_os_has_permission',{p_module:'rrhh',p_permission:'settings'});
+      const [{data,error},{data:isAdmin,error:adminError}]=await Promise.all([
+        sb.rpc('black_os_has_permission',{p_module:'rrhh',p_permission:'settings'}),
+        sb.rpc('black_os_is_admin')
+      ]);
       state.canAdjustMarks=!error&&data===true;
-    }catch(_){state.canAdjustMarks=false}
+      state.canDeleteMarks=!adminError&&isAdmin===true;
+    }catch(_){state.canAdjustMarks=false;state.canDeleteMarks=false}
     const button=qs('#manual-mark-btn');
     if(button)button.hidden=!state.canAdjustMarks;
     renderDetailedMarks();
@@ -250,14 +335,13 @@
     const id=qs('#employee-id').value||null;
     const pin=qs('#employee-pin').value.trim();
     if(pin&&!/^\d{4,6}$/.test(pin))return alert('El PIN debe tener entre 4 y 6 dígitos.');
+    let schedules;
+    try{schedules=collectSchedules();}catch(error){alert(error.message||String(error));return}
     const payload={
       full_name:qs('#employee-name').value.trim(),
       branch_code:canonicalBranch(qs('#employee-branch').value),
       email:qs('#employee-email').value.trim()||null,
-      scheduled_start:qs('#employee-start').value,
-      scheduled_end:qs('#employee-end').value,
-      sat_start:qs('#employee-sat-start').value||null,
-      sat_end:qs('#employee-sat-end').value||null,
+      schedules,
       tolerance_minutes:Number(qs('#employee-tolerance').value||0),
       monthly_reference_salary:Number(qs('#employee-salary').value||0),
       active:qs('#employee-active').value!=='false'
