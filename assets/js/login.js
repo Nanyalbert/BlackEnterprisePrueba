@@ -29,6 +29,25 @@ const errorMsg = document.getElementById('error-msg');
 const errorText = document.getElementById('error-text');
 const togglePass = document.getElementById('toggle-pass');
 const forgotLink = document.getElementById('forgot-link');
+const recoveryForm = document.getElementById('recovery-form');
+const recoveryPassword = document.getElementById('recovery-password');
+const recoveryPasswordConfirm = document.getElementById('recovery-password-confirm');
+const recoveryMsg = document.getElementById('recovery-msg');
+const recoveryText = document.getElementById('recovery-text');
+const recoverySubmit = document.getElementById('recovery-submit');
+let recoveryMode = false;
+
+function showRecoveryForm() {
+  recoveryMode = true;
+  if (form) form.hidden = true;
+  if (recoveryForm) recoveryForm.hidden = false;
+  const title = document.querySelector('.brand-copy h1');
+  const copy = document.querySelector('.brand-copy p');
+  if (title) title.textContent = 'Nueva contraseña';
+  if (copy) copy.textContent = 'Elegí una contraseña nueva para tu cuenta';
+  setTimeout(() => recoveryPassword?.focus(), 50);
+}
+
 
 
 // =========================================================
@@ -102,12 +121,24 @@ async function checkExistingSession() {
       return;
     }
 
-    if (session) {
+    const hashRecovery = window.location.hash.includes('type=recovery');
+    if (hashRecovery) {
+      showRecoveryForm();
+      return;
+    }
+
+    if (session && !recoveryMode) {
       window.location.replace('menu.html');
     }
   } catch (err) {
     console.error('No se pudo verificar la sesión:', err);
   }
+}
+
+if (supabaseClient) {
+  supabaseClient.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') showRecoveryForm();
+  });
 }
 
 checkExistingSession();
@@ -186,6 +217,45 @@ if (form) {
   });
 }
 
+
+if (recoveryForm) {
+  recoveryForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!supabaseClient) return;
+
+    const p1 = recoveryPassword?.value || '';
+    const p2 = recoveryPasswordConfirm?.value || '';
+
+    if (p1.length < 10) {
+      if (recoveryText) recoveryText.textContent = 'La contraseña debe tener al menos 10 caracteres.';
+      recoveryMsg?.classList.add('show');
+      return;
+    }
+    if (p1 !== p2) {
+      if (recoveryText) recoveryText.textContent = 'Las contraseñas no coinciden.';
+      recoveryMsg?.classList.add('show');
+      return;
+    }
+
+    recoverySubmit.disabled = true;
+    recoverySubmit.classList.add('loading');
+    try {
+      const { error } = await supabaseClient.auth.updateUser({ password: p1 });
+      if (error) throw error;
+      if (recoveryText) recoveryText.textContent = 'Contraseña actualizada. Ya podés ingresar con la nueva contraseña.';
+      recoveryMsg?.classList.add('show');
+      await supabaseClient.auth.signOut();
+      setTimeout(() => window.location.replace('index.html'), 900);
+    } catch (err) {
+      console.error(err);
+      if (recoveryText) recoveryText.textContent = 'No se pudo actualizar la contraseña. Pedí un nuevo enlace de recuperación.';
+      recoveryMsg?.classList.add('show');
+    } finally {
+      recoverySubmit.disabled = false;
+      recoverySubmit.classList.remove('loading');
+    }
+  });
+}
 
 // =========================================================
 // 07. RECUPERAR CONTRASEÑA
