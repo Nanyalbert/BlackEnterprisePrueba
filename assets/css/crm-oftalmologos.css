@@ -785,3 +785,37 @@ svg[stroke="var(--arena)"], svg[fill="var(--arena)"]{stroke:var(--portal-text-3)
   .bar-label{font-size:.72rem}
   .bar-mobile-value{font-size:.68rem}
 }
+
+
+/* ── COLLAPSIBLE COMMISSION TOOLS 2026-10-13 ── */
+.comisiones-tools{position:relative;flex:0 0 auto}
+.comisiones-tools summary{list-style:none}
+.comisiones-tools summary::-webkit-details-marker{display:none}
+.comisiones-tools-toggle{
+  min-height:40px;padding:0 14px;border:1px solid var(--arena);border-radius:50px;
+  background:var(--marfil);color:var(--cobre);display:flex;align-items:center;justify-content:center;gap:8px;
+  cursor:pointer;font-family:var(--font-body);font-size:.7rem;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;user-select:none;transition:border-color .2s,background .2s,box-shadow .2s
+}
+.comisiones-tools-toggle:hover,.comisiones-tools[open] .comisiones-tools-toggle{
+  border-color:var(--dorado);background:var(--portal-card-hover,var(--marfil));box-shadow:0 4px 14px rgba(168,135,78,.12)
+}
+.tools-chevron{transition:transform .2s ease}
+.comisiones-tools[open] .tools-chevron{transform:rotate(180deg)}
+.comisiones-tools-panel{
+  position:absolute;top:calc(100% + 7px);right:0;z-index:35;min-width:210px;padding:8px;
+  border:1px solid var(--portal-line,rgba(201,169,110,.22));border-radius:14px;
+  background:var(--portal-card,var(--marfil));box-shadow:0 16px 40px rgba(0,0,0,.18);
+  display:grid;gap:6px
+}
+.comisiones-tools-panel .import-csv-btn,.comisiones-tools-panel .word-btn{
+  width:100%;justify-content:flex-start;border-radius:10px;min-height:38px;box-shadow:none
+}
+@media(max-width:640px){
+  .comisiones-toolbar{padding:14px 12px 6px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+  .filter-select{min-width:0;width:100%}
+  .comisiones-tools{min-width:0}
+  .comisiones-tools-toggle{min-width:42px;padding:0 11px}
+  .comisiones-tools-toggle span{display:none}
+  .comisiones-tools-panel{right:0;min-width:min(230px,calc(100vw - 24px))}
+}
