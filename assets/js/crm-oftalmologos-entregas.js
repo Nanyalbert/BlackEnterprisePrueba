@@ -134,11 +134,11 @@
       const pct=Number(window.BlackCommissionRules?.getPct?.(doctor,canonicalBranch(branch),r.fecha) ?? window.getComision?.(doctor,canonicalBranch(branch)) ?? 20)||20;
       const commission=net*pct/100;
       netTotal+=net; vatTotal+=vat; grossTotal+=gross; total+=commission;
-      detail.push('• '+dmy(r.fecha)+' · *'+(r.paciente||'Paciente')+'*\n  Base s/IVA: '+money(net)+' · '+pct+'%\n  Comisión: *'+money(commission)+'*');
+      detail.push('• '+dmy(r.fecha)+' · *'+(r.paciente||'Paciente')+'*\n  Base s/IVA: '+money(net)+' · '+pct+'%\n  Importe: *'+money(commission)+'*');
     });
     const branchName=canonicalBranch(branch)==='cerro-de-las-rosas'?'Cerro de las Rosas':'General Paz';
     const displayDoctor=cleanDoctorName(doctor);
-    let msg='Hola Dr./Dra. '+displayDoctor+'. Le compartimos su *liquidación de comisiones de Black Óptica*.\n\n';
+    let msg='Hola Dr./Dra. '+displayDoctor+'. Le compartimos la *liquidación* correspondiente al período seleccionado.\n\n';
     msg+='*Período:* '+dmy(from)+' al '+dmy(to)+'\n';
     msg+='*Sucursal:* '+branchName+'\n';
     msg+='*Operaciones:* '+rows.length+'\n\n';
@@ -146,7 +146,7 @@
     msg+='Base s/IVA: '+money(netTotal)+'\n';
     msg+='IVA incluido: '+money(vatTotal)+'\n';
     msg+='Total c/IVA: '+money(grossTotal)+'\n';
-    msg+='*TOTAL COMISIÓN: '+money(total)+'*';
+    msg+='*TOTAL A LIQUIDAR: '+money(total)+'*';
     if(detail.length){msg+='\n\n*Detalle por paciente*\n'+detail.join('\n\n');}
     msg+='\n\n_Black Óptica_';
     return {msg,rows};
