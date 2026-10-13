@@ -676,6 +676,46 @@ async function bootPortal(){
 }
 bootPortal();
 
+const changePasswordBtn=document.getElementById('change-password-btn');
+const changePasswordOverlay=document.getElementById('change-password-overlay');
+const changePasswordForm=document.getElementById('change-password-form');
+const changePasswordClose=document.getElementById('change-password-close');
+const changePasswordCancel=document.getElementById('change-password-cancel');
+const myNewPassword=document.getElementById('my-new-password');
+const myNewPasswordConfirm=document.getElementById('my-new-password-confirm');
+
+function openChangePassword(){
+  if(!changePasswordOverlay)return;
+  changePasswordForm?.reset();
+  changePasswordOverlay.classList.add('show');
+  setTimeout(()=>myNewPassword?.focus(),40);
+}
+function closeChangePassword(){changePasswordOverlay?.classList.remove('show');}
+changePasswordBtn?.addEventListener('click',event=>{event.preventDefault();openChangePassword();});
+changePasswordClose?.addEventListener('click',closeChangePassword);
+changePasswordCancel?.addEventListener('click',closeChangePassword);
+changePasswordOverlay?.addEventListener('click',event=>{if(event.target===changePasswordOverlay)closeChangePassword();});
+changePasswordForm?.addEventListener('submit',async event=>{
+  event.preventDefault();
+  if(!supabaseClient)return;
+  const p1=myNewPassword?.value||'',p2=myNewPasswordConfirm?.value||'';
+  if(p1.length<10){alert('La contraseña debe tener al menos 10 caracteres.');return;}
+  if(p1!==p2){alert('Las contraseñas no coinciden.');return;}
+  const submit=changePasswordForm.querySelector('button[type="submit"]');
+  if(submit){submit.disabled=true;submit.textContent='Actualizando…';}
+  try{
+    const {error}=await supabaseClient.auth.updateUser({password:p1});
+    if(error)throw error;
+    closeChangePassword();
+    alert('Contraseña actualizada correctamente.');
+  }catch(error){
+    console.error(error);
+    alert(error?.message||'No se pudo actualizar la contraseña.');
+  }finally{
+    if(submit){submit.disabled=false;submit.textContent='Actualizar contraseña';}
+  }
+});
+
 const logoutBtn=document.getElementById('logout-btn');
 logoutBtn?.addEventListener('click',async event=>{event.preventDefault();try{sessionStorage.removeItem(VIEW_STORAGE_KEY);}catch(error){}if(supabaseClient){try{await supabaseClient.auth.signOut();}catch(error){}}window.location.replace('index.html');});
 
