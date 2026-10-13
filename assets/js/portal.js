@@ -551,7 +551,7 @@ function openModal(userId=null){
     modalTitle.textContent='Nuevo usuario';
     modalPasswordField.style.display='flex';
     const passLabel=modalPasswordField.querySelector('label'); if(passLabel)passLabel.textContent='Contraseña temporal';
-    if(passwordInput){passwordInput.required=true;passwordInput.placeholder='Mínimo 8 caracteres';}
+    if(passwordInput){passwordInput.required=true;passwordInput.placeholder='Mínimo 10 caracteres';}
     if(activeInput) activeInput.checked=true;
   }
   modalOverlay.classList.add('show'); setTimeout(()=>nameInput.focus(),50);
@@ -593,6 +593,7 @@ userForm?.addEventListener('submit',async event=>{
   const password=passwordInput?.value||'';
   if(!nombre||!email) return;
   if(!editingUserId && password.length<10){alert('La contraseña temporal debe tener al menos 10 caracteres.');return;}
+  if(editingUserId && password && password.length<10){alert('La nueva contraseña debe tener al menos 10 caracteres.');return;}
   const config=window.BlackUserPermissions?.collect?.()||{
     permissions:{},
     branchScope:['all']
