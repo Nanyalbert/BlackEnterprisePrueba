@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/base.css">
-<link rel="stylesheet" href="assets/css/rrhh.css?v=20261007-5">
+<link rel="stylesheet" href="assets/css/rrhh.css?v=20261013-audit-3">
 </head>
 <body class="rrhh-page">
 <main class="rrhh-shell">
@@ -164,10 +164,21 @@
       <label><span>Sucursal</span><select id="employee-branch"><option value="general-paz">General Paz</option><option value="cerro-de-las-rosas">Cerro de las Rosas</option></select></label>
       <label><span>Email (opcional)</span><input id="employee-email" type="email" autocomplete="email" placeholder="nombre@blackoptica.ar"></label>
       <label><span>Estado</span><select id="employee-active"><option value="true">Activo</option><option value="false">Inactivo</option></select></label>
-      <label><span>Hora entrada</span><input id="employee-start" type="time" value="09:00" required></label>
-      <label><span>Hora salida</span><input id="employee-end" type="time" value="19:00" required></label>
-      <label><span>Sábado entrada</span><input id="employee-sat-start" type="time" value="09:00"></label>
-      <label><span>Sábado salida</span><input id="employee-sat-end" type="time" value="13:00"></label>
+      <div class="full schedule-editor">
+        <div class="schedule-editor-head">
+          <div><span>Días y horarios de trabajo</span><small>Activá solo los días que realmente trabaja. Cada día puede tener su propio horario.</small></div>
+          <button class="btn btn-ghost schedule-copy-weekdays" id="copy-weekdays-btn" type="button">Copiar lunes a viernes</button>
+        </div>
+        <div class="schedule-days" id="employee-schedule-days">
+          <div class="schedule-day" data-weekday="1"><label class="day-toggle"><input type="checkbox" class="schedule-enabled" checked><strong>Lunes</strong></label><input class="schedule-start" type="time" value="09:00"><span>→</span><input class="schedule-end" type="time" value="19:00"></div>
+          <div class="schedule-day" data-weekday="2"><label class="day-toggle"><input type="checkbox" class="schedule-enabled" checked><strong>Martes</strong></label><input class="schedule-start" type="time" value="09:00"><span>→</span><input class="schedule-end" type="time" value="19:00"></div>
+          <div class="schedule-day" data-weekday="3"><label class="day-toggle"><input type="checkbox" class="schedule-enabled" checked><strong>Miércoles</strong></label><input class="schedule-start" type="time" value="09:00"><span>→</span><input class="schedule-end" type="time" value="19:00"></div>
+          <div class="schedule-day" data-weekday="4"><label class="day-toggle"><input type="checkbox" class="schedule-enabled" checked><strong>Jueves</strong></label><input class="schedule-start" type="time" value="09:00"><span>→</span><input class="schedule-end" type="time" value="19:00"></div>
+          <div class="schedule-day" data-weekday="5"><label class="day-toggle"><input type="checkbox" class="schedule-enabled" checked><strong>Viernes</strong></label><input class="schedule-start" type="time" value="09:00"><span>→</span><input class="schedule-end" type="time" value="19:00"></div>
+          <div class="schedule-day" data-weekday="6"><label class="day-toggle"><input type="checkbox" class="schedule-enabled"><strong>Sábado</strong></label><input class="schedule-start" type="time" value="09:00" disabled><span>→</span><input class="schedule-end" type="time" value="13:00" disabled></div>
+          <div class="schedule-day" data-weekday="0"><label class="day-toggle"><input type="checkbox" class="schedule-enabled"><strong>Domingo</strong></label><input class="schedule-start" type="time" value="09:00" disabled><span>→</span><input class="schedule-end" type="time" value="13:00" disabled></div>
+        </div>
+      </div>
       <label><span>Tolerancia (min)</span><input id="employee-tolerance" type="number" min="0" max="120" value="10"></label>
       <label><span>PIN fichada</span><input id="employee-pin" inputmode="numeric" pattern="[0-9]{4,6}" minlength="4" maxlength="6" placeholder="4 a 6 dígitos" required></label>
       <label class="full"><span>Remuneración mensual de referencia</span><input id="employee-salary" type="number" min="0" step="0.01" placeholder="0"></label>
@@ -192,7 +203,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="assets/js/supabase-config.js"></script>
-<script src="assets/js/rrhh.js?v=20261013-audit-2"></script>
+<script src="assets/js/rrhh.js?v=20261013-audit-3"></script>
 <script src="assets/js/rrhh-reportes.js?v=20261007-1"></script>
 <script src="assets/js/module-access.js?v=20261006-3"></script>
 </body>
