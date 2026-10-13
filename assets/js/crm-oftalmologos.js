@@ -74,6 +74,7 @@ let recetas = []; // [{fecha, paciente, medico, monto, institucion}]
 let comisiones = {}; // {normName: pct}
 let pagos = {};      // {"normName|desde|hasta": true}
 let selectedDay = "";
+let scheduleFilters = { institutions:[], query:"", time:"all", panelOpen:false };
 let importedData = [];
 let importMode = "add";
 let pendingDeleteId = null;
@@ -93,6 +94,17 @@ function loadState() {
   comisiones = savedCom ? JSON.parse(savedCom) : {};
   const savedPag = localStorage.getItem("blackoptica_pagos");
   pagos = savedPag ? JSON.parse(savedPag) : {};
+  try{
+    const rawFilters=JSON.parse(localStorage.getItem("blackoptica_schedule_filters")||"null");
+    if(rawFilters && typeof rawFilters==="object"){
+      scheduleFilters={
+        institutions:Array.isArray(rawFilters.institutions)?rawFilters.institutions.filter(Boolean):[],
+        query:typeof rawFilters.query==="string"?rawFilters.query:"",
+        time:["all","morning","afternoon","now"].includes(rawFilters.time)?rawFilters.time:"all",
+        panelOpen:false
+      };
+    }
+  }catch(_){}
 }
 function saveState() {
   localStorage.setItem("blackoptica_doctors", JSON.stringify(doctors));
@@ -268,57 +280,247 @@ function renderDaySelector() {
     return `<button class="day-pill${d===selectedDay?" active":""}${d===today?" today-pill":""}${!hasDocs?" no-doctors":""}" onclick="selectDay('${d}')">${d}</button>`;
   }).join("");
 }
-function selectDay(d) { selectedDay=d; renderDaySelector(); renderSchedule(); }
+
+function selectDay(d) {
+  selectedDay=d;
+  const today=DIAS[new Date().getDay()];
+  if(scheduleFilters.time==="now" && d!==today) scheduleFilters.time="all";
+  sanitizeScheduleInstitutions();
+  saveScheduleFilters();
+  renderDaySelector();
+  renderSchedule();
+}
+
 function getDoctorsForDay(day) {
   return doctors.map(doc=>{
-    const institucionesDelDia=(doc.instituciones||[]).map(inst=>({nombre:inst.nombre,turnos:inst.turnos.filter(t=>t.dia===day)})).filter(i=>i.turnos.length>0);
+    const institucionesDelDia=(doc.instituciones||[])
+      .map(inst=>({nombre:inst.nombre,turnos:(inst.turnos||[]).filter(t=>t.dia===day)}))
+      .filter(i=>i.turnos.length>0);
     const allTurnos=institucionesDelDia.flatMap(i=>i.turnos);
     return {...doc,institucionesDelDia,turnosDelDia:allTurnos};
-  }).filter(d=>d.turnosDelDia.length>0).sort((a,b)=>Math.min(...a.turnosDelDia.map(t=>timeToMin(t.desde)))-Math.min(...b.turnosDelDia.map(t=>timeToMin(t.desde))));
+  }).filter(d=>d.turnosDelDia.length>0)
+    .sort((a,b)=>Math.min(...a.turnosDelDia.map(t=>timeToMin(t.desde)))-Math.min(...b.turnosDelDia.map(t=>timeToMin(t.desde))));
 }
+
 function timeToMin(t){
   if(!t || !String(t).includes(":")) return Number.POSITIVE_INFINITY;
   const[h,m]=String(t).split(":").map(Number);
   return h*60+m;
 }
+
 function calcTurns(t){
   if(!t?.desde || !t?.hasta || !Number(t?.duracion)) return null;
   return Math.max(1,Math.floor((timeToMin(t.hasta)-timeToMin(t.desde))/Number(t.duracion)));
 }
-function badgeClass(tipo){if(tipo==="Ulterior / Control")return"badge-ulterior";if(tipo==="Indistinto con prácticas")return"badge-practicas";if(tipo==="Práctica")return"badge-practica";return"badge-indistinto";}
-function initials(n){const p=n.split(/[,\s]+/).filter(Boolean);return p.length>=2?(p[0][0]+p[1][0]).toUpperCase():n[0].toUpperCase();}
+
+function badgeClass(tipo){
+  if(tipo==="Ulterior / Control")return"badge-ulterior";
+  if(tipo==="Indistinto con prácticas")return"badge-practicas";
+  if(tipo==="Práctica")return"badge-practica";
+  return"badge-indistinto";
+}
+
+function initials(n){
+  const p=n.split(/[,\s]+/).filter(Boolean);
+  return p.length>=2?(p[0][0]+p[1][0]).toUpperCase():n[0].toUpperCase();
+}
+
+function scheduleInstitutionKey(value){ return normName(value||""); }
+
+function getScheduleInstitutionStats(day){
+  const stats=new Map();
+  getDoctorsForDay(day).forEach(doc=>{
+    doc.institucionesDelDia.forEach(inst=>{
+      const key=scheduleInstitutionKey(inst.nombre);
+      if(!key) return;
+      if(!stats.has(key)) stats.set(key,{key,name:inst.nombre,count:0});
+      stats.get(key).count+=1;
+    });
+  });
+  return [...stats.values()].sort((a,b)=>b.count-a.count || a.name.localeCompare(b.name,"es"));
+}
+
+function saveScheduleFilters(){
+  localStorage.setItem("blackoptica_schedule_filters",JSON.stringify({
+    institutions:scheduleFilters.institutions,
+    query:scheduleFilters.query,
+    time:scheduleFilters.time
+  }));
+}
+
+function sanitizeScheduleInstitutions(){
+  if(!scheduleFilters.institutions.length) return;
+  const available=new Set(getScheduleInstitutionStats(selectedDay).map(x=>x.key));
+  const kept=scheduleFilters.institutions.filter(x=>available.has(x));
+  scheduleFilters.institutions=kept.length?kept:[];
+}
+
+function toggleScheduleInstitution(encodedName){
+  const key=scheduleInstitutionKey(decodeURIComponent(encodedName));
+  if(!key) return;
+  const set=new Set(scheduleFilters.institutions);
+  if(set.has(key)) set.delete(key); else set.add(key);
+  scheduleFilters.institutions=[...set];
+  saveScheduleFilters();
+  renderSchedule();
+}
+
+function selectAllScheduleInstitutions(){
+  scheduleFilters.institutions=[];
+  saveScheduleFilters();
+  renderSchedule();
+}
+
+function setScheduleSearch(value){
+  scheduleFilters.query=String(value||"");
+  saveScheduleFilters();
+  renderSchedule();
+}
+
+function setScheduleTime(value){
+  if(!["all","morning","afternoon","now"].includes(value)) value="all";
+  const today=DIAS[new Date().getDay()];
+  if(value==="now" && selectedDay!==today){
+    showToast("El filtro “Ahora” solo está disponible para hoy.");
+    return;
+  }
+  scheduleFilters.time=value;
+  saveScheduleFilters();
+  renderSchedule();
+}
+
+function toggleScheduleFilterPanel(){
+  scheduleFilters.panelOpen=!scheduleFilters.panelOpen;
+  renderScheduleFilters();
+  if(scheduleFilters.panelOpen){
+    setTimeout(()=>document.getElementById("schedule-search-input")?.focus({preventScroll:true}),50);
+  }
+}
+
+function clearScheduleFilters(){
+  scheduleFilters={institutions:[],query:"",time:"all",panelOpen:scheduleFilters.panelOpen};
+  saveScheduleFilters();
+  renderSchedule();
+}
+
+function scheduleTurnMatchesTime(t,mode){
+  if(mode==="all") return true;
+  if(!t?.desde || !t?.hasta) return mode!=="now";
+  const start=timeToMin(t.desde), end=timeToMin(t.hasta);
+  if(!Number.isFinite(start)||!Number.isFinite(end)) return false;
+  if(mode==="morning") return start<13*60;
+  if(mode==="afternoon") return end>13*60;
+  if(mode==="now"){
+    const now=new Date();
+    const mins=now.getHours()*60+now.getMinutes();
+    return start<=mins && end>=mins;
+  }
+  return true;
+}
+
+function getFilteredDoctorsForDay(day){
+  const query=normName(scheduleFilters.query);
+  const selected=new Set(scheduleFilters.institutions);
+  return getDoctorsForDay(day).map(doc=>{
+    const doctorMatches=!query || normName(doc.nombre).includes(query);
+    const insts=doc.institucionesDelDia.map(inst=>{
+      const instKey=scheduleInstitutionKey(inst.nombre);
+      if(selected.size && !selected.has(instKey)) return null;
+      if(query && !doctorMatches && !normName(inst.nombre).includes(query)) return null;
+      const turnos=inst.turnos.filter(t=>scheduleTurnMatchesTime(t,scheduleFilters.time));
+      return turnos.length?{...inst,turnos}:null;
+    }).filter(Boolean);
+    const allTurnos=insts.flatMap(i=>i.turnos);
+    return insts.length?{...doc,institucionesDelDia:insts,turnosDelDia:allTurnos}:null;
+  }).filter(Boolean);
+}
+
+function renderScheduleFilters(){
+  const root=document.getElementById("schedule-filters");
+  if(!root) return;
+  sanitizeScheduleInstitutions();
+  const stats=getScheduleInstitutionStats(selectedDay);
+  const selected=new Set(scheduleFilters.institutions);
+  const chips=document.getElementById("schedule-inst-chips");
+  const allActive=!selected.size;
+  chips.innerHTML=
+    `<button type="button" class="schedule-inst-chip${allActive?" active":""}" onclick="selectAllScheduleInstitutions()"><span>Todas</span><b>${getDoctorsForDay(selectedDay).length}</b></button>`+
+    stats.map(s=>`<button type="button" class="schedule-inst-chip${selected.has(s.key)?" active":""}" onclick="toggleScheduleInstitution('${encodeURIComponent(s.name)}')" title="${escAttr(s.name)}"><span>${escHtml(s.name)}</span><b>${s.count}</b></button>`).join("");
+
+  const panel=document.getElementById("schedule-filter-panel");
+  const more=document.getElementById("schedule-filter-more");
+  panel.hidden=!scheduleFilters.panelOpen;
+  more.setAttribute("aria-expanded",scheduleFilters.panelOpen?"true":"false");
+  more.classList.toggle("active",scheduleFilters.panelOpen);
+
+  const input=document.getElementById("schedule-search-input");
+  if(input && input.value!==scheduleFilters.query) input.value=scheduleFilters.query;
+
+  document.querySelectorAll("[data-schedule-time]").forEach(btn=>{
+    btn.classList.toggle("active",btn.dataset.scheduleTime===scheduleFilters.time);
+    btn.disabled=btn.dataset.scheduleTime==="now" && selectedDay!==DIAS[new Date().getDay()];
+  });
+
+  const activeCount=selected.size+(scheduleFilters.query.trim()?1:0)+(scheduleFilters.time!=="all"?1:0);
+  const badge=document.getElementById("schedule-filter-badge");
+  badge.hidden=!activeCount;
+  badge.textContent=activeCount;
+
+  const parts=[];
+  if(selected.size) parts.push(selected.size===1?"1 clínica":selected.size+" clínicas");
+  if(scheduleFilters.query.trim()) parts.push("búsqueda activa");
+  if(scheduleFilters.time!=="all"){
+    parts.push({morning:"mañana",afternoon:"tarde",now:"ahora"}[scheduleFilters.time]);
+  }
+  document.getElementById("schedule-filter-summary").textContent=parts.length?parts.join(" · "):"Sin filtros adicionales";
+}
+
 function renderSchedule() {
-  const docsForDay = getDoctorsForDay(selectedDay);
+  renderScheduleFilters();
+  const docsForDay = getFilteredDoctorsForDay(selectedDay);
   const today = DIAS[new Date().getDay()];
   document.getElementById("schedule-day-label").textContent = selectedDay===today?`Hoy · ${selectedDay}`:selectedDay;
   document.getElementById("schedule-count").textContent = `${docsForDay.length} profesional${docsForDay.length!==1?"es":""}`;
+
   if (!docsForDay.length) {
-    document.getElementById("schedule-list").innerHTML=`<div class="empty-state"><div class="empty-icon"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--arena)" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="empty-title">Sin consultas programadas</div><div class="empty-sub">No hay oftalmólogos para el ${selectedDay}.</div></div>`;
+    const filtered=scheduleFilters.institutions.length || scheduleFilters.query.trim() || scheduleFilters.time!=="all";
+    document.getElementById("schedule-list").innerHTML=`<div class="empty-state"><div class="empty-icon"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--arena)" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="empty-title">${filtered?"Sin resultados con estos filtros":"Sin consultas programadas"}</div><div class="empty-sub">${filtered?"Probá otra clínica, franja horaria o nombre.":`No hay oftalmólogos para el ${selectedDay}.`}</div>${filtered?'<button type="button" class="schedule-empty-clear" onclick="clearScheduleFilters()">Limpiar filtros</button>':""}</div>`;
     return;
   }
+
   document.getElementById("schedule-list").innerHTML = docsForDay.map((doc,idx)=>{
-    const instHTML = doc.institucionesDelDia.map(inst=>`<div class="inst-block"><div class="inst-label"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>${inst.nombre}</div><div class="turno-list">${inst.turnos.map(t=>{
+    const instHTML = doc.institucionesDelDia.map(inst=>`<div class="inst-block"><div class="inst-label"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>${escHtml(inst.nombre)}</div><div class="turno-list">${inst.turnos.map(t=>{
       const flexible=t.availability_text && (!t.desde || !t.hasta);
       const turns=calcTurns(t);
       const horario = flexible
         ? `<div class="turno-time flexible-time" style="grid-column:1/4">${escHtml(t.availability_text)}</div>`
         : `<div class="turno-time"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${t.desde||"—"}</div><div style="font-size:.78rem;color:var(--roble);font-weight:500">→</div><div class="turno-time">${t.hasta||"—"}</div>`;
       const duracion = turns ? `<span class="badge badge-duracion">${t.duracion}min · ~${turns}</span>` : "";
-      return `<div class="turno-row">${horario}<div class="turno-sep"></div><div class="turno-badges"><span class="badge ${badgeClass(t.tipo)}">${t.tipo}</span>${duracion}</div></div>`;
+      return `<div class="turno-row">${horario}<div class="turno-sep"></div><div class="turno-badges"><span class="badge ${badgeClass(t.tipo)}">${escHtml(t.tipo)}</span>${duracion}</div></div>`;
     }).join("")}</div></div>`).join("");
-    const isDemanda=doc.servicio.includes("DEMANDA");
-    return `<div class="doctor-card" style="animation-delay:${idx*60}ms"><div class="doctor-card-header"><div class="doctor-avatar">${initials(doc.nombre)}</div><div class="doctor-info"><div class="doctor-name">${doc.nombre}</div><span class="doctor-service${isDemanda?" demanda":""}">${doc.servicio}</span></div></div>${instHTML}</div>`;
+    const isDemanda=String(doc.servicio||"").includes("DEMANDA");
+    const actions=`<div class="schedule-card-actions">
+      <button type="button" onclick="openCrmModal('${escAttr(doc.id)}')">Ver ficha</button>
+      <button type="button" class="schedule-wa-btn" ${doc.telefono?"":"disabled"} onclick="openWhatsApp('${escAttr(doc.telefono||"")}')" title="${doc.telefono?"Abrir WhatsApp":"Sin teléfono cargado"}">WhatsApp</button>
+    </div>`;
+    return `<div class="doctor-card" style="animation-delay:${idx*45}ms"><div class="doctor-card-header"><div class="doctor-avatar">${initials(doc.nombre)}</div><div class="doctor-info"><div class="doctor-name">${escHtml(doc.nombre)}</div><span class="doctor-service${isDemanda?" demanda":""}">${escHtml(doc.servicio)}</span></div></div>${instHTML}${actions}</div>`;
   }).join("");
 }
 
-// MEJORA: compartir el cronograma del día por WhatsApp / portapapeles
+// Comparte exactamente el cronograma visible (respeta clínica, búsqueda y franja horaria).
 function shareDaySchedule(){
-  const docsForDay = getDoctorsForDay(selectedDay);
-  if(!docsForDay.length){ showToast("Sin profesionales ese día"); return; }
-  let txt = `👁 *Black Óptica — ${selectedDay}*\n\n`;
+  const docsForDay = getFilteredDoctorsForDay(selectedDay);
+  if(!docsForDay.length){ showToast("Sin profesionales con los filtros actuales"); return; }
+  let txt = `👁 *Black Óptica — ${selectedDay}*\n`;
+  const selectedNames=getScheduleInstitutionStats(selectedDay)
+    .filter(s=>scheduleFilters.institutions.includes(s.key))
+    .map(s=>s.name);
+  if(selectedNames.length) txt += `Clínica: *${selectedNames.join(", ")}*\n`;
+  txt+="\n";
   docsForDay.forEach(doc=>{
     txt += `*${doc.nombre}*\n`;
     doc.institucionesDelDia.forEach(inst=>{
+      txt += `  _${inst.nombre}_\n`;
       inst.turnos.forEach(t=>{
         const horario=t.availability_text && (!t.desde || !t.hasta)
           ? t.availability_text
@@ -335,7 +537,6 @@ function shareDaySchedule(){
     navigator.clipboard.writeText(txt).then(()=>showToast("✓ Cronograma copiado, pegalo en WhatsApp"));
   }
 }
-
 
 // ══════════════════════════════════════════════════════
 // CRM: TELÉFONO / WHATSAPP / CUMPLEAÑOS / SEGUIMIENTO
