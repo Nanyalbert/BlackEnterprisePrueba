@@ -144,12 +144,13 @@
     const displayDoctor=displayPersonName(cleanDoctorName(doctor));
     let msg='Hola Dr./Dra. '+displayDoctor+'. Le compartimos la liquidación correspondiente al período *'+dmy(from)+' al '+dmy(to)+'*.\n\n';
     msg+='*Sucursal:* '+branchName+'\n\n';
+    const uniquePcts=[...new Set(rows.map(r=>Number(window.BlackCommissionRules?.getPct?.(doctor,canonicalBranch(branch),r.fecha) ?? window.getComision?.(doctor,canonicalBranch(branch)) ?? 20)||20))];
     msg+='*RESUMEN DE LIQUIDACIÓN*\n';
-    msg+='*Base s/IVA:* '+money(netTotal)+'\n';
-    msg+='*IVA incluido:* '+money(vatTotal)+'\n';
-    msg+='*Total c/IVA:* '+money(grossTotal)+'\n';
+    msg+='*Ventas totales (IVA incluido):* '+money(grossTotal)+'\n';
+    msg+='*Base para liquidación (sin IVA):* '+money(netTotal)+'\n';
+    msg+='*Porcentaje aplicado:* '+(uniquePcts.length===1?uniquePcts[0]+'%':'Según detalle')+'\n';
     msg+='\n*TOTAL A LIQUIDAR:* *'+money(total)+'*';
-    if(detail.length){msg+='\n\n*DETALLE POR PACIENTE*\n\n'+detail.join('\n\n────────────\n\n');}
+    if(detail.length){msg+='\n\n────────────\n\n*DETALLE POR PACIENTE*\n\n'+detail.join('\n\n────────────\n\n');}
     msg+='\n\n_Leandro Albert - Black Óptica_';
     return {msg,rows};
   }
