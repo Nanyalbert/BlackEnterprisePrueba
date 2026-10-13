@@ -19,7 +19,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="stylesheet" href="assets/css/base.css">
-<link rel="stylesheet" href="assets/css/crm-oftalmologos.css?v=20261013-mobile-ranking-2">
+<link rel="stylesheet" href="assets/css/crm-oftalmologos.css?v=20261013-schedule-filters-1">
 <link rel="stylesheet" href="assets/css/crm-oftalmologos-sucursales.css?v=20261007-1">
 <link rel="stylesheet" href="assets/css/crm-oftalmologos-polish.css?v=20261007-1">
 
@@ -116,6 +116,37 @@
       <div class="day-selector-label">Seleccioná el día</div>
       <div class="day-selector" id="day-selector"></div>
     </div>
+    <section class="schedule-filters" id="schedule-filters" aria-label="Filtros del cronograma">
+      <div class="schedule-filter-top">
+        <div>
+          <div class="schedule-filter-kicker">Filtrar por clínica</div>
+          <div class="schedule-filter-hint">Podés elegir una o varias instituciones.</div>
+        </div>
+        <button class="schedule-filter-more" id="schedule-filter-more" type="button" onclick="toggleScheduleFilterPanel()" aria-expanded="false">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+          <span>Filtros</span>
+          <span class="schedule-filter-badge" id="schedule-filter-badge" hidden>0</span>
+        </button>
+      </div>
+      <div class="schedule-inst-chips" id="schedule-inst-chips"></div>
+      <div class="schedule-filter-panel" id="schedule-filter-panel" hidden>
+        <label class="schedule-search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="schedule-search-input" type="search" placeholder="Buscar médico o clínica..." autocomplete="off" oninput="setScheduleSearch(this.value)" />
+        </label>
+        <div class="schedule-time-filter">
+          <button type="button" data-schedule-time="all" onclick="setScheduleTime('all')">Todo el día</button>
+          <button type="button" data-schedule-time="morning" onclick="setScheduleTime('morning')">Mañana</button>
+          <button type="button" data-schedule-time="afternoon" onclick="setScheduleTime('afternoon')">Tarde</button>
+          <button type="button" data-schedule-time="now" onclick="setScheduleTime('now')">Ahora</button>
+        </div>
+        <div class="schedule-filter-panel-footer">
+          <span id="schedule-filter-summary"></span>
+          <button type="button" class="schedule-filter-clear" onclick="clearScheduleFilters()">Limpiar filtros</button>
+        </div>
+      </div>
+    </section>
+
     <div class="schedule-wrap">
       <div class="schedule-title">
         <span id="schedule-day-label">Hoy</span>
@@ -440,7 +471,7 @@
 
 
 <script src="assets/js/supabase-config.js"></script>
-<script src="assets/js/crm-oftalmologos.js?v=20261013-mobile-ranking-2"></script>
+<script src="assets/js/crm-oftalmologos.js?v=20261013-schedule-filters-1"></script>
 <script src="assets/js/crm-oftalmologos-sucursales.js?v=20261007-1"></script>
 <script src="assets/js/crm-oftalmologos-supabase-sync.js?v=20261008-3"></script>
 <script src="assets/js/crm-oftalmologos-liquidaciones.js?v=20261007-1"></script>
