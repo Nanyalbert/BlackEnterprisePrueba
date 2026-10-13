@@ -74,6 +74,19 @@
         </table>
       </div>
     </div>
+
+    <div class="section-head" style="margin-top:24px">
+      <div><p class="eyebrow">DETALLE</p><h2>Marcaciones registradas</h2><p class="section-copy">Las correcciones manuales quedan auditadas con usuario, fecha y motivo.</p></div>
+      <button class="btn btn-primary" id="manual-mark-btn" type="button" hidden>Agregar marca manual</button>
+    </div>
+    <div class="table-card">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Integrante</th><th>Fecha y hora</th><th>Movimiento</th><th>Origen</th><th>Nota</th><th></th></tr></thead>
+          <tbody id="marks-tbody"><tr><td colspan="6" class="empty-cell">Sin marcaciones todavía</td></tr></tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
   <section class="rrhh-panel" id="tab-reportes">
@@ -163,9 +176,23 @@
   </form>
 </div>
 
+<div class="modal-overlay" id="mark-modal">
+  <form class="modal" id="mark-form">
+    <div class="modal-head"><div><p class="eyebrow">ASISTENCIA</p><h3 id="mark-modal-title">Agregar marca manual</h3></div><button class="icon-button" id="mark-modal-close" type="button" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <input type="hidden" id="mark-id">
+    <div class="form-grid">
+      <label class="full"><span>Integrante</span><select id="mark-employee" required></select></label>
+      <label><span>Fecha y hora</span><input id="mark-datetime" type="datetime-local" required></label>
+      <label><span>Movimiento</span><select id="mark-type"><option value="entrada">Entrada</option><option value="salida">Salida</option><option value="reingreso">Reingreso</option></select></label>
+      <label class="full"><span>Motivo del ajuste</span><input id="mark-reason" maxlength="160" placeholder="Ej: olvidó fichar la salida" required></label>
+    </div>
+    <div class="modal-actions"><button class="btn btn-ghost" id="mark-cancel" type="button">Cancelar</button><button class="btn btn-primary" type="submit">Guardar ajuste</button></div>
+  </form>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="assets/js/supabase-config.js"></script>
-<script src="assets/js/rrhh.js?v=20261013-audit-1"></script>
+<script src="assets/js/rrhh.js?v=20261013-audit-2"></script>
 <script src="assets/js/rrhh-reportes.js?v=20261007-1"></script>
 <script src="assets/js/module-access.js?v=20261006-3"></script>
 </body>
