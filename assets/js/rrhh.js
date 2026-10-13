@@ -36,6 +36,8 @@
     qs('#employee-modal-title').textContent=employee?'Editar integrante':'Nuevo integrante';
     qs('#employee-name').value=employee?.full_name||'';
     qs('#employee-branch').value=canonicalBranch(employee?.branch_code||'general-paz');
+    qs('#employee-email').value=employee?.email||'';
+    qs('#employee-active').value=employee?.active===false?'false':'true';
     qs('#employee-start').value=fmtTime(employee?.scheduled_start||'09:00');
     qs('#employee-end').value=fmtTime(employee?.scheduled_end||'19:00');
     qs('#employee-sat-start').value=fmtTime(employee?.sat_start||'09:00');
@@ -164,13 +166,14 @@
     const payload={
       full_name:qs('#employee-name').value.trim(),
       branch_code:canonicalBranch(qs('#employee-branch').value),
+      email:qs('#employee-email').value.trim()||null,
       scheduled_start:qs('#employee-start').value,
       scheduled_end:qs('#employee-end').value,
       sat_start:qs('#employee-sat-start').value||null,
       sat_end:qs('#employee-sat-end').value||null,
       tolerance_minutes:Number(qs('#employee-tolerance').value||0),
       monthly_reference_salary:Number(qs('#employee-salary').value||0),
-      active:true
+      active:qs('#employee-active').value!=='false'
     };
     if(pin)payload.pin_plain=pin;
     const submit=form.querySelector('button[type="submit"]');
