@@ -199,8 +199,11 @@
     return {from:from.toISOString(),to:to.toISOString()};
   }
   async function loadToday(){
-    const now=new Date(),range=localRangeForDate(now);
-    qs('#today-label').textContent=new Intl.DateTimeFormat('es-AR',{dateStyle:'full'}).format(now);
+    const input=qs('#attendance-date');
+    const raw=input?.value||'';
+    const selected=raw?new Date(raw+'T12:00:00'):new Date();
+    const range=localRangeForDate(selected);
+    qs('#today-label').textContent=new Intl.DateTimeFormat('es-AR',{dateStyle:'full'}).format(selected);
     if(!sb)return;
     const {data,error}=await sb.rpc('hr_list_marks',{p_from:range.from,p_to:range.to});
     if(error){console.warn(error);return}
@@ -356,6 +359,12 @@
   });
 
   qs('#refresh-btn').addEventListener('click',loadEmployees);
+  const attendanceDate=qs('#attendance-date');
+  if(attendanceDate){
+    const now=new Date();
+    attendanceDate.value=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+    attendanceDate.addEventListener('change',loadToday);
+  }
   qs('#report-month').value=monthKey(new Date());
   qs('#kpi-present').textContent='0';qs('#kpi-late').textContent='0';qs('#kpi-review').textContent='0';
   loadEmployees();
