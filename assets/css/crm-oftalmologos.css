@@ -664,3 +664,124 @@ svg[stroke="var(--arena)"], svg[fill="var(--arena)"]{stroke:var(--portal-text-3)
 .bday-icon{background:linear-gradient(135deg,var(--accent-amber-2),var(--accent-amber))!important;color:#171009!important;}
 .bday-when.hoy{color:var(--accent-green-2)!important;}
 
+
+
+/* ── MOBILE RANKING UX 2026-10-13 ── */
+.bar-rank{display:none}
+.bar-content{display:contents}
+.bar-mobile-head{display:contents}
+.bar-mobile-value{display:none}
+
+@media(max-width:640px){
+  .chart-section{
+    margin:8px 12px;
+    padding:16px 14px 18px;
+    border-radius:18px;
+  }
+  .chart-title{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:12px;
+    margin-bottom:15px;
+  }
+  .chart-tabs{
+    width:100%;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+  .chart-tabs::-webkit-scrollbar{display:none}
+  .chart-tab{
+    flex:1 0 auto;
+    min-width:max-content;
+    padding:7px 11px;
+    font-size:.61rem;
+  }
+  .bar-chart{gap:10px}
+  .bar-row{
+    display:grid;
+    grid-template-columns:30px minmax(0,1fr);
+    align-items:center;
+    gap:9px;
+    padding:11px 10px;
+    background:var(--portal-card,var(--marfil));
+    border:1px solid var(--portal-line,rgba(201,169,110,.18));
+    border-radius:14px;
+  }
+  .bar-rank{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:30px;
+    height:30px;
+    border-radius:10px;
+    background:var(--portal-card-hover,var(--alabaster));
+    border:1px solid var(--portal-line,rgba(201,169,110,.18));
+    color:var(--portal-text-2,var(--roble));
+    font-size:.67rem;
+    font-weight:700;
+    font-variant-numeric:tabular-nums;
+  }
+  .bar-row.highlight .bar-rank{
+    color:var(--accent-green-2,#4fa66f);
+    border-color:rgba(79,166,111,.35);
+    background:rgba(79,166,111,.08);
+  }
+  .bar-content{
+    display:flex;
+    min-width:0;
+    flex-direction:column;
+    gap:8px;
+  }
+  .bar-mobile-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:10px;
+    min-width:0;
+  }
+  .bar-label{
+    width:auto;
+    min-width:0;
+    flex:1;
+    text-align:left;
+    white-space:normal;
+    overflow:visible;
+    text-overflow:clip;
+    font-size:.76rem;
+    font-weight:650;
+    line-height:1.25;
+  }
+  .bar-mobile-value{
+    display:block;
+    flex-shrink:0;
+    color:var(--portal-text,var(--black));
+    font-size:.73rem;
+    font-weight:700;
+    line-height:1.25;
+    text-align:right;
+    font-variant-numeric:tabular-nums;
+  }
+  .bar-track{
+    width:100%;
+    height:8px;
+    border:none;
+    background:var(--portal-card-hover,var(--alabaster));
+    border-radius:999px;
+    overflow:hidden;
+  }
+  .bar-fill{
+    min-width:8px;
+    padding:0;
+    border-radius:999px;
+  }
+  .bar-val{display:none}
+}
+
+@media(max-width:390px){
+  .chart-section{margin-left:10px;margin-right:10px;padding-left:12px;padding-right:12px}
+  .bar-row{grid-template-columns:28px minmax(0,1fr);padding:10px 9px}
+  .bar-rank{width:28px;height:28px}
+  .bar-mobile-head{gap:7px}
+  .bar-label{font-size:.72rem}
+  .bar-mobile-value{font-size:.68rem}
+}
