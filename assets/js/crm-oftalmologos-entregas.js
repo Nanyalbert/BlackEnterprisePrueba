@@ -146,7 +146,7 @@
     msg+='*Total c/IVA:* '+money(grossTotal)+'\n';
     msg+='\n*TOTAL A LIQUIDAR:* *'+money(total)+'*';
     if(detail.length){msg+='\n\n*DETALLE POR PACIENTE*\n\n'+detail.join('\n\n────────────\n\n');}
-    msg+='\n\n_Black Óptica_';
+    msg+='\n\n_Leandro Albert - Black Óptica_';
     return {msg,rows};
   }
 
