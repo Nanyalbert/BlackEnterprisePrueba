@@ -6,7 +6,7 @@
     'zona-norte':'Cerro de las Rosas',
     'cerro':'Cerro de las Rosas'
   };
-  const state={employees:[],attendance:[],summary:[]};
+  const state={employees:[],attendance:[],summary:[],canAdjustMarks:false};
   let sb=null;
   try{sb=window.BlackPortal?.getSupabase?.()||null}catch(e){console.error(e)}
 
@@ -51,6 +51,41 @@
     setTimeout(()=>qs('#employee-name').focus(),60);
   }
   function closeModal(){modal.classList.remove('show')}
+
+  const markModal=qs('#mark-modal'),markForm=qs('#mark-form');
+  function localDateTimeValue(value){
+    const d=value?new Date(value):new Date();
+    if(Number.isNaN(d.getTime()))return '';
+    const pad=n=>String(n).padStart(2,'0');
+    return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+  }
+  function populateMarkEmployees(selectedId){
+    const select=qs('#mark-employee');
+    select.innerHTML=state.employees
+      .filter(e=>e.active!==false||String(e.id)===String(selectedId||''))
+      .map(e=>'<option value="'+esc(e.id)+'">'+esc(e.full_name)+' · '+esc(e.branch_name||BRANCH_LABELS[canonicalBranch(e.branch_code)]||'')+'</option>')
+      .join('');
+    if(selectedId)select.value=String(selectedId);
+  }
+  function openMarkModal(mark=null){
+    if(!state.canAdjustMarks||!markModal)return;
+    markForm.reset();
+    qs('#mark-id').value=mark?.id||'';
+    qs('#mark-modal-title').textContent=mark?'Corregir marcación':'Agregar marca manual';
+    populateMarkEmployees(mark?.employee_id||state.employees.find(e=>e.active!==false)?.id||'');
+    qs('#mark-employee').disabled=Boolean(mark);
+    qs('#mark-datetime').value=localDateTimeValue(mark?.marked_at||new Date());
+    qs('#mark-type').value=String(mark?.mark_type||'entrada').toLowerCase();
+    qs('#mark-reason').value='';
+    markModal.classList.add('show');
+    setTimeout(()=>qs('#mark-reason').focus(),50);
+  }
+  function closeMarkModal(){markModal?.classList.remove('show')}
+  qs('#manual-mark-btn')?.addEventListener('click',()=>openMarkModal());
+  qs('#mark-modal-close')?.addEventListener('click',closeMarkModal);
+  qs('#mark-cancel')?.addEventListener('click',closeMarkModal);
+  markModal?.addEventListener('click',e=>{if(e.target===markModal)closeMarkModal()});
+
   qs('#new-employee-btn').addEventListener('click',()=>openModal());
   qs('#employee-modal-close').addEventListener('click',closeModal);
   qs('#employee-cancel').addEventListener('click',closeModal);
@@ -87,6 +122,7 @@
     }
     state.employees=(data||[]).map(e=>({...e,branch_code:canonicalBranch(e.branch_code)}));
     renderEmployees();
+    await loadMarkCapability();
     await Promise.all([loadToday(),loadSummaryKpis()]);
   }
 
@@ -102,6 +138,7 @@
     const {data,error}=await sb.rpc('hr_list_marks',{p_from:range.from,p_to:range.to});
     if(error){console.warn(error);return}
     state.attendance=data||[];
+    renderDetailedMarks();
     const by={};
     state.attendance.forEach(m=>(by[m.employee_id]??=[]).push(m));
     const rows=Object.entries(by).map(([id,marks])=>{
@@ -119,6 +156,56 @@
       return ['entrada','reingreso'].includes(String(last?.mark_type||'').toLowerCase());
     }).length;
   }
+
+  function renderDetailedMarks(){
+    const tbody=qs('#marks-tbody');
+    if(!tbody)return;
+    const rows=[...state.attendance].sort((a,b)=>new Date(b.marked_at)-new Date(a.marked_at));
+    tbody.innerHTML=rows.length?rows.map(m=>{
+      const dt=new Date(m.marked_at);
+      const when=Number.isNaN(dt.getTime())?'—':dt.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})+' · '+dt.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+      const source=m.is_manual?'Ajustada manualmente':(m.source==='terminal'?'Black Fichada':(m.source||'—'));
+      const action=state.canAdjustMarks?'<button class="row-btn edit-mark" data-id="'+esc(m.id)+'" title="Corregir marcación" aria-label="Corregir marcación"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button>':'';
+      return '<tr><td><strong>'+esc(m.employee_name)+'</strong></td><td>'+esc(when)+'</td><td><span class="status-pill">'+esc(String(m.mark_type||'').toUpperCase())+'</span></td><td>'+esc(source)+'</td><td>'+esc(m.note||'—')+'</td><td>'+action+'</td></tr>';
+    }).join(''):'<tr><td colspan="6" class="empty-cell">Todavía no hay marcaciones hoy.</td></tr>';
+    qsa('.edit-mark').forEach(btn=>btn.addEventListener('click',()=>openMarkModal(state.attendance.find(m=>String(m.id)===String(btn.dataset.id)))));
+  }
+
+  async function loadMarkCapability(){
+    if(!sb)return;
+    try{
+      const {data,error}=await sb.rpc('black_os_has_permission',{p_module:'rrhh',p_permission:'settings'});
+      state.canAdjustMarks=!error&&data===true;
+    }catch(_){state.canAdjustMarks=false}
+    const button=qs('#manual-mark-btn');
+    if(button)button.hidden=!state.canAdjustMarks;
+    renderDetailedMarks();
+  }
+
+  markForm?.addEventListener('submit',async e=>{
+    e.preventDefault();
+    if(!sb||!state.canAdjustMarks)return;
+    const id=qs('#mark-id').value?Number(qs('#mark-id').value):null;
+    const employeeId=qs('#mark-employee').value;
+    const localValue=qs('#mark-datetime').value;
+    const reason=qs('#mark-reason').value.trim();
+    if(reason.length<4)return alert('Indicá el motivo del ajuste.');
+    const markedAt=new Date(localValue);
+    if(Number.isNaN(markedAt.getTime()))return alert('Indicá una fecha y hora válidas.');
+    const submit=markForm.querySelector('button[type="submit"]');
+    submit.disabled=true;submit.textContent='Guardando…';
+    const {error}=await sb.rpc('hr_save_time_mark',{
+      p_mark_id:id,
+      p_employee_id:employeeId,
+      p_marked_at:markedAt.toISOString(),
+      p_mark_type:qs('#mark-type').value,
+      p_reason:reason
+    });
+    submit.disabled=false;submit.textContent='Guardar ajuste';
+    if(error)return alert(error.message||'No se pudo guardar el ajuste.');
+    closeMarkModal();
+    await Promise.all([loadToday(),loadSummaryKpis()]);
+  });
 
   async function fetchMonthlySummary(month){
     if(!sb)return [];
