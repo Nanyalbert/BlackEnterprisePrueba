@@ -945,7 +945,7 @@ function renderBarChart(docList){
     const cls=i===0?" highlight":i===sorted.length-1?" lowlight":"";
     const displayName=String(d.medico||"").replace(/\s+/g," ").trim();
     return `<div class="bar-row${cls}">
-      <div class="bar-rank" aria-hidden="true">#${i+1}</div>
+      <div class="bar-rank" aria-hidden="true">${i+1}</div>
       <div class="bar-content">
         <div class="bar-mobile-head">
           <div class="bar-label" title="${escAttr(displayName)}">${escHtml(displayName)}</div>
