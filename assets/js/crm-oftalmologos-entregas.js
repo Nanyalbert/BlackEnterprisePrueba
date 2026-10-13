@@ -106,6 +106,10 @@
     const dk=String(window.normName?.(doctor)||doctor||'');
     return (all||[]).filter(r=>String(window.normName?.(r.medico)||r.medico||'')===dk && canonicalBranch(window.branchCodeForRecipe?.(r)||r.branch||r.sucursal||'general-paz')===canonicalBranch(branch));
   }
+  // Formato de presentación para WhatsApp; no altera los nombres guardados.
+  function displayPersonName(value){
+    return String(value||'').trim().replace(/\s+/g,' ').toLocaleLowerCase('es-AR').replace(/(^|[\s'’\-])([a-záéíóúüñ])/giu,(_,sep,letter)=>sep+letter.toLocaleUpperCase('es-AR'));
+  }
   function directMessage(doctor,branch){
     const from=document.getElementById('periodo-desde')?.value||'';
     const to=document.getElementById('periodo-hasta')?.value||'';
@@ -134,10 +138,10 @@
       const pct=Number(window.BlackCommissionRules?.getPct?.(doctor,canonicalBranch(branch),r.fecha) ?? window.getComision?.(doctor,canonicalBranch(branch)) ?? 20)||20;
       const commission=net*pct/100;
       netTotal+=net; vatTotal+=vat; grossTotal+=gross; total+=commission;
-      detail.push('*Paciente:* '+(r.paciente||'Paciente')+'\n*Fecha:* '+dmy(r.fecha)+'\n*Base s/IVA:* '+money(net)+'\n*Porcentaje aplicado:* '+pct+'%\n*Importe a liquidar:* *'+money(commission)+'*');
+      detail.push('*Paciente:* '+displayPersonName(r.paciente||'Paciente')+'\n*Fecha:* '+dmy(r.fecha)+'\n*Base s/IVA:* '+money(net)+'\n*Porcentaje aplicado:* '+pct+'%\n*Importe a liquidar:* *'+money(commission)+'*');
     });
     const branchName=canonicalBranch(branch)==='cerro-de-las-rosas'?'Cerro de las Rosas':'General Paz';
-    const displayDoctor=cleanDoctorName(doctor);
+    const displayDoctor=displayPersonName(cleanDoctorName(doctor));
     let msg='Hola Dr./Dra. '+displayDoctor+'. Le compartimos la liquidación correspondiente al período *'+dmy(from)+' al '+dmy(to)+'*.\n\n';
     msg+='*Sucursal:* '+branchName+'\n\n';
     msg+='*RESUMEN DE LIQUIDACIÓN*\n';
