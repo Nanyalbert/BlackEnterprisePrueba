@@ -149,6 +149,8 @@
     <div class="form-grid">
       <label><span>Nombre completo</span><input id="employee-name" required></label>
       <label><span>Sucursal</span><select id="employee-branch"><option value="general-paz">General Paz</option><option value="cerro-de-las-rosas">Cerro de las Rosas</option></select></label>
+      <label><span>Email (opcional)</span><input id="employee-email" type="email" autocomplete="email" placeholder="nombre@blackoptica.ar"></label>
+      <label><span>Estado</span><select id="employee-active"><option value="true">Activo</option><option value="false">Inactivo</option></select></label>
       <label><span>Hora entrada</span><input id="employee-start" type="time" value="09:00" required></label>
       <label><span>Hora salida</span><input id="employee-end" type="time" value="19:00" required></label>
       <label><span>Sábado entrada</span><input id="employee-sat-start" type="time" value="09:00"></label>
@@ -163,7 +165,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="assets/js/supabase-config.js"></script>
-<script src="assets/js/rrhh.js?v=20261007-5"></script>
+<script src="assets/js/rrhh.js?v=20261013-audit-1"></script>
 <script src="assets/js/rrhh-reportes.js?v=20261007-1"></script>
 <script src="assets/js/module-access.js?v=20261006-3"></script>
 </body>
