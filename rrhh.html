@@ -179,7 +179,7 @@
   <label class="rrhh-excel-upload"><strong>2. Cobros</strong><span>Archivo Excel (.xlsx o .xls)</span><input type="file" id="com-file-cobros" accept=".xlsx,.xls"><span class="rrhh-excel-columns">Columnas obligatorias:</span><code>Cliente</code><code>Vendedor</code><code>Total Importe</code><small>Importe efectivamente cobrado; los pagos parciales se prorratean.</small></label>
   <label class="rrhh-excel-upload"><strong>3. Recetas</strong><span>Archivo Excel (.xlsx o .xls)</span><input type="file" id="com-file-recetas" accept=".xlsx,.xls"><span class="rrhh-excel-columns">Columnas obligatorias:</span><code>Cliente</code><code>Vendedor</code><code>Médico</code><small>También reconoce Medico (sin tilde). Un médico informado determina la tasa de derivación.</small></label>
 </div><p class="rrhh-excel-help">Para exportar correctamente: usá esos encabezados en la primera fila de la primera hoja, sin celdas combinadas ni filas de totales. Los nombres de cliente y vendedor deben ser consistentes entre archivos. Las operaciones ambiguas se enviarán a revisión.</p>
-  <div class="rrhh-com-grid"><label>Porcentaje con médico (%)<input type="number" id="com-med-rate" min="0" max="100" step="0.1" value="2"></label><label>Porcentaje otros (%)<input type="number" id="com-other-rate" min="0" max="100" step="0.1" value="4"></label><label>Coincidencia mínima (%)<input type="number" id="com-threshold" min="75" max="100" step="1" value="92"></label></div>
+  <div class="rrhh-com-grid"><label>Porcentaje con médico (%)<input type="number" id="com-med-rate" min="0" max="100" step="0.1" value="2"></label><label>Porcentaje otros (%)<input type="number" id="com-other-rate" min="0" max="100" step="0.1" value="3"></label><label>Coincidencia mínima (%)<input type="number" id="com-threshold" min="75" max="100" step="1" value="92"></label></div>
   <div class="rrhh-special-rule"><div><strong>Ministerio de Salud</strong><span>Regla especial reservada para una futura lógica de comisiones. Actualmente estas operaciones se excluyen y no se liquidan.</span></div><label>Comisión actual (%)<input type="number" value="0" disabled aria-label="Ministerio de Salud comisión fija en cero por ciento"></label><span class="rrhh-rule-pill">0% · Excluido</span></div>
   <div class="rrhh-com-toolbar"><button class="btn btn-primary" id="com-process" type="button">Analizar archivos</button><button class="btn btn-ghost" id="com-confirm-import" type="button" disabled>Confirmar e importar</button><strong id="com-import-summary">Sin analizar</strong></div>
   <div class="rrhh-com-list" id="com-preview"></div>
@@ -262,7 +262,7 @@
 <script src="assets/js/module-access.js?v=20261006-3"></script>
 <script src="assets/js/rrhh-comisiones.js?v=20261014-3"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="assets/js/rrhh-comisiones-excel.js?v=20261014-1"></script>
+<script src="assets/js/rrhh-comisiones-excel.js?v=20261014-3"></script>
 <script src="assets/js/rrhh-informe-integrante.js?v=20261014-2"></script>
 </body>
 </html>
