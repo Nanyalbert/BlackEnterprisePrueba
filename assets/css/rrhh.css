@@ -98,3 +98,27 @@
 .rrhh-com-import-note{background:#171715;border:1px solid #35352e;border-radius:13px;color:#b3b3a9;padding:15px;font-size:12px;line-height:1.6}
 @media(max-width:800px){.rrhh-com-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rrhh-commission-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:530px){.rrhh-tool{padding:12px;min-height:78px}.rrhh-tool strong{font-size:12px}.rrhh-tool small{font-size:10px}.rrhh-com-grid{grid-template-columns:1fr}.rrhh-com-record{flex-direction:column}.rrhh-com-right{justify-items:start;text-align:left}.rrhh-com-actions{justify-content:flex-start}.rrhh-commission-kpis article{padding:11px}.rrhh-commission-kpis strong{font-size:18px}}
+
+/* Employee-facing period report (commissions + attendance) */
+.rrhh-commission-fupload{margin:24px 0;padding:20px;background:#111;border:1px solid #30302c;border-radius:17px}
+.rrhh-report-employee-preview{margin-top:17px}
+.rrhh-person-report{padding:24px;background:#faf9f6;color:#1c1c1a;border:1px solid #d6d4cc;border-radius:14px;font-size:12px;line-height:1.5}
+.rrhh-person-report header{display:flex;justify-content:space-between;align-items:start;gap:15px;padding-bottom:19px;margin-bottom:20px;border-bottom:2px solid #111}
+.rrhh-person-report header span{font-weight:800;letter-spacing:.09em;font-size:10px}
+.rrhh-person-report header h2{color:#151515;margin:7px 0;font-size:23px}
+.rrhh-person-report header p{margin:0;font-weight:700}
+.rrhh-report-period{font-size:12px;font-weight:700;text-align:right}
+.rrhh-person-report h3{font-size:16px;color:#151515;margin:24px 0 11px}
+.rrhh-person-report .rrhh-commission-kpis{margin:0 0 16px}
+.rrhh-person-report .rrhh-commission-kpis article{background:#f0eee7;border-color:#dad7cd;color:#111}
+.rrhh-person-report .rrhh-commission-kpis span,.rrhh-person-report .rrhh-commission-kpis small{color:#555}
+.rrhh-person-report .rrhh-commission-kpis strong{font-size:18px;color:#111}
+.rrhh-report-note{padding:11px 13px;background:#eeeae0;border-left:3px solid #9b875e;color:#48433a;border-radius:5px}
+.rrhh-report-table{width:100%;overflow-x:auto}
+.rrhh-report-table table{width:100%;min-width:620px;border-collapse:collapse;font-size:11px}
+.rrhh-report-table th{background:#e8e5dc;color:#242424;text-align:left;padding:9px;border-bottom:1px solid #bcb7aa;position:static;white-space:normal}
+.rrhh-report-table td{padding:8px 9px;border-bottom:1px solid #ddd9d0;color:#292929;vertical-align:top}
+.rrhh-report-table td small{display:block;color:#6d665b;font-size:9px}
+.rrhh-person-report footer{margin-top:24px;padding-top:9px;border-top:1px solid #bfbab1;color:#777;font-size:10px}
+@media(max-width:650px){.rrhh-person-report{padding:14px}.rrhh-person-report header{flex-direction:column}.rrhh-report-period{text-align:left}.rrhh-person-report header h2{font-size:19px}.rrhh-commission-fupload{padding:14px}}
+@media print{@page{size:A4;margin:13mm}.rrhh-person-report{font-size:10px}.rrhh-report-table table{min-width:0!important;font-size:8px}.rrhh-person-report .rrhh-commission-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.rrhh-person-report h3{break-after:avoid}.rrhh-person-report tr{break-inside:avoid}}
