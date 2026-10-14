@@ -122,3 +122,5 @@
 .rrhh-person-report footer{margin-top:24px;padding-top:9px;border-top:1px solid #bfbab1;color:#777;font-size:10px}
 @media(max-width:650px){.rrhh-person-report{padding:14px}.rrhh-person-report header{flex-direction:column}.rrhh-report-period{text-align:left}.rrhh-person-report header h2{font-size:19px}.rrhh-commission-fupload{padding:14px}}
 @media print{@page{size:A4;margin:13mm}.rrhh-person-report{font-size:10px}.rrhh-report-table table{min-width:0!important;font-size:8px}.rrhh-person-report .rrhh-commission-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.rrhh-person-report h3{break-after:avoid}.rrhh-person-report tr{break-inside:avoid}}
+
+.rrhh-tools[hidden]{display:none!important}
