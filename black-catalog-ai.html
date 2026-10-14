@@ -1,14 +1,14 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Black Catalog AI</title>
 <style>:root{font-family:system-ui;color:#f4f4f4;background:#0f1012}*{box-sizing:border-box}body{margin:0;padding:clamp(15px,4vw,40px)}main{max-width:1080px;margin:auto}header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}h1{font-size:28px;margin-bottom:4px}p,small{color:#a9abb1;line-height:1.5}.tag{border:1px solid #46474d;padding:7px 12px;border-radius:40px;font-size:12px}.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:20px;margin-top:20px}.panel{border:1px solid #33363b;background:#1a1b1f;border-radius:18px;padding:24px}label{display:block;margin:17px 0 7px;font-size:13px;color:#c4c6ca}input,textarea,select{width:100%;font:inherit;padding:13px;border:1px solid #45484e;border-radius:10px;background:#101114;color:white}textarea{min-height:140px;resize:vertical}button{border-radius:10px;padding:12px 16px;font:inherit;font-weight:600;background:#e8e8e8;border:0;color:#111;cursor:pointer}button.secondary{background:#303238;color:white}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.photos{display:flex;gap:10px;flex-wrap:wrap;margin-top:13px}.photos img{width:90px;height:85px;object-fit:contain;background:#fff;border-radius:9px}.preview{white-space:pre-wrap;line-height:1.6;color:#ddd}.warning{padding:12px;background:#262322;border:1px solid #5b4c42;border-radius:10px;font-size:13px;color:#dbcbbf;margin-top:15px}.hidden{display:none}@media(max-width:750px){.grid{grid-template-columns:1fr}.panel{padding:17px}}</style></head><body><main id="app" class="hidden">
 <header><div><small>BLACK ENTERPRISE / HERRAMIENTAS</small><h1>Black Catalog AI</h1><p>Nombre + fotografías + prompt → borrador para Tiendanube</p></div><span class="tag">ETAPA 1 · PREPARACIÓN</span></header>
-<div class="grid"><section class="panel"><h2>Nueva publicación</h2><label for="name">Nombre del producto *</label><input id="name" maxlength="180" placeholder="Ej. Black Eyewear BK-204" required>
+<div class="actions"><button type="button" id="individualTab">Carga individual</button><button type="button" class="secondary" id="bulkTab">Carga masiva</button></div><div id="individualSection" class="grid"><section class="panel"><h2>Nueva publicación</h2><label for="name">Nombre del producto *</label><input id="name" maxlength="180" placeholder="Ej. Black Eyewear BK-204" required>
 <label for="images">Fotografías reales *</label><input id="images" type="file" accept="image/jpeg,image/png,image/webp" multiple><small>Hasta 5 archivos. Solo vista previa local; todavía no se envían a servidores.</small><div class="photos" id="photos"></div>
 <label for="price">Precio en pesos (si está disponible)</label><input id="price" type="number" min="0" step=".01" placeholder="Pendiente de confirmar">
 <label for="extra">Instrucciones particulares (opcional)</label><textarea id="extra" placeholder="Información específica confirmada para este producto"></textarea>
 <div class="actions"><button id="prepare" type="button">Preparar borrador</button><button id="reset" class="secondary" type="button">Limpiar</button></div>
 <div class="warning">Las publicaciones están deshabilitadas hasta completar la autorización de Tiendanube y las validaciones en el backend. No se consumen APIs pagas.</div></section>
 <section class="panel"><h2>Vista previa</h2><p>Esta ficha utiliza una plantilla editorial local. La IA real y la publicación se conectarán después.</p><div class="preview" id="output">Ingresá un nombre y seleccioná fotografías para comenzar.</div><div class="actions"><button class="secondary" type="button" id="copy" disabled>Copiar ficha</button><button type="button" disabled title="Requiere integración backend">Publicar en Tiendanube</button></div></section></div>
-<section class="panel" style="margin-top:20px"><h2>Prompt maestro · versión inicial</h2><p>Redactar títulos y descripciones elegantes, claras y orientadas a comercio electrónico para Black Óptica. Utilizar únicamente características verificadas. No inventar material, medidas, protecciones ni certificaciones. Estructurar la información para una publicación en Tiendanube.</p><small>El prompt definitivo, su versionado y las reglas de precio se alojarán en el backend protegido.</small></section>
+<section class="panel hidden" id="bulkSection" style="margin-top:20px"><h2>Carga masiva inteligente</h2><p>Seleccioná todas las fotos juntas. Usá nombres simples, por ejemplo: Rusty RS2040 Negro frente.jpg y Rusty RS2040 Negro lateral.jpg. Se agrupan por modelo y color.</p><label for="bulkImages">Fotografías (JPG, PNG o WebP)</label><input type="file" id="bulkImages" accept="image/jpeg,image/png,image/webp" multiple><div class="actions"><button id="analyzeBulk" type="button">Identificar y agrupar</button><button id="clearBulk" type="button" class="secondary">Limpiar</button></div><p id="bulkStats"></p><div id="bulkResults"></div><p class="warning">Agrupación por nombres de archivo, sin IA visual todavía. Verificá cada grupo. No se publica nada.</p></section><section class="panel" style="margin-top:20px"><h2>Prompt maestro · versión inicial</h2><p>Redactar títulos y descripciones elegantes, claras y orientadas a comercio electrónico para Black Óptica. Utilizar únicamente características verificadas. No inventar material, medidas, protecciones ni certificaciones. Estructurar la información para una publicación en Tiendanube.</p><small>El prompt definitivo, su versionado y las reglas de precio se alojarán en el backend protegido.</small></section>
 </main><main id="access"><div class="panel"><h2>Verificando acceso…</h2><p id="access-msg">Validando sesión y permisos.</p></div></main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script src="assets/js/supabase-config.js"></script>
 <script>
@@ -19,4 +19,46 @@ input.addEventListener('change',()=>{clearPhotos();const files=[...input.files].
 document.getElementById('reset').onclick=()=>{document.getElementById('name').value='';document.getElementById('price').value='';document.getElementById('extra').value='';input.value='';clearPhotos();generated='';document.getElementById('output').textContent='Ingresá un nombre y seleccioná fotografías para comenzar.';document.getElementById('copy').disabled=true};
 document.getElementById('prepare').onclick=()=>{const n=document.getElementById('name').value.trim();if(!n||urls.length===0){alert('Ingresá un nombre y al menos una fotografía válida');return}const price=document.getElementById('price').value,extra=document.getElementById('extra').value.trim();generated='TÍTULO: '+n+'\n\nDESCRIPCIÓN PROPUESTA:\nConocé '+n+', una propuesta de Black Óptica. Consultanos para conocer sus características y elegir los cristales adecuados.\n\nDATOS CONFIRMADOS:\n'+(extra||'Sin datos técnicos adicionales confirmados')+'\n\nPRECIO: '+(price?'$ '+Number(price).toLocaleString('es-AR'):'Pendiente de completar')+'\n\nESTADO: Requiere revisión · Sin publicar';document.getElementById('output').textContent=generated;document.getElementById('copy').disabled=false};
 document.getElementById('copy').onclick=()=>navigator.clipboard.writeText(generated);
+
+const individualTab=document.getElementById('individualTab'),bulkTab=document.getElementById('bulkTab');
+individualTab.onclick=()=>{document.getElementById('individualSection').classList.remove('hidden');document.getElementById('bulkSection').classList.add('hidden');individualTab.classList.remove('secondary');bulkTab.classList.add('secondary')};
+bulkTab.onclick=()=>{document.getElementById('individualSection').classList.add('hidden');document.getElementById('bulkSection').classList.remove('hidden');bulkTab.classList.remove('secondary');individualTab.classList.add('secondary')};
+const views=['frente','frontal','lateral','costado','angulo','ángulo','detalle','etiqueta','varilla','posterior','atras','atrás','caja','packaging','foto','img','imagen'];
+function interpretFilename(filename) {
+ const stem=filename.replace(/\.(jpeg|jpg|png|webp)$/i,'').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim();
+ const parts=stem.split(' ').filter(Boolean);
+ let view='Sin identificar';
+ if(parts.length>1&&views.includes(parts[parts.length-1].toLowerCase())) view=parts.pop().toLowerCase();
+ const clean=parts.join(' ').trim();
+ const knownColors=['negro','negra','carey','dorado','dorada','plateado','plateada','gris','azul','rojo','roja','verde','rosa','blanco','blanca','marron','marrón','transparente','cristal','habana','tortuga','violeta'];
+ let color='Sin identificar';
+ if(parts.length>=3&&knownColors.includes(parts[parts.length-1].toLowerCase()))color=parts.pop();
+ const brand=parts[0]||'Sin identificar',model=parts.slice(1).join(' ')||'Sin identificar';
+ const normalized=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+ const key=normalized(brand)+'|'+normalized(model)+'|'+normalized(color);
+ return {name:clean,brand,model,color,view,key,ambiguous:brand==='Sin identificar'||model==='Sin identificar'||color==='Sin identificar'};
+}
+const bulkInput=document.getElementById('bulkImages'),bulkResults=document.getElementById('bulkResults'),bulkStats=document.getElementById('bulkStats');
+let bulkUrls=[];
+function resetBulk(){bulkUrls.forEach(URL.revokeObjectURL);bulkUrls=[];bulkInput.value='';bulkResults.replaceChildren();bulkStats.textContent=''}
+document.getElementById('clearBulk').onclick=resetBulk;
+document.getElementById('analyzeBulk').onclick=()=>{
+ bulkUrls.forEach(URL.revokeObjectURL);bulkUrls=[];bulkResults.replaceChildren();
+ const files=[...bulkInput.files].filter(f=>['image/jpeg','image/png','image/webp'].includes(f.type)&&f.size<=12000000);
+ if(files.length===0){bulkStats.textContent='Seleccioná al menos una fotografía compatible.';return}
+ const groups=new Map();
+ files.forEach(file=>{const info=interpretFilename(file.name);if(!groups.has(info.key))groups.set(info.key,{info,files:[]});groups.get(info.key).files.push({file,info})});
+ bulkStats.textContent=files.length+' fotografías · '+groups.size+' grupos propuestos · '+[...groups.values()].filter(g=>g.info.ambiguous).length+' grupos con datos incompletos';
+ [...groups.values()].forEach((g,i)=>{
+ const card=document.createElement('div');card.className='panel';card.style.margin='12px 0';card.style.background='#131417';
+ const heading=document.createElement('h3');heading.textContent=(i+1)+'. '+g.info.name;card.append(heading);
+ const meta=document.createElement('p');meta.textContent='Marca: '+g.info.brand+' · Modelo: '+g.info.model+' · Color: '+g.info.color+' · '+g.files.length+' fotografía(s)';card.append(meta);
+ const holder=document.createElement('div');holder.className='photos';
+ g.files.forEach(({file,info})=>{const item=document.createElement('div');const img=document.createElement('img');const url=URL.createObjectURL(file);bulkUrls.push(url);img.src=url;img.alt=file.name;img.title=file.name;const label=document.createElement('small');label.textContent=info.view;item.append(img,document.createElement('br'),label);holder.append(item)});card.append(holder);
+ const status=document.createElement('p');status.textContent=g.info.ambiguous?'Requiere revisión: falta identificar modelo o color.':'Agrupación propuesta; revisá que las fotos correspondan al mismo armazón.';card.append(status);
+ const action=document.createElement('button');action.className='secondary';action.type='button';action.textContent='Copiar ficha base';
+ action.onclick=()=>{const out='Producto: '+g.info.name+'\nMarca: '+g.info.brand+'\nModelo: '+g.info.model+'\nColor: '+g.info.color+'\nFotos: '+g.files.map(x=>x.file.name).join(', ')+'\nEstado: Pendiente de descripción IA y validación';navigator.clipboard.writeText(out).then(()=>{action.textContent='Copiado'})};
+ card.append(action);bulkResults.append(card)
+ });
+};
 </script></body></html>
