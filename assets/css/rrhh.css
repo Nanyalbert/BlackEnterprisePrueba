@@ -135,3 +135,5 @@
 @media(max-width:900px){.rrhh-excel-uploads{grid-template-columns:1fr}}
 
 .rrhh-special-rule{display:flex;align-items:center;gap:15px;flex-wrap:wrap;border:1px solid #574b31;background:#1d1a14;border-radius:13px;padding:15px;margin:12px 0;color:#eee}.rrhh-special-rule>div{flex:1;min-width:180px;display:grid;gap:5px}.rrhh-special-rule strong{font-size:13px}.rrhh-special-rule span{font-size:11px;color:#b9b0a1;line-height:1.5}.rrhh-special-rule label{display:grid;gap:5px;font-size:11px;color:#b9b0a1}.rrhh-special-rule input{width:90px;border:1px solid #554b38;border-radius:8px;background:#29251d;color:#b9b0a1;padding:10px}.rrhh-rule-pill{border:1px solid #6b5331;color:#d2b583!important;border-radius:30px;padding:7px 10px;font-size:10px!important;font-weight:700}
+
+.com-patient-rate{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:11px;color:#bdb7a8}.com-patient-rate input{width:82px;border:1px solid #625b4b;border-radius:7px;padding:7px;background:#26231d;color:#fff}
