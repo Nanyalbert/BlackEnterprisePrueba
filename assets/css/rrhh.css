@@ -133,3 +133,5 @@
 .rrhh-excel-upload code{display:inline-block;width:fit-content;padding:5px 9px;border:1px solid #48443b;border-radius:7px;background:#25231e;color:#eae1d1;font-size:11px}
 .rrhh-excel-help{margin:5px 0 19px;padding:11px 14px;color:#beb8a9;background:#1d1b17;border-left:3px solid #c5a978;border-radius:7px;line-height:1.55;font-size:11px}
 @media(max-width:900px){.rrhh-excel-uploads{grid-template-columns:1fr}}
+
+.rrhh-special-rule{display:flex;align-items:center;gap:15px;flex-wrap:wrap;border:1px solid #574b31;background:#1d1a14;border-radius:13px;padding:15px;margin:12px 0;color:#eee}.rrhh-special-rule>div{flex:1;min-width:180px;display:grid;gap:5px}.rrhh-special-rule strong{font-size:13px}.rrhh-special-rule span{font-size:11px;color:#b9b0a1;line-height:1.5}.rrhh-special-rule label{display:grid;gap:5px;font-size:11px;color:#b9b0a1}.rrhh-special-rule input{width:90px;border:1px solid #554b38;border-radius:8px;background:#29251d;color:#b9b0a1;padding:10px}.rrhh-rule-pill{border:1px solid #6b5331;color:#d2b583!important;border-radius:30px;padding:7px 10px;font-size:10px!important;font-weight:700}
