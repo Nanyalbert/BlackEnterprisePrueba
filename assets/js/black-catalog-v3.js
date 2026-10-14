@@ -1,0 +1,39 @@
+(function(){
+'use strict';
+const by=id=>document.getElementById(id);
+const clean=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const validUrl=u=>{try{const x=new URL(u);return x.protocol==='https:'?x.href:''}catch{return ''}};
+const styles={ink:'#141414',champagne:'#aa987f',soft:'#f7f6f3'};
+let brands=[],resources=[],lastHTML='';
+const shell=document.createElement('section');shell.className='panel';shell.style.marginTop='20px';shell.innerHTML='<h2>Generador HTML V3 · Black Óptica</h2><p>Plantilla editorial en marfil, negro y champagne, con logo y datos de la biblioteca. No utiliza IA ni realiza publicaciones automáticas.</p><label for="v3Brand">Marca registrada</label><select id="v3Brand"><option value="">Cargando biblioteca…</option></select><label for="v3Category">Tipo de producto</label><select id="v3Category"><option value="unknown">Sin confirmar</option><option value="optical">Armazón recetado</option><option value="sun">Anteojos de sol</option><option value="clip2">Clip-on 2 en 1</option><option value="clip5">Clip-on 5 en 1</option></select><label for="v3Confirmed">Características confirmadas (una por línea)</label><textarea id="v3Confirmed" placeholder="Por ejemplo: Forma rectangular · Medidas 52-18-145 · Material confirmado por fabricante"></textarea><div class="actions"><button type="button" id="v3Generate">Generar HTML individual</button><button type="button" class="secondary" id="v3Copy" disabled>Copiar HTML</button></div><small id="v3Status">Seleccioná una marca de la biblioteca para incluir su logo.</small><div id="v3PreviewWrap" class="hidden" style="margin-top:18px"><h3>Vista previa del HTML</h3><iframe id="v3Preview" sandbox="" title="Vista previa de la ficha HTML" style="width:100%;height:640px;border:1px solid #404044;border-radius:10px;background:white"></iframe><details><summary>Ver código fuente</summary><textarea id="v3Source" readonly style="min-height:190px"></textarea></details></div>';
+const anchor=by('bulkSection');anchor.parentNode.insertBefore(shell,anchor.nextSibling);
+function categoryLabel(x){return ({optical:'Armazón recetado',sun:'Anteojos de sol',clip2:'Clip-on 2 en 1',clip5:'Clip-on 5 en 1',unknown:'Anteojos'})[x]||'Anteojos'}
+function htmlFor(data){
+ const brand=brands.find(b=>b.id===data.brandId)||null;
+ const selected=resources.filter(x=>/logo|beneficio comercial|texto institucional/i.test(x.type||''));
+ const name=clean(data.name),brandName=clean(brand?.name||data.brand||'BLACK ÓPTICA'),color=clean(data.color||''),kind=clean(categoryLabel(data.category));
+ const logo=validUrl(brand?.logo||'');
+ const facts=(data.confirmed||[]).map(x=>x.trim()).filter(Boolean).slice(0,14);
+ const intro=clean(data.intro||'Un diseño para acompañar tu estilo cotidiano. Consultanos por disponibilidad, medidas y opciones de cristales.');
+ const slogan=data.category==='sun'?'Una selección pensada para acompañar tu estilo bajo el sol.':data.category==='optical'?'Elegí tu armazón y recibí asesoramiento para encontrar los cristales adecuados.':'Descubrí todos los detalles de este modelo en Black Óptica.';
+ const cards=facts.length?facts.map(x=>'<div style="padding:12px 0;border-bottom:1px solid #e9e7e3;font-size:13px;line-height:1.6">'+clean(x)+'</div>').join(''):'<p style="font-size:13px;color:#666">Consultá por medidas, materiales y características técnicas.</p>';
+ const confirmedBlack=selected.filter(x=>x.text&&x.source).slice(0,3).map(x=>'<p style="font-size:12px;line-height:1.7;color:#575757;margin:10px 0"><strong>'+clean(x.name)+':</strong> '+clean(x.text)+'</p>').join('');
+ return '<div style="max-width:740px;margin:auto;padding:32px 20px;font-family:Arial,Helvetica,sans-serif;background:#fff;color:#141414;box-sizing:border-box">'+
+ '<p style="letter-spacing:3px;text-align:center;font-size:10px;color:#aa987f;font-weight:700;margin:0 0 22px">BLACK ÓPTICA · EYEWEAR COLLECTION</p>'+
+ (logo?'<div style="text-align:center;margin:0 0 26px"><img src="'+clean(logo)+'" alt="Logo '+brandName+'" style="max-width:200px;max-height:58px;object-fit:contain"></div>':'')+
+ '<p style="text-align:center;letter-spacing:4px;font-size:10px;color:#aa987f;margin:0 0 10px">'+brandName+' · '+kind+'</p>'+
+ '<h2 style="text-align:center;font-size:31px;letter-spacing:1px;line-height:1.2;margin:0 0 10px;font-weight:700">'+name+'</h2>'+
+ (color?'<p style="text-align:center;font-size:13px;color:#777;margin:0 0 18px">'+color+'</p>':'')+
+ '<div style="height:1px;background:#dedbd5;max-width:160px;margin:25px auto 30px"></div>'+
+ '<div style="background:#f7f6f3;padding:25px 23px;margin:0 0 32px"><h3 style="font-size:18px;letter-spacing:.5px;margin:0 0 12px">Diseño que se distingue</h3><p style="font-size:15px;line-height:1.85;color:#444;margin:0">'+intro+'</p></div>'+
+ '<div style="display:flex;flex-wrap:wrap;gap:20px;margin:0 0 30px"><div style="flex:1 1 240px"><p style="font-size:10px;letter-spacing:3px;color:#aa987f;font-weight:bold">CARACTERÍSTICAS CONFIRMADAS</p>'+cards+'</div><div style="flex:1 1 240px;background:#141414;padding:22px;color:white"><p style="font-size:10px;letter-spacing:3px;color:#c7b89f">BLACK ÓPTICA</p><p style="font-size:14px;line-height:1.85;color:#eee">'+clean(slogan)+'</p>'+confirmedBlack+'</div></div>'+
+ '<div style="border-top:1px solid #dedbd5;padding-top:23px;text-align:center"><p style="font-size:14px;font-weight:700;margin:0 0 8px">Conocé este modelo en Black Óptica</p><p style="font-size:12px;color:#777;margin:0">Asesoramiento personalizado · Consultanos por disponibilidad y condiciones vigentes</p></div></div>';
+}
+async function load(){try{const client=window.BlackPortal.getSupabase();const [b,r]=await Promise.all([client.from('black_catalog_brands').select('*').order('name'),client.from('black_catalog_resources').select('*').order('name')]);if(b.error||r.error)throw Error(b.error?.message||r.error?.message);brands=b.data||[];resources=r.data||[];const sel=by('v3Brand');sel.replaceChildren();const o=document.createElement('option');o.value='';o.textContent='Seleccionar marca';sel.append(o);brands.forEach(brand=>{const opt=document.createElement('option');opt.value=brand.id;opt.textContent=brand.name;sel.append(opt)});by('v3Status').textContent=brands.length+' marcas disponibles. Si no hay coincidencia, primero registrá la marca en la biblioteca.'}catch(e){by('v3Status').textContent='No se pudo consultar biblioteca: '+e.message}}
+}
+function generate(data){lastHTML=htmlFor(data);by('v3Preview').srcdoc=lastHTML;by('v3Source').value=lastHTML;by('v3PreviewWrap').classList.remove('hidden');by('v3Copy').disabled=false;by('v3Status').textContent='HTML preparado para revisión. No se ha publicado.';shell.scrollIntoView({behavior:'smooth',block:'start'})}
+by('v3Generate').onclick=()=>{const name=by('name').value.trim();if(!name){by('v3Status').textContent='Ingresá el nombre del producto en Carga individual.';return}const brand=brands.find(x=>x.id===by('v3Brand').value);generate({name,brandId:brand?.id,brand:brand?.name,category:by('v3Category').value,confirmed:by('v3Confirmed').value.split('\n'),intro:by('extra').value.trim()})};
+by('v3Copy').onclick=()=>navigator.clipboard.writeText(lastHTML).then(()=>by('v3Status').textContent='Código HTML copiado.');
+window.BlackCatalogV3={generateBulk:(info)=>{const brand=brands.find(x=>x.name.toLocaleLowerCase('es')===info.brand.toLocaleLowerCase('es')||x.aliases?.split(',').some(a=>a.trim().toLocaleLowerCase('es')===info.brand.toLocaleLowerCase('es')));by('v3Brand').value=brand?.id||'';generate({name:info.name,brandId:brand?.id,brand:info.brand,color:info.color,category:'unknown',confirmed:[]})},reload:load};
+load();
+})();
