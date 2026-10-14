@@ -8,7 +8,7 @@
 <div class="actions"><button id="prepare" type="button">Preparar borrador</button><button id="reset" class="secondary" type="button">Limpiar</button></div>
 <div class="warning">Las publicaciones están deshabilitadas hasta completar la autorización de Tiendanube y las validaciones en el backend. No se consumen APIs pagas.</div></section>
 <section class="panel"><h2>Vista previa</h2><p>Esta ficha utiliza una plantilla editorial local. La IA real y la publicación se conectarán después.</p><div class="preview" id="output">Ingresá un nombre y seleccioná fotografías para comenzar.</div><div class="actions"><button class="secondary" type="button" id="copy" disabled>Copiar ficha</button><button type="button" disabled title="Requiere integración backend">Publicar en Tiendanube</button></div></section></div>
-<section class="panel hidden" id="bulkSection" style="margin-top:20px"><h2>Carga masiva inteligente</h2><p>Seleccioná todas las fotos juntas. Usá nombres simples, por ejemplo: Rusty RS2040 Negro frente.jpg y Rusty RS2040 Negro lateral.jpg. Se agrupan por modelo y color.</p><label for="bulkImages">Fotografías (JPG, PNG o WebP)</label><input type="file" id="bulkImages" accept="image/jpeg,image/png,image/webp" multiple><div class="actions"><button id="analyzeBulk" type="button">Identificar y agrupar</button><button id="clearBulk" type="button" class="secondary">Limpiar</button></div><p id="bulkStats"></p><div id="bulkResults"></div><p class="warning">Agrupación por nombres de archivo, sin IA visual todavía. Verificá cada grupo. No se publica nada.</p></section><section class="panel" style="margin-top:20px"><h2>Prompt maestro · versión inicial</h2><p>Redactar títulos y descripciones elegantes, claras y orientadas a comercio electrónico para Black Óptica. Utilizar únicamente características verificadas. No inventar material, medidas, protecciones ni certificaciones. Estructurar la información para una publicación en Tiendanube.</p><small>El prompt definitivo, su versionado y las reglas de precio se alojarán en el backend protegido.</small></section>
+<section class="panel hidden" id="bulkSection" style="margin-top:20px"><h2>Carga masiva inteligente</h2><p>Seleccioná todas las fotos juntas. Usá nombres simples, por ejemplo: Rusty RS2040 Negro frente.jpg y Rusty RS2040 Negro lateral.jpg. Se agrupan por modelo y color.</p><label for="bulkImages">Fotografías (JPG, PNG o WebP)</label><input type="file" id="bulkImages" accept="image/jpeg,image/png,image/webp" multiple><div class="actions"><button id="analyzeBulk" type="button">Identificar y agrupar</button><button id="clearBulk" type="button" class="secondary">Limpiar</button></div><p id="bulkStats"></p><div id="bulkResults"></div><p class="warning">Agrupación por nombres de archivo, sin IA visual todavía. Verificá cada grupo. No se publica nada.</p></section><section class="panel" style="margin-top:20px"><h2>Prompt maestro de descripciones</h2><p>Editá el estilo que querés aplicar a todas las fichas. En esta etapa se guarda solo en este navegador y se prepara un texto base local, sin ejecutar IA.</p><label for="masterPrompt">Instrucciones editoriales</label><textarea id="masterPrompt" style="min-height:160px"></textarea><div class="actions"><button type="button" id="savePrompt">Guardar prompt local</button><button type="button" class="secondary" id="resetPrompt">Restablecer</button></div><small id="promptStatus">Sincronización con servidor pendiente.</small></section>
 </main><main id="access"><div class="panel"><h2>Verificando acceso…</h2><p id="access-msg">Validando sesión y permisos.</p></div></main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script src="assets/js/supabase-config.js"></script>
 <script>
@@ -27,16 +27,27 @@ const views=['frente','frontal','lateral','costado','angulo','ángulo','detalle'
 function interpretFilename(filename) {
  const stem=filename.replace(/\.(jpeg|jpg|png|webp)$/i,'').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim();
  const parts=stem.split(' ').filter(Boolean);
+ const norm=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9.]/g,'');
+ const viewWords=new Set(views.map(norm));
  let view='Sin identificar';
- if(parts.length>1&&views.includes(parts[parts.length-1].toLowerCase())) view=parts.pop().toLowerCase();
- const clean=parts.join(' ').trim();
- const knownColors=['negro','negra','carey','dorado','dorada','plateado','plateada','gris','azul','rojo','roja','verde','rosa','blanco','blanca','marron','marrón','transparente','cristal','habana','tortuga','violeta'];
- let color='Sin identificar';
- if(parts.length>=3&&knownColors.includes(parts[parts.length-1].toLowerCase()))color=parts.pop();
+ if(parts.length>1&&viewWords.has(norm(parts[parts.length-1]))) view=parts.pop();
+ const base=['negro','negra','black','azul','blue','steelblue','steel','marino','navy','gris','grey','gray','plata','silver','plateado','plateada','dorado','dorada','gold','oro','rosa','rose','rojo','red','verde','green','blanco','blanca','white','carey','tortoise','havana','habana','brown','marron','marrón','transparente','clear','cristal','violeta','purple','beige','champagne','ambar','ámbar','gunmetal','smoke','smoky','bronce','bronze','celeste','turquesa','turquoise'];
+ const prefixes=['m','c','matte','matt','mate','shiny','glossy','dark','light','satin','transparent','translucent','metallic','brushed','gradient','degrade','degradé','polished','rose','steel'];
+ const colors=new Set(base.map(norm)),modifiers=new Set(prefixes.map(norm));
+ const isColorToken=t=>{const n=norm(t);if(colors.has(n))return true;const ab=n.match(/^([a-z]+)\.([a-z]+)$/);return !!(ab&&modifiers.has(ab[1])&&(colors.has(ab[2])||['blue','black','brown','grey','gray','gold','green','red'].includes(ab[2])));};
+ let taken=[];
+ if(parts.length>=3&&isColorToken(parts[parts.length-1])){
+   taken.unshift(parts.pop());
+   while(parts.length>=3&&taken.length<3){
+     const candidate=norm(parts[parts.length-1]);
+     if(colors.has(candidate)||modifiers.has(candidate)||isColorToken(parts[parts.length-1]))taken.unshift(parts.pop());else break;
+   }
+ }
+ let color=taken.length?taken.join(' '):'Sin identificar';
  const brand=parts[0]||'Sin identificar',model=parts.slice(1).join(' ')||'Sin identificar';
- const normalized=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
- const key=normalized(brand)+'|'+normalized(model)+'|'+normalized(color);
- return {name:clean,brand,model,color,view,key,ambiguous:brand==='Sin identificar'||model==='Sin identificar'||color==='Sin identificar'};
+ const key=[brand,model,color].map(x=>norm(x).replace(/[^a-z0-9]/g,'')).join('|');
+ const name=[brand,model,color==='Sin identificar'?'':color].filter(Boolean).join(' ');
+ return {name,brand,model,color,view,key,ambiguous:brand==='Sin identificar'||model==='Sin identificar'||color==='Sin identificar'};
 }
 const bulkInput=document.getElementById('bulkImages'),bulkResults=document.getElementById('bulkResults'),bulkStats=document.getElementById('bulkStats');
 let bulkUrls=[];
@@ -61,4 +72,11 @@ document.getElementById('analyzeBulk').onclick=()=>{
  card.append(action);bulkResults.append(card)
  });
 };
+
+const DEFAULT_PROMPT='Redactá títulos y descripciones comerciales claras y premium para Black Óptica, siguiendo un tono elegante, cercano y concreto. Usá solo datos confirmados del nombre, etiquetas o fuentes verificadas. No inventes materiales, medidas, prestaciones, certificaciones ni promociones. Diferenciá hechos confirmados de información pendiente y prepará una descripción breve para Tiendanube.';
+const PROMPT_KEY='black_catalog_ai_master_prompt_v1';
+const promptEl=document.getElementById('masterPrompt');
+try{promptEl.value=localStorage.getItem(PROMPT_KEY)||DEFAULT_PROMPT}catch(e){promptEl.value=DEFAULT_PROMPT}
+document.getElementById('savePrompt').onclick=()=>{try{localStorage.setItem(PROMPT_KEY,promptEl.value);document.getElementById('promptStatus').textContent='Prompt guardado en este navegador. Todavía no se ejecuta con IA.'}catch(e){document.getElementById('promptStatus').textContent='No se pudo guardar localmente.'}};
+document.getElementById('resetPrompt').onclick=()=>{promptEl.value=DEFAULT_PROMPT;document.getElementById('savePrompt').click()};
 </script></body></html>
