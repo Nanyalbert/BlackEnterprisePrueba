@@ -20,7 +20,8 @@ const TITLES = {
   catalogo: 'Catálogo de cristales',
   'black-catalog-ai': 'Black Catalog AI',
   marketing: 'Marketing',
-  rrhh: 'RRHH'
+  rrhh: 'Black Fichadas',
+  'rrhh-comisiones': 'Comisiones'
 };
 
 const MODULE_VIEWS = [
@@ -31,7 +32,8 @@ const MODULE_VIEWS = [
   'catalogo',
   'black-catalog-ai',
   'marketing',
-  'rrhh'
+  'rrhh',
+  'rrhh-comisiones'
 ];
 
 function isMobileLayout() {
@@ -333,7 +335,8 @@ function userCanOpen(viewName,user=currentSessionUser()){
     recetas:'recetas',
     catalogo:'catalogo',
     marketing:'marketing',
-    rrhh:'rrhh'
+    rrhh:'rrhh',
+    'rrhh-comisiones':'rrhh'
   };
   const app=map[viewName];
   return !app || userAppsFromMeta(user).includes(app);
@@ -347,7 +350,8 @@ function ensureAuthorizedFrame(viewName,user=currentSessionUser()){
     catalogo:'catalogo-frame',
     'black-catalog-ai':'black-catalog-ai-frame',
     marketing:'marketing-frame',
-    rrhh:'rrhh-frame'
+    rrhh:'rrhh-frame',
+    'rrhh-comisiones':'rrhh-comisiones-frame'
   };
   const id=map[viewName];
   if(!id||!userCanOpen(viewName,user)) return;
@@ -386,7 +390,8 @@ function applyPortalAccess(user=currentSessionUser()){
     catalogo:['#catalogo-nav','#catalogo-card'],
     'black-catalog-ai':['#black-catalog-ai-nav'],
     marketing:['#marketing-nav','#marketing-card'],
-    rrhh:['#rrhh-nav','#rrhh-card'],
+    rrhh:['#rrhh-side-group','#rrhh-card'],
+    'rrhh-comisiones':['#rrhh-commissions-nav'],
     usuarios:['.nav-item[data-view="usuarios"]']
   };
   Object.entries(selectors).forEach(([view,items])=>{
