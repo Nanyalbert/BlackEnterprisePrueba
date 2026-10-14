@@ -166,7 +166,15 @@
     <div class="rrhh-com-toolbar"><h3>Movimientos de comisiones</h3><button class="btn btn-ghost" id="com-export" type="button">Exportar CSV</button><button class="btn btn-primary" id="com-new" type="button" hidden>Nueva comisión</button></div>
     <div id="com-message" class="section-copy" role="status"></div>
     <div class="rrhh-com-list" id="com-list"><p class="section-copy">Cargando movimientos…</p></div>
-    <div class="rrhh-com-import-note">La conciliación automática Ventas + Cobros + Recetas se habilitará después de validar archivos reales y claves de operación. No se generan comisiones a partir de coincidencias dudosas de nombres.</div>
+    <section class="rrhh-commission-fupload">
+  <div class="section-head"><div><p class="eyebrow">EXCEL · VENTAS + COBROS + RECETAS</p><h2>Importar y conciliar</h2><p class="section-copy">Primero se revisan los cruces y luego se confirma el guardado en Supabase. Los archivos no se suben íntegros: se conserva una huella y el resultado de la conciliación.</p></div></div>
+  <div class="rrhh-com-grid"><label>Ventas (.xlsx)<input type="file" id="com-file-ventas" accept=".xlsx,.xls"></label><label>Cobros (.xlsx)<input type="file" id="com-file-cobros" accept=".xlsx,.xls"></label><label>Recetas (.xlsx)<input type="file" id="com-file-recetas" accept=".xlsx,.xls"></label></div>
+  <div class="rrhh-com-grid"><label>Porcentaje con médico (%)<input type="number" id="com-med-rate" min="0" max="100" step="0.1" value="2"></label><label>Porcentaje otros (%)<input type="number" id="com-other-rate" min="0" max="100" step="0.1" value="4"></label><label>Coincidencia mínima (%)<input type="number" id="com-threshold" min="75" max="100" step="1" value="92"></label></div>
+  <div class="rrhh-com-toolbar"><button class="btn btn-primary" id="com-process" type="button">Analizar archivos</button><button class="btn btn-ghost" id="com-confirm-import" type="button" disabled>Confirmar e importar</button><strong id="com-import-summary">Sin analizar</strong></div>
+  <div class="rrhh-com-list" id="com-preview"></div>
+</section>
+<details class="rrhh-commission-filters"><summary>Historial de importaciones</summary><div id="com-import-history">Cargando historial…</div></details>
+<div class="rrhh-com-import-note">La conciliación automática Ventas + Cobros + Recetas se habilitará después de validar archivos reales y claves de operación. No se generan comisiones a partir de coincidencias dudosas de nombres.</div>
   </section>
 </main>
 
@@ -241,6 +249,8 @@
 <script src="assets/js/rrhh.js?v=20261013-audit-4"></script>
 <script src="assets/js/rrhh-reportes.js?v=20261007-1"></script>
 <script src="assets/js/module-access.js?v=20261006-3"></script>
-<script src="assets/js/rrhh-comisiones.js?v=20261014-1"></script>
+<script src="assets/js/rrhh-comisiones.js?v=20261014-2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="assets/js/rrhh-comisiones-excel.js?v=20261014-1"></script>
 </body>
 </html>
