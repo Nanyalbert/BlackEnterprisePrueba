@@ -384,6 +384,7 @@ function applyPortalAccess(user=currentSessionUser()){
     'crm-oftalmologos':['#crm-oftalmologos-nav','#crm-oftalmologos-card'],
     recetas:['#recetas-nav','#recetas-card'],
     catalogo:['#catalogo-nav','#catalogo-card'],
+    'black-catalog-ai':['#black-catalog-ai-nav'],
     marketing:['#marketing-nav','#marketing-card'],
     rrhh:['#rrhh-nav','#rrhh-card'],
     usuarios:['.nav-item[data-view="usuarios"]']
