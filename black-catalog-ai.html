@@ -69,7 +69,7 @@ document.getElementById('analyzeBulk').onclick=()=>{
  const status=document.createElement('p');status.textContent=g.info.ambiguous?'Requiere revisión: falta identificar modelo o color.':'Agrupación propuesta; revisá que las fotos correspondan al mismo armazón.';card.append(status);
  const action=document.createElement('button');action.className='secondary';action.type='button';action.textContent='Copiar ficha base';
  action.onclick=()=>{const out='Producto: '+g.info.name+'\nMarca: '+g.info.brand+'\nModelo: '+g.info.model+'\nColor: '+g.info.color+'\nFotos: '+g.files.map(x=>x.file.name).join(', ')+'\nEstado: Pendiente de descripción IA y validación';navigator.clipboard.writeText(out).then(()=>{action.textContent='Copiado'})};
- card.append(action);bulkResults.append(card)
+ const v3=document.createElement('button');v3.className='secondary';v3.style.marginLeft='8px';v3.type='button';v3.textContent='Previsualizar HTML V3';v3.onclick=()=>window.BlackCatalogV3?.generateBulk(g.info);card.append(action,v3);bulkResults.append(card)
  });
 };
 
@@ -79,4 +79,4 @@ const promptEl=document.getElementById('masterPrompt');
 try{promptEl.value=localStorage.getItem(PROMPT_KEY)||DEFAULT_PROMPT}catch(e){promptEl.value=DEFAULT_PROMPT}
 document.getElementById('savePrompt').onclick=()=>{try{localStorage.setItem(PROMPT_KEY,promptEl.value);document.getElementById('promptStatus').textContent='Prompt guardado en este navegador. Todavía no se ejecuta con IA.'}catch(e){document.getElementById('promptStatus').textContent='No se pudo guardar localmente.'}};
 document.getElementById('resetPrompt').onclick=()=>{promptEl.value=DEFAULT_PROMPT;document.getElementById('savePrompt').click()};
-</script></body></html>
+</script><script src="assets/js/black-catalog-v3.js?v=20261014-1"></script></body></html>
