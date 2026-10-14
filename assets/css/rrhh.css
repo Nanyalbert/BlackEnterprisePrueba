@@ -75,3 +75,26 @@
 .schedule-editor{grid-column:1/-1}
 .schedule-editor+.form-grid{}
 @media(max-width:900px){.schedule-editor{grid-column:auto}}
+
+/* RRHH tools: separate Black Fichadas from employee commissions */
+.rrhh-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0 26px}
+.rrhh-tool{appearance:none;text-align:left;cursor:pointer;border:1px solid #363632;border-radius:16px;padding:17px 20px;background:#141413;color:#bdbdb5;min-height:76px;display:flex;flex-direction:column;gap:6px;transition:.18s}
+.rrhh-tool strong{font-size:15px}.rrhh-tool small{font-size:11px;color:#8f8f88}.rrhh-tool:hover{border-color:#777}.rrhh-tool.active{background:#eae8e0;color:#111;border-color:#eae8e0}.rrhh-tool.active small{color:#555}
+#rrhh-fichadas[hidden],#rrhh-comisiones[hidden],#com-fixed-field[hidden],#com-base-field[hidden],#com-rate-field[hidden]{display:none!important}
+.rrhh-commission-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:22px 0}
+.rrhh-commission-kpis article{background:#141414;border:1px solid #30302b;border-radius:15px;padding:17px;display:grid;gap:9px}
+.rrhh-commission-kpis span{color:#92928b;font-size:11px}.rrhh-commission-kpis strong{font-size:clamp(17px,2vw,25px)}
+.rrhh-commission-filters{border:1px solid #2a2a27;background:#111;border-radius:16px;padding:16px;margin:18px 0}
+.rrhh-commission-filters summary{font-weight:700;cursor:pointer;margin-bottom:12px}
+.rrhh-com-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.rrhh-com-grid label{display:grid;gap:6px;font-size:11px;color:#b9b9b1}.rrhh-com-grid input,.rrhh-com-grid select{width:100%;min-width:0;border:1px solid #353530;background:#1a1a19;color:#f5f5ef;padding:11px;border-radius:9px}
+.rrhh-com-toolbar{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;margin:25px 0 14px}.rrhh-com-toolbar h3{margin-right:auto}
+.rrhh-com-list{display:grid;gap:9px;margin:15px 0}
+.rrhh-com-record{background:#121212;border:1px solid #2b2b28;border-radius:14px;padding:16px;display:flex;justify-content:space-between;gap:16px}
+.rrhh-com-record h3{margin:9px 0 4px}.rrhh-com-record p{font-size:12px;color:#c4c4ba;margin:6px 0}.rrhh-com-record small{font-size:10px;color:#92928b}
+.rrhh-com-status{display:inline-block;text-transform:uppercase;letter-spacing:.05em;font-size:9px;font-weight:800;background:#34342f;border-radius:99px;padding:6px 10px;color:#eee}
+.rrhh-com-right{text-align:right;display:grid;justify-items:end;align-content:start;gap:13px}.rrhh-com-right strong{font-size:19px;white-space:nowrap}
+.rrhh-com-actions{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}.rrhh-com-actions button{background:#252522;color:#eee;border:1px solid #4a4a43;padding:9px 11px;border-radius:9px;cursor:pointer}.rrhh-com-actions button:hover{background:#3a3a32}
+.rrhh-com-import-note{background:#171715;border:1px solid #35352e;border-radius:13px;color:#b3b3a9;padding:15px;font-size:12px;line-height:1.6}
+@media(max-width:800px){.rrhh-com-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rrhh-commission-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:530px){.rrhh-tool{padding:12px;min-height:78px}.rrhh-tool strong{font-size:12px}.rrhh-tool small{font-size:10px}.rrhh-com-grid{grid-template-columns:1fr}.rrhh-com-record{flex-direction:column}.rrhh-com-right{justify-items:start;text-align:left}.rrhh-com-actions{justify-content:flex-start}.rrhh-commission-kpis article{padding:11px}.rrhh-commission-kpis strong{font-size:18px}}
