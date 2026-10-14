@@ -49,6 +49,7 @@ function interpretFilename(filename) {
  const name=[brand,model,color==='Sin identificar'?'':color].filter(Boolean).join(' ');
  return {name,brand,model,color,view,key,ambiguous:brand==='Sin identificar'||model==='Sin identificar'||color==='Sin identificar'};
 }
+window.BlackCatalogParseFilename=interpretFilename;
 const bulkInput=document.getElementById('bulkImages'),bulkResults=document.getElementById('bulkResults'),bulkStats=document.getElementById('bulkStats');
 let bulkUrls=[];
 function resetBulk(){bulkUrls.forEach(URL.revokeObjectURL);bulkUrls=[];bulkInput.value='';bulkResults.replaceChildren();bulkStats.textContent=''}
@@ -79,4 +80,4 @@ const promptEl=document.getElementById('masterPrompt');
 try{promptEl.value=localStorage.getItem(PROMPT_KEY)||DEFAULT_PROMPT}catch(e){promptEl.value=DEFAULT_PROMPT}
 document.getElementById('savePrompt').onclick=()=>{try{localStorage.setItem(PROMPT_KEY,promptEl.value);document.getElementById('promptStatus').textContent='Prompt guardado en este navegador. Todavía no se ejecuta con IA.'}catch(e){document.getElementById('promptStatus').textContent='No se pudo guardar localmente.'}};
 document.getElementById('resetPrompt').onclick=()=>{promptEl.value=DEFAULT_PROMPT;document.getElementById('savePrompt').click()};
-</script><script src="assets/js/black-catalog-v3.js?v=20261014-ai-3"></script></body></html>
+</script><script src="assets/js/black-catalog-v3.js?v=20261014-ai-3"></script><script src="assets/js/black-catalog-history.js?v=20261014-1"></script></body></html>
