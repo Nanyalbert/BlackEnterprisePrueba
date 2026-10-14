@@ -68,7 +68,10 @@
         ['attendance','Ver fichadas'],
         ['reports','Ver reportes'],
         ['salary_reference','Ver remuneración de referencia'],
-        ['settings','Administrar horarios y tolerancias']
+        ['settings','Administrar horarios y tolerancias'],
+        ['commissions_view','Ver comisiones del equipo'],
+        ['commissions_manage','Crear y corregir comisiones'],
+        ['commissions_settle','Liquidar, pagar y anular comisiones']
       ]
     },
     catalogo: {
