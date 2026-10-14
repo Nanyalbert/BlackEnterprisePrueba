@@ -18,6 +18,7 @@ const TITLES = {
   'crm-oftalmologos': 'CRM Oftalmólogos',
   recetas: 'Recetas',
   catalogo: 'Catálogo de cristales',
+  'black-catalog-ai': 'Black Catalog AI',
   marketing: 'Marketing',
   rrhh: 'RRHH'
 };
@@ -28,6 +29,7 @@ const MODULE_VIEWS = [
   'crm-oftalmologos',
   'recetas',
   'catalogo',
+  'black-catalog-ai',
   'marketing',
   'rrhh'
 ];
@@ -322,6 +324,7 @@ function userHasPermission(moduleId,permission,user=currentSessionUser()){
 }
 function userCanOpen(viewName,user=currentSessionUser()){
   if(viewName==='inicio') return true;
+  if(viewName==='black-catalog-ai') return !!user && isPortalOwner(user);
   if(viewName==='usuarios') return isPortalOwner(user);
   const map={
     'crm-clientes':'crm-black',
@@ -342,6 +345,7 @@ function ensureAuthorizedFrame(viewName,user=currentSessionUser()){
     'crm-oftalmologos':'crm-oftalmologos-frame',
     recetas:'recetas-frame',
     catalogo:'catalogo-frame',
+    'black-catalog-ai':'black-catalog-ai-frame',
     marketing:'marketing-frame',
     rrhh:'rrhh-frame'
   };
