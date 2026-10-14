@@ -163,7 +163,13 @@
     <div class="section-head"><div><p class="eyebrow">RRHH / COMISIONES</p><h2>Comisiones del equipo</h2><p class="section-copy">Detalle trazable por empleado, operación y sucursal. Las importaciones de Excel se verifican antes de liquidar.</p></div></div>
     <div class="rrhh-commission-kpis" id="commission-kpis"><article><span>Generadas</span><strong id="com-total">$0</strong></article><article><span>Pendientes</span><strong id="com-pending">$0</strong></article><article><span>Liquidadas</span><strong id="com-settled">$0</strong></article><article><span>Pagadas</span><strong id="com-paid">$0</strong></article></div>
     <details class="rrhh-commission-filters" open><summary>Filtros y período</summary><div class="rrhh-com-grid"><label>Desde<input id="com-from" type="date"></label><label>Hasta<input id="com-to" type="date"></label><label>Integrante<select id="com-person"><option value="">Todos</option></select></label><label>Sucursal<select id="com-branch"><option value="">Todas</option></select></label><label>Estado<select id="com-status"><option value="">Todos</option><option value="pendiente">Pendiente</option><option value="liquidada">Liquidada</option><option value="pagada">Pagada</option><option value="anulada">Anulada</option></select></label><button class="btn btn-primary" id="com-refresh" type="button">Consultar</button></div></details>
-    <div class="rrhh-com-toolbar"><h3>Movimientos de comisiones</h3><button class="btn btn-ghost" id="com-export" type="button">Exportar CSV</button><button class="btn btn-primary" id="com-new" type="button" hidden>Nueva comisión</button></div>
+    <section class="rrhh-commission-fupload" id="com-employee-report-panel">
+<div class="section-head"><div><p class="eyebrow">INFORME INDIVIDUAL</p><h2>Reporte para entregar al integrante</h2><p class="section-copy">Resumí comisiones y asistencias del mismo período. Los estados de pago se muestran separados de los montos generados. El informe no reemplaza un recibo de sueldo.</p></div></div>
+<div class="rrhh-com-grid"><label>Integrante<select id="com-report-person"><option value="">Seleccionar integrante</option></select></label><label>Desde<input id="com-report-from" type="date"></label><label>Hasta<input id="com-report-to" type="date"></label></div>
+<div class="rrhh-com-toolbar"><button id="com-report-generate" type="button" class="btn btn-primary">Generar informe</button><button id="com-report-print" type="button" class="btn btn-ghost" disabled>Imprimir / Guardar PDF</button><button id="com-report-csv" type="button" class="btn btn-ghost" disabled>Descargar CSV</button></div>
+<p id="com-report-message" class="section-copy" role="status"></p><div id="com-report-preview" class="rrhh-report-employee-preview"></div>
+</section>
+<div class="rrhh-com-toolbar"><h3>Movimientos de comisiones</h3><button class="btn btn-ghost" id="com-export" type="button">Exportar CSV</button><button class="btn btn-primary" id="com-new" type="button" hidden>Nueva comisión</button></div>
     <div id="com-message" class="section-copy" role="status"></div>
     <div class="rrhh-com-list" id="com-list"><p class="section-copy">Cargando movimientos…</p></div>
     <section class="rrhh-commission-fupload">
@@ -252,5 +258,6 @@
 <script src="assets/js/rrhh-comisiones.js?v=20261014-3"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="assets/js/rrhh-comisiones-excel.js?v=20261014-1"></script>
+<script src="assets/js/rrhh-informe-integrante.js?v=20261014-1"></script>
 </body>
 </html>
