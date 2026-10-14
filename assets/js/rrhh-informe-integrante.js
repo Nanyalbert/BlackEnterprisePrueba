@@ -10,7 +10,7 @@ const csvSafe=x=>'"'+String(x??'').replace(/"/g,'""')+'"';
 const statusNames={pendiente:'Pendiente',liquidada:'Liquidada',pagada:'Pagada',anulada:'Anulada',complete:'Completo',partial:'Con diferencia',incomplete:'Fichada abierta',missing:'Sin fichada',extra:'Día extra',off:'Sin jornada',future:'Futuro'};
 async function loadPeople(){const db=client();if(!db)return;const {data,error}=await db.rpc('hr_commissions_people');if(error){say(error.message);return}const sel=by('com-report-person');const old=sel.value;sel.innerHTML='<option value="">Seleccionar integrante</option>'+(data||[]).map(x=>'<option value="'+safe(x.id)+'">'+safe(x.full_name)+' · '+safe(x.branch_name)+'</option>').join('');sel.value=old;state.people=data||[]}
 function numbers(rows,days){const live=rows.filter(x=>x.status!=='anulada');const sum=status=>live.filter(x=>x.status===status).reduce((s,x)=>s+Number(x.amount||0),0);
-const scheduled=days.filter(x=>x.scheduled&&x.status!=='future'&&x.work_date<=new Date().toLocaleDateString('en-CA'));
+const now=new Date(), todayISO=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');const scheduled=days.filter(x=>x.scheduled&&x.status!=='future'&&x.work_date<=todayISO);
 const attended=scheduled.filter(x=>x.first_entry).length;
 const worked=days.reduce((s,x)=>s+Number(x.worked_minutes||0),0);
 const expected=scheduled.reduce((s,x)=>s+Number(x.expected_minutes||0),0);
