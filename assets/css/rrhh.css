@@ -124,3 +124,12 @@
 @media print{@page{size:A4;margin:13mm}.rrhh-person-report{font-size:10px}.rrhh-report-table table{min-width:0!important;font-size:8px}.rrhh-person-report .rrhh-commission-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.rrhh-person-report h3{break-after:avoid}.rrhh-person-report tr{break-inside:avoid}}
 
 .rrhh-tools[hidden]{display:none!important}
+
+.rrhh-excel-uploads{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
+.rrhh-excel-upload{display:flex;flex-direction:column;gap:9px;padding:18px;border:1px solid #363630;border-radius:15px;background:#181817;min-width:0}
+.rrhh-excel-upload strong{font-size:16px;color:#f6f5ef}.rrhh-excel-upload span,.rrhh-excel-upload small{font-size:11px;color:#aaa99f;line-height:1.5}
+.rrhh-excel-upload input{max-width:100%;font-size:11px;color:#e8e6df;padding:8px;border:1px dashed #56534a;border-radius:9px;background:#22221f}
+.rrhh-excel-upload .rrhh-excel-columns{font-weight:700;color:#d8c39b;margin-top:4px}
+.rrhh-excel-upload code{display:inline-block;width:fit-content;padding:5px 9px;border:1px solid #48443b;border-radius:7px;background:#25231e;color:#eae1d1;font-size:11px}
+.rrhh-excel-help{margin:5px 0 19px;padding:11px 14px;color:#beb8a9;background:#1d1b17;border-left:3px solid #c5a978;border-radius:7px;line-height:1.55;font-size:11px}
+@media(max-width:900px){.rrhh-excel-uploads{grid-template-columns:1fr}}
