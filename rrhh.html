@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,450;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/base.css">
-<link rel="stylesheet" href="assets/css/rrhh.css?v=20261013-audit-3">
+<link rel="stylesheet" href="assets/css/rrhh.css?v=20261014-1">
 </head>
 <body class="rrhh-page">
 <main class="rrhh-shell">
@@ -30,6 +30,11 @@
     </div>
   </header>
 
+  <nav class="rrhh-tools" aria-label="Herramientas de Recursos Humanos">
+    <button type="button" class="rrhh-tool active" data-rrhh-tool="fichadas" aria-pressed="true"><strong>Black Fichadas</strong><small>Equipo, horarios y asistencias</small></button>
+    <button type="button" class="rrhh-tool" data-rrhh-tool="comisiones" aria-pressed="false"><strong>Comisiones</strong><small>Operaciones, liquidaciones y pagos</small></button>
+  </nav>
+  <div id="rrhh-fichadas">
   <section class="rrhh-kpis" aria-label="Resumen RRHH">
     <article class="kpi-card"><span>Equipo activo</span><strong id="kpi-active">--</strong><small>Colaboradores habilitados</small></article>
     <article class="kpi-card"><span>Presentes hoy</span><strong id="kpi-present">--</strong><small>Con jornada abierta o registrada</small></article>
@@ -153,7 +158,37 @@
       <article class="panel-card"><h3>Fichador externo</h3><p>El terminal de escritorio no administra personal: solo identifica al empleado por PIN y registra marcas contra la base central.</p></article>
     </div>
   </section>
+  </div>
+  <section id="rrhh-comisiones" hidden aria-label="Comisiones del equipo">
+    <div class="section-head"><div><p class="eyebrow">RRHH / COMISIONES</p><h2>Comisiones del equipo</h2><p class="section-copy">Detalle trazable por empleado, operación y sucursal. Las importaciones de Excel se verifican antes de liquidar.</p></div></div>
+    <div class="rrhh-commission-kpis" id="commission-kpis"><article><span>Generadas</span><strong id="com-total">$0</strong></article><article><span>Pendientes</span><strong id="com-pending">$0</strong></article><article><span>Liquidadas</span><strong id="com-settled">$0</strong></article><article><span>Pagadas</span><strong id="com-paid">$0</strong></article></div>
+    <details class="rrhh-commission-filters" open><summary>Filtros y período</summary><div class="rrhh-com-grid"><label>Desde<input id="com-from" type="date"></label><label>Hasta<input id="com-to" type="date"></label><label>Integrante<select id="com-person"><option value="">Todos</option></select></label><label>Sucursal<select id="com-branch"><option value="">Todas</option></select></label><label>Estado<select id="com-status"><option value="">Todos</option><option value="pendiente">Pendiente</option><option value="liquidada">Liquidada</option><option value="pagada">Pagada</option><option value="anulada">Anulada</option></select></label><button class="btn btn-primary" id="com-refresh" type="button">Consultar</button></div></details>
+    <div class="rrhh-com-toolbar"><h3>Movimientos de comisiones</h3><button class="btn btn-ghost" id="com-export" type="button">Exportar CSV</button><button class="btn btn-primary" id="com-new" type="button" hidden>Nueva comisión</button></div>
+    <div id="com-message" class="section-copy" role="status"></div>
+    <div class="rrhh-com-list" id="com-list"><p class="section-copy">Cargando movimientos…</p></div>
+    <div class="rrhh-com-import-note">La conciliación automática Ventas + Cobros + Recetas se habilitará después de validar archivos reales y claves de operación. No se generan comisiones a partir de coincidencias dudosas de nombres.</div>
+  </section>
 </main>
+
+<div class="modal-overlay" id="com-modal">
+  <form class="modal" id="com-form">
+    <div class="modal-head"><div><p class="eyebrow">RRHH / COMISIONES</p><h3 id="com-modal-title">Nueva comisión</h3></div><button type="button" class="icon-button" id="com-close" aria-label="Cerrar">×</button></div>
+    <div class="form-grid">
+      <label>Integrante<select id="com-edit-person" required></select></label>
+      <label>Fecha de operación<input id="com-date" type="date" required></label>
+      <label class="full">Concepto<input id="com-concept" required maxlength="180" placeholder="Ej: comisión venta 1287"></label>
+      <label>Origen<select id="com-source"><option value="manual">Manual</option><option value="venta">Venta</option><option value="cobro">Cobro</option><option value="ajuste">Ajuste</option></select></label>
+      <label>Referencia de operación<input id="com-reference" maxlength="120" placeholder="Nº ticket / operación"></label>
+      <label>Tipo<select id="com-type"><option value="percent">Porcentaje</option><option value="fixed">Importe fijo</option></select></label>
+      <label id="com-base-field">Base sin IVA<input id="com-base" type="number" min="0" step="0.01" value="0"></label>
+      <label id="com-rate-field">Porcentaje (%)<input id="com-rate" type="number" min="0" max="100" step="0.01" value="2"></label>
+      <label id="com-fixed-field" hidden>Importe fijo<input id="com-fixed" type="number" min="0" step="0.01" value="0"></label>
+      <label class="full">Observaciones<input id="com-notes" maxlength="500"></label>
+      <label class="full">Motivo del registro / corrección<input id="com-reason" minlength="4" maxlength="250" required></label>
+    </div>
+    <div class="modal-actions"><button class="btn btn-ghost" id="com-cancel" type="button">Cancelar</button><button class="btn btn-primary" type="submit">Guardar movimiento</button></div>
+  </form>
+</div>
 
 <div class="modal-overlay" id="employee-modal">
   <form class="modal" id="employee-form">
@@ -206,5 +241,6 @@
 <script src="assets/js/rrhh.js?v=20261013-audit-4"></script>
 <script src="assets/js/rrhh-reportes.js?v=20261007-1"></script>
 <script src="assets/js/module-access.js?v=20261006-3"></script>
+<script src="assets/js/rrhh-comisiones.js?v=20261014-1"></script>
 </body>
 </html>
