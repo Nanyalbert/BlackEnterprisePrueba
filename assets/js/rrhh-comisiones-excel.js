@@ -2,6 +2,8 @@
 const $=id=>document.getElementById(id);
 const sb=()=>window.BlackPortal?.getSupabase?.();
 const clean=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\(\d+\)/g,' ').replace(/[^A-Z0-9]/g,' ').replace(/\s+/g,' ').trim();
+const canonicalClient=s=>{const t=clean(s).split(' ').filter(Boolean);if(t.length%2===0&&t.length>=2&&t.slice(0,t.length/2).join(' ')==t.slice(t.length/2).join(' '))return t.slice(0,t.length/2).join(' ');return t.join(' ')};
+const sellerKey=s=>clean(s).split(' ').filter(Boolean).sort().join(' ');
 const money=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(n||0);
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const get=(r,aliases)=>{const dict=new Map(Object.entries(r).map(([k,v])=>[clean(k).replace(/ /g,''),v]));for(const a of aliases){const key=clean(a).replace(/ /g,'');if(dict.has(key))return dict.get(key)}return null};
@@ -15,7 +17,7 @@ async function read(kind){const file=$('com-file-'+kind).files[0];if(!file)throw
 function parse(data,kind){const keys={ventas:[[['Cliente']], [['Vendedor']], [['Total S/IVA','Total S/Iva']], [['Total C/IVA','Total C/Iva']]],cobros:[[['Cliente']], [['Vendedor']], [['Total Importe']]],recetas:[[['Cliente']], [['Vendedor']], [['Medico','Médico']]]}[kind];if(!data.length)throw Error(kind+': archivo sin registros');for(const aliases of keys){const expected=aliases[0];if(!Object.keys(data[0]).some(k=>expected.some(x=>clean(k)===clean(x))))throw Error(kind+': falta columna '+expected[0])}
 return data.map((r,i)=>{const obj={index:i+2,client:get(r,['Cliente']),vendor:get(r,['Vendedor'])};if(kind==='ventas'){obj.net=number(get(r,['Total S/IVA']));obj.gross=number(get(r,['Total C/IVA']))}if(kind==='cobros')obj.paid=number(get(r,['Total Importe']));if(kind==='recetas')obj.doctor=get(r,['Medico','Médico']);return obj}).filter(valid)}
 function score(a,b){const A=new Set(clean(a).split(' ').filter(Boolean)),B=new Set(clean(b).split(' ').filter(Boolean));if(!A.size||!B.size)return 0;const intersect=[...A].filter(t=>B.has(t)).length;const union=A.size+B.size-intersect;return intersect/union}
-function matches(item,list,threshold){const pool=list.filter(x=>clean(x.vendor)===clean(item.vendor));const exact=pool.filter(x=>clean(x.client)===clean(item.client));if(exact.length===1)return {row:exact[0],score:1,exact:true};if(exact.length>1)return {error:'Coincidencia duplicada con el mismo vendedor y cliente'};
+function matches(item,list,threshold){const pool=list.filter(x=>sellerKey(x.vendor)===sellerKey(item.vendor));const exact=pool.filter(x=>canonicalClient(x.client)===canonicalClient(item.client));if(exact.length===1)return {row:exact[0],score:1,exact:true};if(exact.length>1)return {error:'Coincidencia duplicada con el mismo vendedor y cliente'};
 const scores=pool.map(r=>({row:r,score:score(item.client,r.client)})).filter(x=>x.score>=threshold).sort((a,b)=>b.score-a.score);
 if(scores.length!==1)return {error:scores.length?'Varias coincidencias posibles':'Sin coincidencia confiable'};
 return {...scores[0],exact:false}}
@@ -26,10 +28,10 @@ const med=number($('com-med-rate').value),other=number($('com-other-rate').value
 if(![med,other,thr].every(Number.isFinite)||med<0||med>100||other<0||other>100||thr<75||thr>100)throw Error('Revisá los porcentajes y el umbral');
 const client=sb();if(!client)throw Error('No está disponible la sesión de Black OS');
 const response=await client.rpc('hr_commissions_people');if(response.error)throw response.error;
-const people=response.data||[];const employees=new Map();people.forEach(p=>{const key=clean(p.full_name);if(employees.has(key))employees.set(key,null);else employees.set(key,p)});
+const people=response.data||[];const employees=new Map();people.forEach(p=>{const key=sellerKey(p.full_name);if(employees.has(key))employees.set(key,null);else employees.set(key,p)});
 const usedSale=new Map(),review=[],accepted=[];for(const paid of c){
 if(!Number.isFinite(paid.paid)||paid.paid<=0){review.push({paid,reason:'Cobro inválido o negativo'});continue}
-if(clean(paid.client).includes('MINISTERIO DE SALUD')){review.push({paid,reason:'EXCLUIDO: Ministerio de Salud'});continue}
+if(canonicalClient(paid.client).includes('MINISTERIO DE SALUD')){review.push({paid,reason:'EXCLUIDO: Ministerio de Salud'});continue}
 const m=matches(paid,v,thr/100);
 if(m.error){review.push({paid,reason:m.error});continue}
 const sale=m.row;
@@ -37,8 +39,8 @@ if(!Number.isFinite(sale.net)||!Number.isFinite(sale.gross)||sale.net<=0||sale.g
 const key=sale.index;const previous=usedSale.get(key)||0;const after=previous+paid.paid;
 if(after>sale.gross+0.01){review.push({paid,reason:'Cobros acumulados superan total de venta'});continue}
 if(usedSale.has(key)&&!m.exact){review.push({paid,reason:'Venta ya asociada; coincidencia aproximada no aceptada'});continue}
-const seller=employees.get(clean(sale.vendor));if(!seller){review.push({paid,reason:'Vendedor no identificado de forma única en RRHH'});continue}
-const recipes=rx.filter(r=>clean(r.vendor)===clean(sale.vendor)&&clean(r.client)===clean(sale.client));
+const seller=employees.get(sellerKey(sale.vendor));if(!seller){review.push({paid,reason:'Vendedor no identificado de forma única en RRHH'});continue}
+const recipes=rx.filter(r=>sellerKey(r.vendor)===sellerKey(sale.vendor)&&canonicalClient(r.client)===canonicalClient(sale.client));
 if(recipes.length>1){review.push({paid,reason:'Varias recetas para el mismo cliente y vendedor'});continue}
 if(!recipes.length){review.push({paid,reason:'No hay receta exacta; requiere confirmar el origen'});continue}
 const hasDoctor=String(recipes[0].doctor??'').trim().length>0;const rate=hasDoctor?med:other;
