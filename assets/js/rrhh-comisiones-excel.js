@@ -35,6 +35,19 @@ const recommendedColumns={
  recetas:[['Nro.Receta','Nro Receta'],['Fecha Registro','Fecha Receta'],['Articulo','Artículo']]
 };
 const headerKey=s=>clean(s).replace(/ /g,'');
+const kindLabels={ventas:'Ventas',cobros:'Cobros',recetas:'Recetas'};
+function detectFileKind(headers){
+ const matched=names.filter(kind=>requiredColumns[kind].every(aliases=>hasHeader(headers,aliases)));
+ if(matched.length===1)return matched[0];
+ const signature={
+  ventas:[['Nro Cpte','NroCpte'],['Total S/IVA'],['Total C/IVA'],['Articulo']],
+  cobros:[['NroVenta'],['Total Importe'],['NroComprobante']],
+  recetas:[['Nro.Receta'],['Medico'],['Total Receta S/IVA']]
+ };
+ const scores=names.map(kind=>({kind,score:signature[kind].filter(a=>hasHeader(headers,a)).length})).sort((a,b)=>b.score-a.score);
+ return scores[0].score>=2&&scores[0].score>scores[1].score?scores[0].kind:null;
+}
+
 const hasHeader=(headers,aliases)=>aliases.some(a=>headers.has(headerKey(a)));
 const columnCheck=(headers,kind)=>({
  missing:requiredColumns[kind].filter(aliases=>!hasHeader(headers,aliases)).map(x=>x[0]),
@@ -65,10 +78,12 @@ async function validateSelectedFile(kind){
   const rows=XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false,defval:null});
   const headers=new Set((rows[0]||[]).map(headerKey).filter(Boolean));
   const {missing,optional}=columnCheck(headers,kind);
+  const detected=detectFileKind(headers);
+  if(detected&&detected!==kind){setFileStatus(kind,'Archivo equivocado: seleccionaste '+kindLabels[detected]+'. Cargalo en el casillero «'+kindLabels[detected]+'».','error');return}
   if(!rows.slice(1).some(row=>row.some(v=>v!==null&&v!=='')))throw Error('El archivo no contiene registros');
   if(missing.length){setFileStatus(kind,'Faltan columnas obligatorias: '+missing.join(', ')+'. Revisá la primera fila del Excel.','error');return}
   validatedFiles.set(kind,{file});
-  setFileStatus(kind,'Columnas obligatorias correctas. '+(optional.length?'Recomendadas ausentes: '+optional.join(', ')+'.':'Columnas recomendadas presentes.')+' Listo para analizar.','success');
+  setFileStatus(kind,'Archivo de '+kindLabels[kind]+' reconocido ('+(rows.length-1)+' filas). Columnas obligatorias correctas. '+(optional.length?'Recomendadas ausentes: '+optional.join(', ')+'.':'Columnas recomendadas presentes.')+' Listo para analizar.','success');
  }catch(err){setFileStatus(kind,'No se pudo validar: '+(err.message||err),'error')}
 }
 for(const kind of names){
