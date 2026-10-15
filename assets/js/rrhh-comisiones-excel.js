@@ -21,7 +21,7 @@ let draft=null;
 function inform(x){$('com-import-summary').textContent=x}
 async function read(kind){const file=$('com-file-'+kind).files[0];if(!file)throw Error('Falta el archivo '+kind);if(file.size>12*1024*1024)throw Error('Archivo demasiado grande: '+file.name);if(!window.XLSX)throw Error('No se cargó la biblioteca Excel');const bytes=await file.arrayBuffer();const wb=XLSX.read(bytes,{type:'array',cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];if(!ws)throw Error('Libro vacío '+kind);const rows=XLSX.utils.sheet_to_json(ws,{raw:true,defval:null});if(rows.length>6000)throw Error('Máximo 6000 filas por archivo');return {rows,file,bytes}}
 function parse(data,kind){const keys={ventas:[[['Cliente']], [['Vendedor']], [['Total S/IVA','Total S/Iva']], [['Total C/IVA','Total C/Iva']]],cobros:[[['Cliente']], [['Vendedor']], [['Total Importe']]],recetas:[[['Cliente']], [['Vendedor']], [['Medico','Médico']]]}[kind];if(!data.length)throw Error(kind+': archivo sin registros');for(const aliases of keys){const expected=aliases[0];if(!Object.keys(data[0]).some(k=>expected.some(x=>clean(k)===clean(x))))throw Error(kind+': falta columna '+expected[0])}
-return data.map((r,i)=>{const obj={index:i+2,client:get(r,['Cliente']),vendor:get(r,['Vendedor'])};obj.saleId=reference(get(r,['Nro Venta','Nº Venta','Numero Venta','N° Venta']));obj.recipeId=reference(get(r,['Nro Receta','Nº Receta','Numero Receta','N° Receta']));if(kind==='ventas'){obj.net=number(get(r,['Total S/IVA']));obj.gross=number(get(r,['Total C/IVA']));obj.article=get(r,['Articulo','Artículo'])}if(kind==='cobros'){obj.paid=number(get(r,['Total Importe']));obj.date=isoDate(get(r,['Fecha Cobro','Fecha de Cobro','Fecha Pago','Fecha']));obj.paymentId=reference(get(r,['Nro Cobro','Nº Cobro','Numero Cobro','N° Cobro']))}if(kind==='recetas'){obj.doctor=get(r,['Medico','Médico']);obj.date=isoDate(get(r,['Fecha Receta','Fecha de Receta']))}return obj}).filter(valid)}
+return data.map((r,i)=>{const obj={index:i+2,client:get(r,['Cliente']),vendor:get(r,['Vendedor'])};obj.saleId=reference(get(r,['Nro Venta','Nº Venta','Numero Venta','N° Venta','NroVenta','Nro Cpte','NroCpte']));obj.recipeId=reference(get(r,['Nro Receta','Nº Receta','Numero Receta','N° Receta','Nro.Receta']));if(kind==='ventas'){obj.net=number(get(r,['Total S/IVA']));obj.gross=number(get(r,['Total C/IVA']));obj.article=get(r,['Articulo','Artículo'])}if(kind==='cobros'){obj.paid=number(get(r,['Total Importe']));obj.date=isoDate(get(r,['Fecha Cobro','Fecha de Cobro','Fecha Pago','Fecha']));obj.paymentId=reference(get(r,['Nro Cobro','Nº Cobro','Numero Cobro','N° Cobro','NroComprobante']))}if(kind==='recetas'){obj.doctor=get(r,['Medico','Médico']);obj.date=isoDate(get(r,['Fecha Receta','Fecha de Receta']))}return obj}).filter(valid)}
 function score(a,b){const A=new Set(clean(a).split(' ').filter(Boolean)),B=new Set(clean(b).split(' ').filter(Boolean));if(!A.size||!B.size)return 0;const intersect=[...A].filter(t=>B.has(t)).length;const union=A.size+B.size-intersect;return intersect/union}
 function matches(item,list,threshold){const pool=list.filter(x=>sellerKey(x.vendor)===sellerKey(item.vendor));const exact=pool.filter(x=>canonicalClient(x.client)===canonicalClient(item.client));if(exact.length===1)return {row:exact[0],score:1,exact:true};if(exact.length>1)return {error:'Coincidencia duplicada con el mismo vendedor y cliente'};
 const scores=pool.map(r=>({row:r,score:score(item.client,r.client)})).filter(x=>x.score>=threshold).sort((a,b)=>b.score-a.score);
@@ -35,41 +35,48 @@ if(![med,other,ministryRate,thr].every(Number.isFinite)||med<0||med>100||other<0
 const client=sb();if(!client)throw Error('No está disponible la sesión de Black OS');
 const response=await client.rpc('hr_commissions_people');if(response.error)throw response.error;
 const people=response.data||[];const employees=new Map();people.forEach(p=>{const key=sellerKey(p.full_name);if(employees.has(key))employees.set(key,null);else employees.set(key,p)});
-const usedSale=new Map(),review=[],accepted=[];for(const paid of c){
-if(!Number.isFinite(paid.paid)||paid.paid<=0){review.push({paid,reason:'Cobro inválido o negativo'});continue}
-
-if(ministryClient(paid.client)){
- const ministrySales=v.filter(x=>sellerKey(x.vendor)===sellerKey(paid.vendor)&&canonicalClient(x.client)===canonicalClient(paid.client));
- if(ministrySales.length>0&&ministrySales.every(x=>x.article&&ministryExcluded(x.article))){review.push({paid,reason:'Ministerio: únicamente prestaciones excluidas (0%)'});continue}
- if(ministrySales.length>1){review.push({paid,reason:'Ministerio: venta con varios artículos; requiere atribución del cobro por artículo antes de calcular comisión'});continue}
-}
-const direct=v.filter(x=>(paid.saleId&&x.saleId&&x.saleId===paid.saleId)||(paid.recipeId&&x.recipeId&&x.recipeId===paid.recipeId));
-const m=direct.length===1?{row:direct[0],score:1,exact:true}:direct.length>1?{error:'Identificador compartido por varias líneas: requiere detalle de artículo'}:matches(paid,v,thr/100);
-if(direct.length===0&&(paid.saleId||paid.recipeId)&&v.some(x=>x.saleId||x.recipeId)){review.push({paid,reason:'No coincide el número de venta/receta con Ventas'});continue}
-if(m.error){review.push({paid,reason:m.error});continue}
-if(!m.exact){review.push({paid,reason:'Coincidencia aproximada: confirmar manualmente antes de liquidar'});continue}
-const sale=m.row;
-const ministry=ministryClient(paid.client)||ministryClient(sale.client);
-if(ministry){
- if(!sale.article||!String(sale.article).trim()){review.push({paid,reason:'Ministerio: falta artículo en venta; no se puede determinar exclusión'});continue}
- if(ministryExcluded(sale.article)){review.push({paid,reason:'Ministerio: artículo excluido (0%): '+sale.article});continue}
- if(v.filter(x=>sellerKey(x.vendor)===sellerKey(sale.vendor)&&canonicalClient(x.client)===canonicalClient(sale.client)).length!==1){review.push({paid,reason:'Ministerio: varias líneas de artículos para el cliente; no se puede atribuir este cobro a un artículo determinado'});continue}
-}
-if(!Number.isFinite(sale.net)||!Number.isFinite(sale.gross)||sale.net<=0||sale.gross<=0||sale.net>sale.gross){review.push({paid,reason:'Venta sin importes válidos'});continue}
-const key=sale.index;const previous=usedSale.get(key)||0;const after=previous+paid.paid;
-if(after>sale.gross+0.01){review.push({paid,reason:'Cobros acumulados superan total de venta'});continue}
-if(usedSale.has(key)&&!m.exact){review.push({paid,reason:'Venta ya asociada; coincidencia aproximada no aceptada'});continue}
-const seller=employees.get(sellerKey(sale.vendor));if(!seller){review.push({paid,reason:'Vendedor no identificado de forma única en RRHH'});continue}
-const recipes=rx.filter(r=>((paid.recipeId||sale.recipeId)&&r.recipeId)?r.recipeId===(paid.recipeId||sale.recipeId):(sellerKey(r.vendor)===sellerKey(sale.vendor)&&canonicalClient(r.client)===canonicalClient(sale.client)));
-if(recipes.length>1){review.push({paid,reason:'Varias recetas para el mismo cliente y vendedor'});continue}
-if(!recipes.length){review.push({paid,reason:'No hay receta exacta; requiere confirmar el origen'});continue}
-const hasDoctor=String(recipes[0].doctor??'').trim().length>0;const rate=ministry?ministryRate:(hasDoctor?med:other);
-const base=Math.round((paid.paid*sale.net/sale.gross)*100)/100;
-if(base<=0){review.push({paid,reason:'Base sin IVA inválida'});continue}
-const date=paid.date||$('com-to').value;
-if(paid.date&&(paid.date<$('com-from').value||paid.date>$('com-to').value)){review.push({paid,reason:'Fecha de cobro fuera del período seleccionado'});continue}
-usedSale.set(key,after);
-accepted.push({person:seller,paid,sale,doctor:recipes[0].doctor,article:sale.article||'',ministry,date,rate,base,amount:Math.round(base*rate)/100});
+const review=[],accepted=[],usedSale=new Map();
+const salesById=new Map();
+for(const line of v){if(!line.saleId)continue;if(!salesById.has(line.saleId))salesById.set(line.saleId,[]);salesById.get(line.saleId).push(line)}
+const paymentIds=new Set();
+for(const paid of c){
+ if(!Number.isFinite(paid.paid)||paid.paid<=0){review.push({paid,reason:'Cobro nulo, negativo o inválido'});continue}
+ if(!paid.saleId){review.push({paid,reason:'Falta NroVenta: no se puede conciliar con seguridad'});continue}
+ if(paid.paymentId){if(paymentIds.has(paid.paymentId)){review.push({paid,reason:'NroComprobante de cobro duplicado en el archivo'});continue}paymentIds.add(paid.paymentId)}
+ const lines=salesById.get(paid.saleId)||[];
+ if(!lines.length){review.push({paid,reason:'NroVenta sin correspondencia en CuboVentas'});continue}
+ if(lines.some(x=>sellerKey(x.vendor)!==sellerKey(paid.vendor))){review.push({paid,reason:'Vendedor de cobro distinto al de venta: requiere revisión'});continue}
+ const samePatient=lines.every(x=>canonicalClient(x.client)===canonicalClient(lines[0].client));
+ if(!samePatient){review.push({paid,reason:'NroVenta contiene distintos clientes'});continue}
+ const normalizePatient=s=>{const t=canonicalClient(s);return t.split(' ').filter(Boolean).sort().join(' ')};
+ const salePatient=normalizePatient(lines[0].client),paidPatient=normalizePatient(paid.client);
+ if(salePatient!==paidPatient&&!clean(lines[0].client).includes(clean(paid.client))){review.push({paid,reason:'Cliente de cobro distinto al de venta: verificar NroVenta'});continue}
+ if(lines.some(x=>!Number.isFinite(x.gross)||!Number.isFinite(x.net)||x.gross<0||x.net<0)){review.push({paid,reason:'Venta con importes inválidos o ajustes negativos'});continue}
+ const gross=lines.reduce((s,x)=>s+x.gross,0),net=lines.reduce((s,x)=>s+x.net,0);
+ if(gross<=0||net<=0||net>gross+.01){review.push({paid,reason:'Totales de venta sin IVA/con IVA inconsistentes'});continue}
+ const prev=usedSale.get(paid.saleId)||0;
+ if(prev+paid.paid>gross+.02){review.push({paid,reason:'Cobros acumulados exceden el total de la venta'});continue}
+ const ministry=ministryClient(paid.client)||lines.some(x=>ministryClient(x.client));
+ const excluded=lines.filter(x=>ministryExcluded(x.article));
+ const eligible=lines.filter(x=>!ministryExcluded(x.article));
+ if(ministry&&lines.some(x=>!String(x.article||'').trim())){review.push({paid,reason:'Ministerio: artículo sin identificar; no liquidar'});continue}
+ if(ministry&&excluded.length===lines.length){review.push({paid,reason:'Ministerio: todos los artículos excluidos (0%)'});continue}
+ if(ministry&&excluded.length&&eligible.length){review.push({paid,reason:'Ministerio: venta mixta de artículos excluidos y comisionables; falta atribución exacta del cobro'});continue}
+ const seller=employees.get(sellerKey(lines[0].vendor));
+ if(!seller){review.push({paid,reason:'Vendedor no vinculado de forma única a un empleado de RRHH'});continue}
+ const recipes=rx.filter(x=>x.recipeId&&paid.recipeId?x.recipeId===paid.recipeId:sellerKey(x.vendor)===sellerKey(paid.vendor)&&normalizePatient(x.client)===salePatient);
+ const uniqueRecipes=[...new Set(recipes.map(x=>x.recipeId||'fila-'+x.index))];
+ if(uniqueRecipes.length!==1){review.push({paid,reason:uniqueRecipes.length?'Varias recetas posibles: falta identificador de vínculo':'Sin receta identificada'});continue}
+ const doctors=[...new Set(recipes.map(x=>clean(x.doctor)).filter(Boolean))];
+ if(doctors.length>1){review.push({paid,reason:'Receta con más de un médico distinto'});continue}
+ const doctor=recipes.find(x=>String(x.doctor||'').trim())?.doctor||'';
+ const rate=ministry?ministryRate:(doctor?med:other);
+ const date=paid.date||$('com-to').value;
+ if(paid.date&&(paid.date<$('com-from').value||paid.date>$('com-to').value)){review.push({paid,reason:'Fecha del cobro fuera del período'});continue}
+ const base=Math.round(paid.paid*net/gross*100)/100;
+ if(!Number.isFinite(base)||base<=0){review.push({paid,reason:'Base comisionable inválida'});continue}
+ usedSale.set(paid.saleId,prev+paid.paid);
+ accepted.push({person:seller,paid,sale:lines[0],doctor,article:lines.map(x=>x.article||'').join(' / '),ministry,date,rate,base,amount:Math.round(base*rate)/100});
 }
 const fingerprint=await hash(parts);
 draft={accepted,review,fingerprint,files:parts.map((p,i)=>({type:names[i],name:p.file.name,size:p.file.size,row_count:p.rows.length})),settings:{med,other,ministry_rate:ministryRate,threshold:thr},period_from:$('com-from').value,period_to:$('com-to').value};
