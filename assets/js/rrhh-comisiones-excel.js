@@ -53,7 +53,7 @@ async function validateSelectedFile(kind){
  validatedFiles.delete(kind);
  if(!file){setFileStatus(kind,'Seleccioná un archivo para verificar sus columnas.','idle');return}
  setFileStatus(kind,'Verificando columnas del archivo…','checking');
- if(!/\.xlsx?$/i.test(file.name)){setFileStatus(kind,'Formato no válido. Usá .xlsx o .xls.','error');return}
+ if(!['xlsx','xls'].includes(String(file.name).trim().toLowerCase().split('.').pop())){setFileStatus(kind,'Formato no válido. Usá .xlsx o .xls.','error');return}
  if(file.size>12*1024*1024){setFileStatus(kind,'Archivo demasiado grande (máximo 12 MB).','error');return}
  if(!window.XLSX){setFileStatus(kind,'No se pudo cargar el lector Excel. Actualizá la página.','error');return}
  try{
