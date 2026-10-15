@@ -46,6 +46,7 @@ function setFileStatus(kind,message,level){
  const el=$('com-file-status-'+kind);
  if(!el)return;
  el.textContent=message;el.dataset.level=level;
+ const summary=$('com-file-validation-summary');if(summary){const ok=names.filter(n=>validatedFiles.get(n)?.file===$('com-file-'+n)?.files?.[0]).length;summary.textContent=ok===3?'Los tres Excel tienen las columnas obligatorias correctas. Ya podés analizar.':ok+' de 3 archivos con columnas validadas. Completá los restantes antes de analizar.';}
 }
 async function validateSelectedFile(kind){
  const file=$('com-file-'+kind)?.files?.[0];
@@ -95,7 +96,7 @@ const scores=pool.map(r=>({row:r,score:score(item.client,r.client)})).filter(x=>
 if(scores.length!==1)return {error:scores.length?'Varias coincidencias posibles':'Sin coincidencia confiable'};
 return {...scores[0],exact:false}}
 async function hash(parts){const joined=new Uint8Array(parts.reduce((s,p)=>s+p.bytes.byteLength+4,0));let pos=0;for(const p of parts){const n=p.bytes.byteLength;new DataView(joined.buffer).setUint32(pos,n);pos+=4;joined.set(new Uint8Array(p.bytes),pos);pos+=n}const dig=await crypto.subtle.digest('SHA-256',joined);return [...new Uint8Array(dig)].map(b=>b.toString(16).padStart(2,'0')).join('')}
-async function process(){draft=null;$('com-confirm-import').disabled=true;inform('Leyendo y verificando archivos…');try{
+async function process(){if(names.some(n=>validatedFiles.get(n)?.file!==$('com-file-'+n)?.files?.[0])){inform('Verificá los tres Excel: falta un archivo o hay columnas obligatorias incorrectas.');return}draft=null;$('com-confirm-import').disabled=true;inform('Leyendo y verificando archivos…');try{
 for(const kind of names){const file=$('com-file-'+kind)?.files?.[0];if(!file||validatedFiles.get(kind)?.file!==file)throw Error('Primero corregí o validá las columnas del archivo '+kind+'. Esperá a que figure «Columnas obligatorias correctas».')}
 const parts=await Promise.all(names.map(read));const [v,c,rx]=parts.map((p,i)=>parse(p.rows,names[i]));
 const med=number($('com-med-rate').value),other=number($('com-other-rate').value),ministryRate=number($('com-ministry-rate').value),thr=number($('com-threshold').value);
