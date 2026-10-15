@@ -8,7 +8,7 @@ const money=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const get=(r,aliases)=>{const dict=new Map(Object.entries(r).map(([k,v])=>[clean(k).replace(/ /g,''),v]));for(const a of aliases){const key=clean(a).replace(/ /g,'');if(dict.has(key))return dict.get(key)}return null};
 const number=x=>{if(typeof x==='number')return x;const t=String(x??'').replace(/\$/g,'').trim();if(!t)return NaN;const y=t.includes(',')?t.replace(/\./g,'').replace(',','.'):t;return Number(y)};
-const reference=s=>String(s??'').trim().replace(/\\.0$/,'').toUpperCase();
+const reference=s=>String(s??'').trim().replace(/\.0$/,'').toUpperCase();
 const isoDate=x=>{if(x instanceof Date&&!isNaN(x))return [x.getFullYear(),String(x.getMonth()+1).padStart(2,'0'),String(x.getDate()).padStart(2,'0')].join('-');const t=String(x??'').trim();if(/^\\d{4}-\\d{2}-\\d{2}/.test(t))return t.slice(0,10);const m=t.match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/);return m?m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'):''};
 const idValue=(r,kind)=>reference(get(r,kind==='cobros'?['Nro Venta','Nº Venta','Numero Venta','Nro Receta','Nº Receta','Numero Receta']:['Nro Venta','Nº Venta','Numero Venta','Nro Receta','Nº Receta','Numero Receta']));
 const identity=r=>[clean(r.vendor),clean(r.client)].join('|');
