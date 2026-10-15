@@ -909,5 +909,11 @@ svg[stroke="var(--arena)"], svg[fill="var(--arena)"]{stroke:var(--portal-text-3)
   .doctor-card{padding:16px}
   .turno-row{gap:7px;padding:10px}
   .turno-badges{width:100%;justify-content:flex-start;margin-top:2px}
-  .schedule-card-actions{position:sticky;bottom:calc(72px + var(--safe-bottom));background:var(--marfil);z-index:1}
+  .schedule-card-actions{position:static;bottom:auto;background:transparent;z-index:auto}
 }
+
+/* Mobile schedule cards: keep actions in the normal flow and avoid light overlay. */
+#page-cronograma .doctor-card .schedule-card-actions{position:static!important;bottom:auto!important;z-index:auto!important;background:transparent!important;box-shadow:none!important;min-width:0;gap:10px;align-items:stretch}
+#page-cronograma .doctor-card .schedule-card-actions button{min-width:0;min-height:44px;white-space:normal;background:#191919;color:#e6d1a8;border:1px solid rgba(201,169,110,.4);border-radius:12px}
+#page-cronograma .doctor-card .schedule-card-actions .schedule-wa-btn:not(:disabled){background:rgba(53,189,104,.09);border-color:rgba(53,189,104,.35);color:#8ed9a9}
+#page-cronograma .doctor-card .schedule-card-actions button:disabled{opacity:.45}
