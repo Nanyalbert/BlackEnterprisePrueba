@@ -8,17 +8,20 @@ const money=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const get=(r,aliases)=>{const dict=new Map(Object.entries(r).map(([k,v])=>[clean(k).replace(/ /g,''),v]));for(const a of aliases){const key=clean(a).replace(/ /g,'');if(dict.has(key))return dict.get(key)}return null};
 const number=x=>{if(typeof x==='number')return x;const t=String(x??'').replace(/\$/g,'').trim();if(!t)return NaN;const y=t.includes(',')?t.replace(/\./g,'').replace(',','.'):t;return Number(y)};
+const reference=s=>String(s??'').trim().replace(/\\.0$/,'').toUpperCase();
+const isoDate=x=>{if(x instanceof Date&&!isNaN(x))return [x.getFullYear(),String(x.getMonth()+1).padStart(2,'0'),String(x.getDate()).padStart(2,'0')].join('-');const t=String(x??'').trim();if(/^\\d{4}-\\d{2}-\\d{2}/.test(t))return t.slice(0,10);const m=t.match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/);return m?m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'):''};
+const idValue=(r,kind)=>reference(get(r,kind==='cobros'?['Nro Venta','Nº Venta','Numero Venta','Nro Receta','Nº Receta','Numero Receta']:['Nro Venta','Nº Venta','Numero Venta','Nro Receta','Nº Receta','Numero Receta']));
 const identity=r=>[clean(r.vendor),clean(r.client)].join('|');
 const valid=r=>r.client&&r.vendor;
 const names=['ventas','cobros','recetas'];
-const ministryExcluded=article=>/\\bANTEOJO(?:S)?\\s+(?:DE\\s+)?(?:LEJOS|CERCA|BIFOCAL(?:ES)?|MULTIFOCAL(?:ES)?)\\b/.test(clean(article))||/\\bMINI\\s+(?:LEJOS|CERCA|BIFOCAL(?:ES)?|MULTIFOCAL(?:ES)?)\\b/.test(clean(article));
+const ministryExcluded=article=>/\bANTEOJOS?\s+(?:DE\s+)?(?:LEJOS|CERCA|BIFOCALES?|MULTIFOCALES?)\b/.test(clean(article))||/\bMINI\s+(?:LEJOS|CERCA|BIFOCALES?|MULTIFOCALES?)\b/.test(clean(article));
 const ministryClient=client=>canonicalClient(client).includes('MINISTERIO DE SALUD');
 
 let draft=null;
 function inform(x){$('com-import-summary').textContent=x}
 async function read(kind){const file=$('com-file-'+kind).files[0];if(!file)throw Error('Falta el archivo '+kind);if(file.size>12*1024*1024)throw Error('Archivo demasiado grande: '+file.name);if(!window.XLSX)throw Error('No se cargó la biblioteca Excel');const bytes=await file.arrayBuffer();const wb=XLSX.read(bytes,{type:'array',cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];if(!ws)throw Error('Libro vacío '+kind);const rows=XLSX.utils.sheet_to_json(ws,{raw:true,defval:null});if(rows.length>6000)throw Error('Máximo 6000 filas por archivo');return {rows,file,bytes}}
 function parse(data,kind){const keys={ventas:[[['Cliente']], [['Vendedor']], [['Total S/IVA','Total S/Iva']], [['Total C/IVA','Total C/Iva']]],cobros:[[['Cliente']], [['Vendedor']], [['Total Importe']]],recetas:[[['Cliente']], [['Vendedor']], [['Medico','Médico']]]}[kind];if(!data.length)throw Error(kind+': archivo sin registros');for(const aliases of keys){const expected=aliases[0];if(!Object.keys(data[0]).some(k=>expected.some(x=>clean(k)===clean(x))))throw Error(kind+': falta columna '+expected[0])}
-return data.map((r,i)=>{const obj={index:i+2,client:get(r,['Cliente']),vendor:get(r,['Vendedor'])};if(kind==='ventas'){obj.net=number(get(r,['Total S/IVA']));obj.gross=number(get(r,['Total C/IVA']));obj.article=get(r,['Articulo','Artículo'])}if(kind==='cobros')obj.paid=number(get(r,['Total Importe']));if(kind==='recetas')obj.doctor=get(r,['Medico','Médico']);return obj}).filter(valid)}
+return data.map((r,i)=>{const obj={index:i+2,client:get(r,['Cliente']),vendor:get(r,['Vendedor'])};obj.saleId=reference(get(r,['Nro Venta','Nº Venta','Numero Venta','N° Venta']));obj.recipeId=reference(get(r,['Nro Receta','Nº Receta','Numero Receta','N° Receta']));if(kind==='ventas'){obj.net=number(get(r,['Total S/IVA']));obj.gross=number(get(r,['Total C/IVA']));obj.article=get(r,['Articulo','Artículo'])}if(kind==='cobros'){obj.paid=number(get(r,['Total Importe']));obj.date=isoDate(get(r,['Fecha Cobro','Fecha de Cobro','Fecha Pago','Fecha']));obj.paymentId=reference(get(r,['Nro Cobro','Nº Cobro','Numero Cobro','N° Cobro']))}if(kind==='recetas'){obj.doctor=get(r,['Medico','Médico']);obj.date=isoDate(get(r,['Fecha Receta','Fecha de Receta']))}return obj}).filter(valid)}
 function score(a,b){const A=new Set(clean(a).split(' ').filter(Boolean)),B=new Set(clean(b).split(' ').filter(Boolean));if(!A.size||!B.size)return 0;const intersect=[...A].filter(t=>B.has(t)).length;const union=A.size+B.size-intersect;return intersect/union}
 function matches(item,list,threshold){const pool=list.filter(x=>sellerKey(x.vendor)===sellerKey(item.vendor));const exact=pool.filter(x=>canonicalClient(x.client)===canonicalClient(item.client));if(exact.length===1)return {row:exact[0],score:1,exact:true};if(exact.length>1)return {error:'Coincidencia duplicada con el mismo vendedor y cliente'};
 const scores=pool.map(r=>({row:r,score:score(item.client,r.client)})).filter(x=>x.score>=threshold).sort((a,b)=>b.score-a.score);
@@ -40,8 +43,11 @@ if(ministryClient(paid.client)){
  if(ministrySales.length>0&&ministrySales.every(x=>x.article&&ministryExcluded(x.article))){review.push({paid,reason:'Ministerio: únicamente prestaciones excluidas (0%)'});continue}
  if(ministrySales.length>1){review.push({paid,reason:'Ministerio: venta con varios artículos; requiere atribución del cobro por artículo antes de calcular comisión'});continue}
 }
-const m=matches(paid,v,thr/100);
+const direct=v.filter(x=>(paid.saleId&&x.saleId&&x.saleId===paid.saleId)||(paid.recipeId&&x.recipeId&&x.recipeId===paid.recipeId));
+const m=direct.length===1?{row:direct[0],score:1,exact:true}:direct.length>1?{error:'Identificador compartido por varias líneas: requiere detalle de artículo'}:matches(paid,v,thr/100);
+if(direct.length===0&&(paid.saleId||paid.recipeId)&&v.some(x=>x.saleId||x.recipeId)){review.push({paid,reason:'No coincide el número de venta/receta con Ventas'});continue}
 if(m.error){review.push({paid,reason:m.error});continue}
+if(!m.exact){review.push({paid,reason:'Coincidencia aproximada: confirmar manualmente antes de liquidar'});continue}
 const sale=m.row;
 const ministry=ministryClient(paid.client)||ministryClient(sale.client);
 if(ministry){
@@ -54,14 +60,16 @@ const key=sale.index;const previous=usedSale.get(key)||0;const after=previous+pa
 if(after>sale.gross+0.01){review.push({paid,reason:'Cobros acumulados superan total de venta'});continue}
 if(usedSale.has(key)&&!m.exact){review.push({paid,reason:'Venta ya asociada; coincidencia aproximada no aceptada'});continue}
 const seller=employees.get(sellerKey(sale.vendor));if(!seller){review.push({paid,reason:'Vendedor no identificado de forma única en RRHH'});continue}
-const recipes=rx.filter(r=>sellerKey(r.vendor)===sellerKey(sale.vendor)&&canonicalClient(r.client)===canonicalClient(sale.client));
+const recipes=rx.filter(r=>((paid.recipeId||sale.recipeId)&&r.recipeId)?r.recipeId===(paid.recipeId||sale.recipeId):(sellerKey(r.vendor)===sellerKey(sale.vendor)&&canonicalClient(r.client)===canonicalClient(sale.client)));
 if(recipes.length>1){review.push({paid,reason:'Varias recetas para el mismo cliente y vendedor'});continue}
 if(!recipes.length){review.push({paid,reason:'No hay receta exacta; requiere confirmar el origen'});continue}
 const hasDoctor=String(recipes[0].doctor??'').trim().length>0;const rate=ministry?ministryRate:(hasDoctor?med:other);
 const base=Math.round((paid.paid*sale.net/sale.gross)*100)/100;
 if(base<=0){review.push({paid,reason:'Base sin IVA inválida'});continue}
+const date=paid.date||$('com-to').value;
+if(paid.date&&(paid.date<$('com-from').value||paid.date>$('com-to').value)){review.push({paid,reason:'Fecha de cobro fuera del período seleccionado'});continue}
 usedSale.set(key,after);
-accepted.push({person:seller,paid,sale,doctor:recipes[0].doctor,article:sale.article||'',ministry,rate,base,amount:Math.round(base*rate)/100});
+accepted.push({person:seller,paid,sale,doctor:recipes[0].doctor,article:sale.article||'',ministry,date,rate,base,amount:Math.round(base*rate)/100});
 }
 const fingerprint=await hash(parts);
 draft={accepted,review,fingerprint,files:parts.map((p,i)=>({type:names[i],name:p.file.name,size:p.file.size,row_count:p.rows.length})),settings:{med,other,ministry_rate:ministryRate,threshold:thr},period_from:$('com-from').value,period_to:$('com-to').value};
@@ -75,7 +83,7 @@ async function confirmImport(){if(!draft||!draft.accepted.length)return;const {a
 if(!confirm('Guardar '+accepted.length+' comisiones pendientes en Supabase? Los '+review.length+' casos a revisar no se liquidarán.'))return;
 const btn=$('com-confirm-import');btn.disabled=true;inform('Guardando lote…');
 try{
-const items=accepted.map(x=>({employee_id:x.person.id,branch_id:x.person.branch_id,operation_date:period_to,concept:'Comisión Excel · '+String(x.paid.client).slice(0,90),commission_type:'percent',base_amount:x.base,rate:x.rate,fixed_amount:0,notes:'Cliente: '+x.paid.client+' · Vendedor: '+x.sale.vendor+' · Médico: '+(x.doctor||'Sin médico')+' · Cobro fila '+x.paid.index+' · Artículo: '+(x.article||'No informado')+' · Ministerio: '+(x.ministry?'Sí':'No')+' · Venta fila '+x.sale.index+' · '+(x.override_reason?'Ajuste de tasa: '+x.override_reason:'Tasa automática')}));
+const items=accepted.map(x=>({employee_id:x.person.id,branch_id:x.person.branch_id,operation_date:x.date||period_to,concept:'Comisión Excel · '+String(x.paid.client).slice(0,90),commission_type:'percent',base_amount:x.base,rate:x.rate,fixed_amount:0,notes:'Cliente: '+x.paid.client+' · Vendedor: '+x.sale.vendor+' · Médico: '+(x.doctor||'Sin médico')+' · Nro Cobro: '+(x.paid.paymentId||'No informado')+' · Nro Venta: '+(x.paid.saleId||x.sale.saleId||'No informado')+' · Nro Receta: '+(x.paid.recipeId||x.sale.recipeId||'No informado')+' · Cobro fila '+x.paid.index+' · Artículo: '+(x.article||'No informado')+' · Ministerio: '+(x.ministry?'Sí':'No')+' · Venta fila '+x.sale.index+' · '+(x.override_reason?'Ajuste de tasa: '+x.override_reason:'Tasa automática')}));
 const payload={p_fingerprint:fingerprint,p_from:period_from,p_to:period_to,p_files:files,p_settings:settings,p_rows:items,p_review:review.map(x=>({client:String(x.paid.client),vendor:String(x.paid.vendor),row:x.paid.index,reason:x.reason}))};
 const result=await sb().rpc('hr_commissions_import',payload);if(result.error)throw result.error;
 inform('Importación guardada · '+result.data.imported+' comisiones. '+result.data.review+' a revisar');draft=null;$('com-preview').textContent='Lote guardado correctamente. Consultá los movimientos y el historial.';await history();$('com-refresh').click();
