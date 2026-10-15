@@ -913,7 +913,9 @@ svg[stroke="var(--arena)"], svg[fill="var(--arena)"]{stroke:var(--portal-text-3)
 }
 
 /* Mobile schedule cards: keep actions in the normal flow and avoid light overlay. */
-#page-cronograma .doctor-card .schedule-card-actions{position:static!important;bottom:auto!important;z-index:auto!important;background:transparent!important;box-shadow:none!important;min-width:0;gap:10px;align-items:stretch}
-#page-cronograma .doctor-card .schedule-card-actions button{min-width:0;min-height:44px;white-space:normal;background:#191919;color:#e6d1a8;border:1px solid rgba(201,169,110,.4);border-radius:12px}
-#page-cronograma .doctor-card .schedule-card-actions .schedule-wa-btn:not(:disabled){background:rgba(53,189,104,.09);border-color:rgba(53,189,104,.35);color:#8ed9a9}
-#page-cronograma .doctor-card .schedule-card-actions button:disabled{opacity:.45}
+#schedule-list .doctor-card .schedule-card-actions{position:static!important;bottom:auto!important;z-index:auto!important;background:transparent!important;box-shadow:none!important;min-width:0;gap:10px;align-items:stretch}
+#schedule-list .doctor-card .schedule-card-actions button{min-width:0;min-height:44px;white-space:normal;background:#191919;color:#e6d1a8;border:1px solid rgba(201,169,110,.4);border-radius:12px}
+#schedule-list .doctor-card .schedule-card-actions .schedule-wa-btn:not(:disabled){background:rgba(53,189,104,.09);border-color:rgba(53,189,104,.35);color:#8ed9a9}
+#schedule-list .doctor-card .schedule-card-actions button:disabled{opacity:.45}
+
+@media(max-width:640px){#schedule-list .doctor-card{overflow:hidden}#schedule-list .doctor-card .schedule-card-actions{position:static!important;inset:auto!important;transform:none!important;background:transparent!important;margin-top:14px;padding:12px 0 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;border-top:1px solid rgba(255,255,255,.12)}#schedule-list .doctor-card .schedule-card-actions button{width:100%;min-width:0;max-width:100%;padding:12px 8px;box-sizing:border-box}}
