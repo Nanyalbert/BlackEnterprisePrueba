@@ -24,11 +24,71 @@ const names=['ventas','cobros','recetas'];
 const ministryExcluded=article=>/\bANTEOJOS?\s+(?:DE\s+)?(?:LEJOS|CERCA|BIFOCALES?|MULTIFOCALES?)\b/.test(clean(article))||/\bMINI\s+(?:LEJOS|CERCA|BIFOCALES?|MULTIFOCALES?)\b/.test(clean(article));
 const ministryClient=client=>canonicalClient(client).includes('MINISTERIO DE SALUD');
 
+const requiredColumns={
+ ventas:[['Cliente'],['Vendedor'],['Total S/IVA'],['Total C/IVA'],['Articulo','Artículo'],['Nro Cpte','NroCpte','NroVenta']],
+ cobros:[['Cliente'],['Vendedor'],['Total Importe'],['NroVenta','Nro Venta']],
+ recetas:[['Cliente'],['Vendedor'],['Medico','Médico']]
+};
+const recommendedColumns={
+ ventas:[['Codigo'],['Fecha Cpte'],['Sucursal']],
+ cobros:[['NroComprobante'],['FechaHora Caja','Fecha Cobro','Fecha de Cobro'],['Sucursal']],
+ recetas:[['Nro.Receta','Nro Receta'],['Fecha Registro','Fecha Receta'],['Articulo','Artículo']]
+};
+const headerKey=s=>clean(s).replace(/ /g,'');
+const hasHeader=(headers,aliases)=>aliases.some(a=>headers.has(headerKey(a)));
+const columnCheck=(headers,kind)=>({
+ missing:requiredColumns[kind].filter(aliases=>!hasHeader(headers,aliases)).map(x=>x[0]),
+ optional:recommendedColumns[kind].filter(aliases=>!hasHeader(headers,aliases)).map(x=>x[0])
+});
+let checkSequence=0;
+const validatedFiles=new Map();
+function setFileStatus(kind,message,level){
+ const el=$('com-file-status-'+kind);
+ if(!el)return;
+ el.textContent=message;el.dataset.level=level;
+}
+async function validateSelectedFile(kind){
+ const file=$('com-file-'+kind)?.files?.[0];
+ validatedFiles.delete(kind);
+ if(!file){setFileStatus(kind,'Seleccioná un archivo para verificar sus columnas.','idle');return}
+ setFileStatus(kind,'Verificando columnas del archivo…','checking');
+ if(!/\\.xlsx?$/i.test(file.name)){setFileStatus(kind,'Formato no válido. Usá .xlsx o .xls.','error');return}
+ if(file.size>12*1024*1024){setFileStatus(kind,'Archivo demasiado grande (máximo 12 MB).','error');return}
+ if(!window.XLSX){setFileStatus(kind,'No se pudo cargar el lector Excel. Actualizá la página.','error');return}
+ try{
+  const bytes=await file.arrayBuffer();
+  if($('com-file-'+kind).files[0]!==file)return;
+  const wb=XLSX.read(bytes,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  if(!ws)throw Error('El libro no tiene hojas');
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false,defval:null});
+  const headers=new Set((rows[0]||[]).map(headerKey).filter(Boolean));
+  const {missing,optional}=columnCheck(headers,kind);
+  if(!rows.slice(1).some(row=>row.some(v=>v!==null&&v!=='')))throw Error('El archivo no contiene registros');
+  if(missing.length){setFileStatus(kind,'Faltan columnas obligatorias: '+missing.join(', ')+'. Revisá la primera fila del Excel.','error');return}
+  validatedFiles.set(kind,{file});
+  setFileStatus(kind,'Columnas obligatorias correctas. '+(optional.length?'Recomendadas ausentes: '+optional.join(', ')+'.':'Columnas recomendadas presentes.')+' Listo para analizar.','success');
+ }catch(err){setFileStatus(kind,'No se pudo validar: '+(err.message||err),'error')}
+}
+for(const kind of names){
+ $('com-file-'+kind)?.addEventListener('change',()=>{
+  checkSequence++;draft=null;
+  $('com-confirm-import').disabled=true;
+  $('com-preview').textContent='';
+  inform('Sin analizar: verificá los tres archivos.');
+  validateSelectedFile(kind);
+ });
+ setFileStatus(kind,'Seleccioná un archivo para verificar sus columnas.','idle');
+}
 let draft=null;
 function inform(x){$('com-import-summary').textContent=x}
 async function read(kind){const file=$('com-file-'+kind).files[0];if(!file)throw Error('Falta el archivo '+kind);if(file.size>12*1024*1024)throw Error('Archivo demasiado grande: '+file.name);if(!window.XLSX)throw Error('No se cargó la biblioteca Excel');const bytes=await file.arrayBuffer();const wb=XLSX.read(bytes,{type:'array',cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];if(!ws)throw Error('Libro vacío '+kind);const rows=XLSX.utils.sheet_to_json(ws,{raw:true,defval:null});if(rows.length>6000)throw Error('Máximo 6000 filas por archivo');return {rows,file,bytes}}
-function parse(data,kind){const keys={ventas:[[['Cliente']], [['Vendedor']], [['Total S/IVA','Total S/Iva']], [['Total C/IVA','Total C/Iva']], [['Articulo','Artículo']], [['Nro Cpte','NroCpte','NroVenta']]],cobros:[[['Cliente']], [['Vendedor']], [['Total Importe']], [['NroVenta','Nro Venta']]],recetas:[[['Cliente']], [['Vendedor']], [['Medico','Médico']]]}[kind];if(!data.length)throw Error(kind+': archivo sin registros');for(const aliases of keys){const expected=aliases[0];if(!Object.keys(data[0]).some(k=>expected.some(x=>clean(k)===clean(x))))throw Error(kind+': falta columna '+expected[0])}
-return data.map((r,i)=>{const obj={index:i+2,client:get(r,['Cliente']),vendor:get(r,['Vendedor'])};obj.saleId=reference(get(r,['Nro Venta','Nº Venta','Numero Venta','N° Venta','NroVenta','Nro Cpte','NroCpte']));obj.recipeId=reference(get(r,['Nro Receta','Nº Receta','Numero Receta','N° Receta','Nro.Receta']));if(kind==='ventas'){obj.net=number(get(r,['Total S/IVA']));obj.gross=number(get(r,['Total C/IVA']));obj.article=get(r,['Articulo','Artículo'])}if(kind==='cobros'){obj.paid=number(get(r,['Total Importe']));obj.date=isoDate(get(r,['Fecha Cobro','Fecha de Cobro','Fecha Pago','Fecha']));obj.paymentId=reference(get(r,['Nro Cobro','Nº Cobro','Numero Cobro','N° Cobro','NroComprobante']))}if(kind==='recetas'){obj.doctor=get(r,['Medico','Médico']);obj.date=isoDate(get(r,['Fecha Receta','Fecha de Receta']))}return obj}).filter(valid)}
+function parse(data,kind){
+ if(!data.length)throw Error(kind+': archivo sin registros');
+ const headers=new Set(Object.keys(data[0]).map(headerKey));
+ const {missing}=columnCheck(headers,kind);
+ if(missing.length)throw Error(kind+': faltan columnas '+missing.join(', '));
+ return data.map((r,i)=>{const obj={index:i+2,client:get(r,['Cliente']),vendor:get(r,['Vendedor'])};obj.saleId=reference(get(r,['Nro Venta','Nº Venta','Numero Venta','N° Venta','NroVenta','Nro Cpte','NroCpte']));obj.recipeId=reference(get(r,['Nro Receta','Nº Receta','Numero Receta','N° Receta','Nro.Receta']));if(kind==='ventas'){obj.net=number(get(r,['Total S/IVA']));obj.gross=number(get(r,['Total C/IVA']));obj.article=get(r,['Articulo','Artículo'])}if(kind==='cobros'){obj.paid=number(get(r,['Total Importe']));obj.date=isoDate(get(r,['Fecha Cobro','Fecha de Cobro','Fecha Pago','Fecha']));obj.paymentId=reference(get(r,['Nro Cobro','Nº Cobro','Numero Cobro','N° Cobro','NroComprobante']))}if(kind==='recetas'){obj.doctor=get(r,['Medico','Médico']);obj.date=isoDate(get(r,['Fecha Receta','Fecha de Receta']))}return obj}).filter(valid)}
 function score(a,b){const A=new Set(clean(a).split(' ').filter(Boolean)),B=new Set(clean(b).split(' ').filter(Boolean));if(!A.size||!B.size)return 0;const intersect=[...A].filter(t=>B.has(t)).length;const union=A.size+B.size-intersect;return intersect/union}
 function matches(item,list,threshold){const pool=list.filter(x=>sellerKey(x.vendor)===sellerKey(item.vendor));const exact=pool.filter(x=>canonicalClient(x.client)===canonicalClient(item.client));if(exact.length===1)return {row:exact[0],score:1,exact:true};if(exact.length>1)return {error:'Coincidencia duplicada con el mismo vendedor y cliente'};
 const scores=pool.map(r=>({row:r,score:score(item.client,r.client)})).filter(x=>x.score>=threshold).sort((a,b)=>b.score-a.score);
@@ -36,6 +96,7 @@ if(scores.length!==1)return {error:scores.length?'Varias coincidencias posibles'
 return {...scores[0],exact:false}}
 async function hash(parts){const joined=new Uint8Array(parts.reduce((s,p)=>s+p.bytes.byteLength+4,0));let pos=0;for(const p of parts){const n=p.bytes.byteLength;new DataView(joined.buffer).setUint32(pos,n);pos+=4;joined.set(new Uint8Array(p.bytes),pos);pos+=n}const dig=await crypto.subtle.digest('SHA-256',joined);return [...new Uint8Array(dig)].map(b=>b.toString(16).padStart(2,'0')).join('')}
 async function process(){draft=null;$('com-confirm-import').disabled=true;inform('Leyendo y verificando archivos…');try{
+for(const kind of names){const file=$('com-file-'+kind)?.files?.[0];if(!file||validatedFiles.get(kind)?.file!==file)throw Error('Primero corregí o validá las columnas del archivo '+kind+'. Esperá a que figure «Columnas obligatorias correctas».')}
 const parts=await Promise.all(names.map(read));const [v,c,rx]=parts.map((p,i)=>parse(p.rows,names[i]));
 const med=number($('com-med-rate').value),other=number($('com-other-rate').value),ministryRate=number($('com-ministry-rate').value),thr=number($('com-threshold').value);
 if(![med,other,ministryRate,thr].every(Number.isFinite)||med<0||med>100||other<0||other>100||ministryRate<0||ministryRate>100||thr<75||thr>100)throw Error('Revisá los porcentajes y el umbral');
