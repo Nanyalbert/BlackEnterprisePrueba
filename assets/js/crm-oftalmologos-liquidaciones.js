@@ -154,41 +154,79 @@
     if(button)button.textContent='Descargar respaldo Word';
   }
 
-  window.generateWord=function(){
+  // El Word original de pacientes es una herramienta de sobres, no una liquidación.
+  // No reemplazar generateWord, buildDocxXml ni generateWordDoc del CRM base.
+  const originalOpenWordModal=window.openWordModal;
+  const originalGenerateWord=window.generateWord;
+  let documentMode='patients';
+  const safeFile=value=>String(value||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+
+  function updateWordModal(){
+    const modal=document.getElementById('modal-word');
+    if(!modal)return;
+    const detailed=documentMode==='detailed';
+    const title=modal.querySelector('.modal-title');
+    if(title)title.textContent=detailed?'Word · Liquidaciones detalladas':'Word · Listado de pacientes para sobres';
+    const intro=modal.querySelector('.modal-body > p');
+    if(intro)intro.textContent=detailed
+      ?'Respaldo económico con operaciones, IVA, porcentaje y comisión por profesional.'
+      :'Documento para adjuntar al sobre: nombre del profesional, pacientes del período y fechas, sin montos.';
+    const all=modal.querySelector('#word-opt-todos');
+    if(all){
+      const label=all.querySelector('.word-option-text');
+      const sub=all.querySelector('.word-option-sub');
+      if(label)label.textContent=detailed?'Liquidaciones en un solo archivo':'Listado de pacientes en un solo archivo';
+      if(sub)sub.textContent='Un profesional por página.';
+    }
+    const individual=modal.querySelector('#word-opt-individual');
+    if(individual){
+      const label=individual.querySelector('.word-option-text');
+      const sub=individual.querySelector('.word-option-sub');
+      if(label)label.textContent=detailed?'Liquidación por profesional':'Listado por profesional';
+      if(sub)sub.textContent='Descargar ZIP con un Word por profesional.';
+    }
+    const button=modal.querySelector('button.btn-primary[onclick="generateWord()"]');
+    if(button)button.textContent=detailed?'Descargar liquidaciones Word':'Descargar listado para sobres';
+  }
+
+  window.openWordModal=function(){
+    documentMode='patients';
+    originalOpenWordModal?.();
+    updateWordModal();
+  };
+  window.openDetailedWordModal=function(){
+    documentMode='detailed';
+    originalOpenWordModal?.();
+    updateWordModal();
+  };
+
+  async function downloadDetailedWord(){
     const {periodo,doctorFilter,byDoc}=buildData();
-    if(!Object.keys(byDoc).length){window.showToast?.('Sin datos para generar el anexo.');return;}
+    if(!Object.keys(byDoc).length){window.showToast?.('Sin operaciones para generar liquidaciones.');return;}
+    if(typeof window.JSZip==='undefined'){window.showToast?.('No se pudo iniciar el generador Word.');return;}
     window.closeModal?.('modal-word');
-    const safe=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
-    if(doctorFilter){
-      window.generateWordDoc(byDoc,periodo,`${safe(doctorFilter)}_${safe(periodo)||'liquidacion'}.docx`);
-    }else if(isIndividualMode()){
-      window.generateAllWordDocs(byDoc,periodo);
-    }else{
-      window.generateWordDoc(byDoc,periodo,`Liquidaciones_medicas_${safe(periodo)||'periodo'}.docx`);
-    }
-  };
-  window.buildDocxXml=documentXml;
-  window.generateWordDoc=async function(byDoc,periodo,filename){
-    if(typeof window.JSZip==='undefined'){window.showToast?.('No se pudo iniciar el generador Word.');return;}
-    window.showToast?.('Generando anexo imprimible...');
-    const zip=window.buildDocxZip(documentXml(byDoc,periodo));
-    const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-    window.downloadBlob(blob,filename);
-    window.showToast?.('Documento Word generado ✓');
-  };
-  window.generateAllWordDocs=async function(byDoc,periodo){
-    if(typeof window.JSZip==='undefined'){window.showToast?.('No se pudo iniciar el generador Word.');return;}
-    window.showToast?.('Generando anexos individuales...');
-    const main=new window.JSZip();
-    for(const doctor of Object.keys(byDoc)){
-      const zip=window.buildDocxZip(documentXml({[doctor]:byDoc[doctor]},periodo));
-      const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-      const filename=String(doctor).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'_')+'.docx';
-      main.file(filename,blob);
-    }
-    const bundle=await main.generateAsync({type:'blob'});
-    window.downloadBlob(bundle,`Liquidaciones_medicas_${String(periodo||'periodo').replace(/\s+/g,'_')}.zip`);
-    window.showToast?.('Anexos individuales generados ✓');
+    window.showToast?.('Generando liquidaciones detalladas...');
+    try{
+      if(doctorFilter || !isIndividualMode()){
+        const zip=window.buildDocxZip(documentXml(byDoc,periodo));
+        const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+        window.downloadBlob(blob,doctorFilter?safeFile(doctorFilter)+'_Liquidacion_'+safeFile(periodo)+'.docx':'Liquidaciones_medicas_'+(safeFile(periodo)||'periodo')+'.docx');
+      }else{
+        const bundle=new window.JSZip();
+        for(const doctor of Object.keys(byDoc)){
+          const zip=window.buildDocxZip(documentXml({[doctor]:byDoc[doctor]},periodo));
+          const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+          bundle.file(safeFile(doctor)+'_Liquidacion.docx',blob);
+        }
+        window.downloadBlob(await bundle.generateAsync({type:'blob'}),'Liquidaciones_medicas_'+(safeFile(periodo)||'periodo')+'.zip');
+      }
+      window.showToast?.('Liquidaciones Word descargadas ✓');
+    }catch(error){console.error('Error generando liquidaciones Word',error);window.showToast?.('No se pudo generar el documento Word.');}
+  }
+
+  window.generateWord=function(){
+    if(documentMode==='detailed')return downloadDetailedWord();
+    return originalGenerateWord?.();
   };
 
   window.generatePdf=function(){
@@ -253,5 +291,5 @@
     window.showToast?.('PDF de respaldo generado ✓');
   };
 
-  polishWordModal();
+  // Los dos tipos de documento permanecen disponibles de forma independiente.
 })();
