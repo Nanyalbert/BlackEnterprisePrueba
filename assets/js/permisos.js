@@ -67,6 +67,7 @@
         ['manage_employees','Crear y editar integrantes'],
         ['attendance','Ver fichadas'],
         ['reports','Ver reportes'],
+        ['attendance_review','Resolver ausencias, tardanzas y horas adicionales'],
         ['salary_reference','Ver remuneración de referencia'],
         ['settings','Administrar horarios y tolerancias'],
         ['commissions_view','Ver comisiones del equipo'],
