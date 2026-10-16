@@ -1422,11 +1422,11 @@ function generateWord(){
 }
 
 function cleanPatientForEnvelope(value){
-  const original=String(value??"").trim().replace(/\\s+/g," ");
+  const original=String(value??"").trim().replace(/\s+/g," ");
   if(!original)return "";
   // Algunos Excel exportan el nombre dos veces dentro de una misma celda.
   // Sólo quitar la repetición si las dos mitades son idénticas.
-  const parts=original.split(/\\s*,\\s*/).map(p=>p.trim()).filter(Boolean);
+  const parts=original.split(/\s*,\s*/).map(p=>p.trim()).filter(Boolean);
   if(parts.length>=2 && parts.length%2===0){
     const half=parts.length/2;
     const left=parts.slice(0,half).join(", ");
