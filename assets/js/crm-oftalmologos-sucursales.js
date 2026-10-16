@@ -395,12 +395,18 @@
         <div class="csv-branch-help" id="csv-branch-help">Seleccioná la sucursal antes de elegir el archivo.</div>`;
       drop.insertAdjacentElement('beforebegin', block);
     }
+    block.querySelectorAll('[data-import-branch]').forEach(btn => {
+      btn.removeAttribute('onclick');
+      btn.onclick = () => window.selectImportBranch(btn.dataset.importBranch);
+    });
     updateImportBranchUI();
   }
 
   function updateImportBranchUI() {
     document.querySelectorAll('[data-import-branch]').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.importBranch === selectedImportBranch);
+      const active = btn.dataset.importBranch === selectedImportBranch;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', String(active));
     });
     const help = document.getElementById('csv-branch-help');
     if (help) help.textContent = selectedImportBranch
@@ -416,10 +422,12 @@
 
   if (originalOpenCsvModal) {
     openCsvModal = function openCsvModalPorSucursal() {
-      selectedImportBranch = activeCommissionBranch === 'all' ? null : activeCommissionBranch;
+      selectedImportBranch = activeCommissionBranch === 'all' ? 'general-paz' : activeCommissionBranch;
       currentImportFileName = '';
       originalOpenCsvModal();
       ensureImportBranchSelector();
+      // Nunca reemplazar recetas históricas por defecto al cargar un nuevo archivo.
+      if (typeof selectCsvMode === 'function') selectCsvMode('add');
     };
   }
 
@@ -430,6 +438,7 @@
         return;
       }
       currentImportFileName = file?.name || '';
+      updateImportBranchUI();
       return originalProcessExcelFile(file);
     };
   }
@@ -538,7 +547,7 @@
     }
 
     const importadas = incoming.length - omitidas;
-    const importedRows = incoming.slice(0, importadas || incoming.length);
+    const importedRows = csvImportMode === 'replace' ? incoming : incoming.filter(r => !omitidas || !recetas.some(saved => saved === r));
     recordImport(selectedImportBranch, importedRows, currentImportFileName);
 
     saveState();
