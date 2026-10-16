@@ -46,6 +46,7 @@
     <button class="rrhh-tab active" data-tab="equipo">Equipo</button>
     <button class="rrhh-tab" data-tab="asistencia">Asistencia</button>
     <button class="rrhh-tab" data-tab="reportes">Reportes</button>
+    <button class="rrhh-tab" data-tab="novedades">Novedades y liquidación</button>
     <button class="rrhh-tab" data-tab="configuracion">Configuración</button>
   </nav>
 
@@ -150,7 +151,38 @@
     </div>
   </section>
 
-  <section class="rrhh-panel" id="tab-configuracion">
+  <section class="rrhh-panel" id="tab-novedades">
+  <div class="section-head"><div><p class="eyebrow">BLACK FICHADAS · NOVEDADES</p><h2>Ausencias, tardanzas y horas adicionales</h2><p class="section-copy">Revisión por jornada con historial. Los descuentos y adicionales son estimaciones: no modifican automáticamente sueldos ni fichadas.</p></div></div>
+  <article class="panel-card">
+    <div class="report-filter-grid">
+      <label><span>Mes</span><input id="nov-month" type="month"></label>
+      <label><span>Integrante</span><select id="nov-employee"><option value="">Todo el equipo</option></select></label>
+      <button class="btn btn-primary" type="button" id="nov-refresh">Actualizar informe</button>
+      <button class="btn btn-ghost" type="button" id="nov-export">Exportar CSV</button>
+      <button class="btn btn-ghost" type="button" id="nov-print">Imprimir / PDF</button>
+    </div>
+    <p class="section-copy" id="nov-message" role="status"></p>
+    <div id="nov-summary"></div>
+    <div id="nov-table" class="table-scroll"></div>
+  </article>
+</section>
+<div class="modal-overlay" id="nov-modal">
+  <form class="modal" id="nov-form">
+    <div class="modal-head"><div><p class="eyebrow">REVISIÓN ADMINISTRATIVA</p><h3 id="nov-title">Resolver jornada</h3></div><button type="button" class="icon-button" id="nov-close" aria-label="Cerrar">×</button></div>
+    <input type="hidden" id="nov-id"><input type="hidden" id="nov-date">
+    <div class="form-grid">
+      <label><span>Ausencia</span><select id="nov-absence"><option value="pending">Pendiente</option><option value="justified">Justificada</option><option value="unjustified">Injustificada</option><option value="not_applicable">No corresponde falta</option></select></label>
+      <label><span>Tardanza</span><select id="nov-late"><option value="pending">Pendiente</option><option value="compensated">Compensada</option><option value="justified">Justificada</option><option value="reviewed">Revisada, sin compensar</option></select></label>
+      <label><span>Tiempo adicional</span><select id="nov-extra"><option value="pending">Pendiente</option><option value="approved">Hora extra autorizada</option><option value="compensation">Destinado a compensación</option><option value="not_approved">No aprobado como extra</option></select></label>
+      <label><span>Minutos compensados</span><input type="number" id="nov-comp" min="0" step="1" value="0"></label>
+      <label><span>Minutos extra aprobados</span><input type="number" id="nov-approved" min="0" step="1" value="0"></label>
+      <label class="full"><span>Motivo obligatorio</span><textarea id="nov-reason" rows="3" maxlength="1000" required placeholder="Explicá la resolución y quién autorizó la extensión"></textarea></label>
+    </div>
+    <div class="modal-actions"><button class="btn btn-ghost" type="button" id="nov-history">Ver historial</button><button class="btn btn-ghost" type="button" id="nov-cancel">Cancelar</button><button class="btn btn-primary" type="submit" id="nov-save">Guardar resolución</button></div>
+    <div id="nov-history-content" class="section-copy"></div>
+  </form>
+</div>
+<section class="rrhh-panel" id="tab-configuracion">
     <div class="section-head"><div><p class="eyebrow">CONFIGURACIÓN</p><h2>Reglas generales de RRHH</h2></div></div>
     <div class="settings-grid">
       <article class="panel-card"><h3>Sucursales</h3><p>General Paz y Cerro de las Rosas quedan disponibles como ubicaciones operativas.</p></article>
@@ -264,5 +296,6 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="assets/js/rrhh-comisiones-excel.js?v=20261015-filekind-6"></script>
 <script src="assets/js/rrhh-informe-integrante.js?v=20261014-2"></script>
+<script src="assets/js/rrhh-novedades.js?v=20261016-1"></script>
 </body>
 </html>
