@@ -217,6 +217,6 @@
     document.head.appendChild(script);
   });
   load('assets/js/crm-oftalmologos-sucursales.js?v=20261007-1')
-    .then(()=>load('assets/js/crm-oftalmologos-liquidaciones.js?v=20261007-1'))
+    .then(()=>load('assets/js/crm-oftalmologos-liquidaciones.js?v=20261016-sobres-1'))
     .catch(error=>console.error('No se pudo cargar una mejora del CRM Oftalmólogos',error));
 })();
