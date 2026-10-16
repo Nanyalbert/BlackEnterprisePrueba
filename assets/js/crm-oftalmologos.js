@@ -1424,21 +1424,28 @@ function generateWord(){
 function cleanPatientForEnvelope(value){
   const original=String(value??"").trim().replace(/\s+/g," ");
   if(!original)return "";
-  // Algunos Excel exportan el nombre dos veces dentro de una misma celda.
-  // Sólo quitar la repetición si las dos mitades son idénticas.
+  // Los sistemas de origen a veces concatenan dos variantes del mismo nombre:
+  // "APELLIDO NOMBRE, NOMBRE APELLIDO". Se compara el conjunto de palabras,
+  // sin importar su orden, y sólo se limpia si ambas partes son equivalentes.
+  const tokens=text=>String(text).normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .toLocaleUpperCase("es").match(/[\p{L}\p{N}]+/gu)||[];
+  const sameName=(left,right)=>{
+    const a=tokens(left),b=tokens(right);
+    return a.length>=2&&a.length===b.length&&a.sort().every((word,i)=>word===b.sort()[i]);
+  };
   const parts=original.split(/\s*,\s*/).map(p=>p.trim()).filter(Boolean);
-  if(parts.length>=2 && parts.length%2===0){
+  if(parts.length===2&&sameName(parts[0],parts[1]))return parts[0];
+  if(parts.length>=2&&parts.length%2===0){
     const half=parts.length/2;
-    const left=parts.slice(0,half).join(", ");
-    const right=parts.slice(half).join(", ");
-    if(normName(left)===normName(right))return left;
+    const left=parts.slice(0,half).join(", "),right=parts.slice(half).join(", ");
+    if(sameName(left,right))return left;
   }
-  const words=original.split(" ");
-  if(words.length>=4 && words.length%2===0){
+  // Casos sin comas: dos mitades consecutivas con las mismas palabras.
+  const words=original.split(/\s+/);
+  if(words.length>=4&&words.length%2===0){
     const half=words.length/2;
-    const left=words.slice(0,half).join(" ");
-    const right=words.slice(half).join(" ");
-    if(normName(left)===normName(right))return left;
+    const left=words.slice(0,half).join(" "),right=words.slice(half).join(" ");
+    if(sameName(left,right))return left;
   }
   return original;
 }
