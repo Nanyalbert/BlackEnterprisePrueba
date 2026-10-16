@@ -1421,11 +1421,33 @@ function generateWord(){
   }
 }
 
+function cleanPatientForEnvelope(value){
+  const original=String(value??"").trim().replace(/\\s+/g," ");
+  if(!original)return "";
+  // Algunos Excel exportan el nombre dos veces dentro de una misma celda.
+  // Sólo quitar la repetición si las dos mitades son idénticas.
+  const parts=original.split(/\\s*,\\s*/).map(p=>p.trim()).filter(Boolean);
+  if(parts.length>=2 && parts.length%2===0){
+    const half=parts.length/2;
+    const left=parts.slice(0,half).join(", ");
+    const right=parts.slice(half).join(", ");
+    if(normName(left)===normName(right))return left;
+  }
+  const words=original.split(" ");
+  if(words.length>=4 && words.length%2===0){
+    const half=words.length/2;
+    const left=words.slice(0,half).join(" ");
+    const right=words.slice(half).join(" ");
+    if(normName(left)===normName(right))return left;
+  }
+  return original;
+}
+
 function buildDocxXml(byDoc,periodo){
   let bodyContent="";
   const doctors_sorted=Object.keys(byDoc).sort();
   doctors_sorted.forEach((medico,idx)=>{
-    const pacientes=[...new Set(byDoc[medico])].sort();
+    const pacientes=[...new Set((byDoc[medico]||[]).map(cleanPatientForEnvelope).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
     bodyContent+=`<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="120"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="44"/><w:szCs w:val="44"/></w:rPr><w:t>${xmlEsc(medico.toUpperCase())}</w:t></w:r></w:p>`;
     bodyContent+=`<w:p><w:pPr><w:spacing w:before="120" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr><w:t>PACIENTE:</w:t></w:r></w:p>`;
     pacientes.forEach(p=>{
