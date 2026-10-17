@@ -106,9 +106,13 @@ button:active:not(:disabled){transform:translateY(0)}
  #bulkResults{gap:14px}
  #analyzeBulk,#clearBulk{min-width:0}
 }
+
+/* Iconografía vectorial monocromática */
+.bo-btn-icon{width:17px;height:17px;flex:0 0 17px;display:inline-block;color:inherit;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+button .bo-btn-icon{pointer-events:none}
 </style></head><body><main id="app" class="hidden">
 <header><div><small>BLACK ENTERPRISE / HERRAMIENTAS</small><h1>Black Catalog AI</h1><p>Subí fotografías, agrupá modelos, generá descripciones con IA y revisá cada producto antes de publicar.</p></div><span class="tag">ETAPA 1 · PREPARACIÓN</span></header>
-<div class="actions" style="margin-top:16px"><a href="black-catalog-library.html" target="_blank" rel="noopener" style="display:inline-block;padding:12px 16px;border:1px solid #b6a087;border-radius:9px;color:#e7d6be;text-decoration:none;font-weight:700">📚 ABRIR BIBLIOTECAS DE MARCAS Y RECURSOS BLACK ↗</a></div><div class="actions hidden"><button type="button" id="bulkTab">Carga inteligente · Individual y masiva</button><button type="button" class="secondary" id="individualTab">Edición manual (opcional)</button></div><div id="individualSection" class="grid hidden"><section class="panel"><h2>Nueva publicación</h2><label for="name">Nombre del producto *</label><input id="name" maxlength="180" placeholder="Opcional: se detecta desde el archivo">
+<div class="actions" style="margin-top:16px"><a href="black-catalog-library.html" target="_blank" rel="noopener" style="display:inline-block;padding:12px 16px;border:1px solid #b6a087;border-radius:9px;color:#e7d6be;text-decoration:none;font-weight:700"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:7px"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Bibliotecas de marcas y recursos</a></div><div class="actions hidden"><button type="button" id="bulkTab">Carga inteligente · Individual y masiva</button><button type="button" class="secondary" id="individualTab">Edición manual (opcional)</button></div><div id="individualSection" class="grid hidden"><section class="panel"><h2>Nueva publicación</h2><label for="name">Nombre del producto *</label><input id="name" maxlength="180" placeholder="Opcional: se detecta desde el archivo">
 <label for="images">Fotografías reales *</label><input id="images" type="file" accept="image/jpeg,image/png,image/webp" multiple><small>Hasta 5 archivos. Hasta 5 fotos; el guardado en historial permite almacenar originales en Supabase.</small><div class="photos" id="photos"></div>
 <label for="price">Precio en pesos (si está disponible)</label><input id="price" type="number" min="0" step=".01" placeholder="Pendiente de confirmar">
 <label for="extra">Instrucciones particulares (opcional)</label><textarea id="extra" placeholder="Información específica confirmada para este producto"></textarea>
@@ -277,4 +281,54 @@ const promptEl=document.getElementById('masterPrompt');
 try{promptEl.value=localStorage.getItem(PROMPT_KEY)||DEFAULT_PROMPT}catch(e){promptEl.value=DEFAULT_PROMPT}
 document.getElementById('savePrompt').onclick=()=>{try{localStorage.setItem(PROMPT_KEY,promptEl.value);document.getElementById('promptStatus').textContent='Prompt guardado. Se aplicará en los próximos análisis con IA.'}catch(e){document.getElementById('promptStatus').textContent='No se pudo guardar localmente.'}};
 document.getElementById('resetPrompt').onclick=()=>{promptEl.value=DEFAULT_PROMPT;document.getElementById('savePrompt').click()};
-</script><script src="assets/js/black-catalog-v3.js?v=20261017-faces-benefits-a209cf89" onerror="window.blackCatalogV3LoadError='No se pudo descargar el módulo JS (404, red o bloqueo)'"></script><script src="assets/js/black-catalog-history.js?v=20261014-4"></script><script>(function(){const input=document.getElementById('studioPhoto'),original=document.getElementById('studioOriginal'),result=document.getElementById('studioResult'),status=document.getElementById('studioStatus'),run=document.getElementById('studioRun'),download=document.getElementById('studioDownload');let image=null,objectUrl=null;input.addEventListener('change',()=>{const file=input.files[0];if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=file?URL.createObjectURL(file):null;original.src=objectUrl||'';result.removeAttribute('src');image=null;download.disabled=true});run.onclick=async()=>{const file=input.files[0];if(!file){status.textContent='Seleccioná una imagen.';return}if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>8000000){status.textContent='Formato inválido o archivo mayor a 8 MB.';return}if(!confirm('La mejora con IA puede generar costos de API y modificar detalles visuales. ¿Procesar esta imagen?'))return;run.disabled=true;status.textContent='Editando imagen…';try{const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('No se pudo leer la foto'));reader.readAsDataURL(file)});const client=window.BlackPortal.getSupabase();const response=await client.functions.invoke('black-catalog-photo-edit',{body:{image:data}});if(response.error||response.data?.error)throw Error(response.data?.error||response.error?.message||'Error del editor');image=response.data.image;result.src=image;download.disabled=false;status.textContent='Resultado listo. Compará montura, color, bisagras y lentes con el original antes de aprobar.'}catch(e){status.textContent='No se pudo editar: '+e.message}finally{run.disabled=false}};download.onclick=()=>{if(!image)return;const a=document.createElement('a');a.href=image;a.download='black-catalog-imagen-editada.png';a.click()}})();</script></body></html>
+</script><script src="assets/js/black-catalog-v3.js?v=20261017-faces-benefits-a209cf89" onerror="window.blackCatalogV3LoadError='No se pudo descargar el módulo JS (404, red o bloqueo)'"></script><script src="assets/js/black-catalog-history.js?v=20261014-4"></script><script>(function(){const input=document.getElementById('studioPhoto'),original=document.getElementById('studioOriginal'),result=document.getElementById('studioResult'),status=document.getElementById('studioStatus'),run=document.getElementById('studioRun'),download=document.getElementById('studioDownload');let image=null,objectUrl=null;input.addEventListener('change',()=>{const file=input.files[0];if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=file?URL.createObjectURL(file):null;original.src=objectUrl||'';result.removeAttribute('src');image=null;download.disabled=true});run.onclick=async()=>{const file=input.files[0];if(!file){status.textContent='Seleccioná una imagen.';return}if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>8000000){status.textContent='Formato inválido o archivo mayor a 8 MB.';return}if(!confirm('La mejora con IA puede generar costos de API y modificar detalles visuales. ¿Procesar esta imagen?'))return;run.disabled=true;status.textContent='Editando imagen…';try{const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('No se pudo leer la foto'));reader.readAsDataURL(file)});const client=window.BlackPortal.getSupabase();const response=await client.functions.invoke('black-catalog-photo-edit',{body:{image:data}});if(response.error||response.data?.error)throw Error(response.data?.error||response.error?.message||'Error del editor');image=response.data.image;result.src=image;download.disabled=false;status.textContent='Resultado listo. Compará montura, color, bisagras y lentes con el original antes de aprobar.'}catch(e){status.textContent='No se pudo editar: '+e.message}finally{run.disabled=false}};download.onclick=()=>{if(!image)return;const a=document.createElement('a');a.href=image;a.download='black-catalog-imagen-editada.png';a.click()}})();</script>
+<script>
+/* Iconos SVG lineales, sin emojis ni símbolos de colores */
+(function(){
+const paths={
+ sparkles:'<path d="m12 3 1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4L12 3Z"/><path d="m19 17 .7 1.8L21.5 19.5l-1.8.7L19 22l-.7-1.8-1.8-.7 1.8-.7L19 17Z"/>',
+ images:'<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
+ trash:'<path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m5 4v7m4-7v7"/>',
+ check:'<path d="m5 12 4 4L19 6"/>',
+ copy:'<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
+ download:'<path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4"/>',
+ arrow:'<path d="M5 12h14m-6-6 6 6-6 6"/>',
+ stop:'<rect x="5" y="5" width="14" height="14" rx="2"/>',
+ save:'<path d="M4 3h14l3 3v15H3V3h1Z"/><path d="M7 3v6h10V3M7 21v-9h10v9"/>',
+ eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+ wand:'<path d="m4 20 12-12 4 4L8 24M15 5l1-3m4 5 3-1M6 7 3 6"/>',
+ list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>'
+};
+const byId={analyzeBulk:'images',clearBulk:'trash',bulkSelectAll:'check',bulkApplyCommercial:'check',catalogGoToProduct:'arrow',catalogRunQueue:'sparkles',catalogStopQueue:'stop',savePrompt:'save',resetPrompt:'trash',prepare:'sparkles',reset:'trash',catalogPreviewGenerate:'eye',catalogPreviewAnalyze:'sparkles',copy:'copy',studioRun:'wand',studioDownload:'download',photoEditSelected:'wand',photoSelectAll:'check',photoSelectNone:'trash',catalogCloseCompare:'stop'};
+function pick(b){
+ if(byId[b.id])return byId[b.id];
+ const t=(b.textContent||'').toLowerCase();
+ if(/descarg/.test(t))return 'download';
+ if(/copiar|código fuente/.test(t))return 'copy';
+ if(/generar|analizar|procesar/.test(t))return 'sparkles';
+ if(/aprobar|seleccionar|aplicar/.test(t))return 'check';
+ if(/limpiar|restablecer|deseleccionar/.test(t))return 'trash';
+ if(/ver |vista previa|explorar/.test(t))return 'eye';
+ if(/guardar/.test(t))return 'save';
+ if(/detener|cerrar/.test(t))return 'stop';
+ if(/editar|retocar|mejorar/.test(t))return 'wand';
+ return '';
+}
+function apply(root){
+ const buttons=root.querySelectorAll?root.querySelectorAll('button'):[];
+ for(const b of buttons){
+  const kind=pick(b);if(!kind||!paths[kind])continue;
+  const existing=b.querySelector(':scope > svg.bo-btn-icon');
+  if(existing&&existing.dataset.icon===kind)continue;
+  if(existing)existing.remove();
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');svg.setAttribute('class','bo-btn-icon');svg.dataset.icon=kind;
+  svg.innerHTML=paths[kind];b.prepend(svg);
+ }
+}
+let scheduled=false;
+const refresh=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;apply(document)})};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',refresh,{once:true});else refresh();
+new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true,characterData:true});
+})();
+</script></body></html>
