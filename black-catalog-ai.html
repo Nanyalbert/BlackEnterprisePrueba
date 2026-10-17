@@ -56,6 +56,56 @@ iframe{max-width:100%}
 @media(max-width:800px){.grid,.catalog-product-layout{grid-template-columns:minmax(0,1fr)}.panel{padding:18px}.actions>button{flex:1 1 180px}.catalog-product-details .grid{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){body{padding:12px}.panel{border-radius:14px;padding:15px}.actions{gap:8px}.actions>button{flex:1 1 100%;width:100%}.catalog-product-details .grid{grid-template-columns:1fr}.catalog-description-actions button{flex:1 1 100%}.catalog-photo-compare{gap:7px}}
 @media(prefers-reduced-motion:reduce){button,.actions>a{transition:none}button:hover:not(:disabled){transform:none}}
+
+/* Refinamiento de composición y jerarquía de acciones */
+:root{--bo-radius:14px;--bo-space:20px}
+#app>header{margin-bottom:22px}
+#app>section.panel{margin-top:22px!important}
+#bulkSection{display:flex;flex-direction:column;gap:0}
+#bulkSection>h2{margin:0 0 8px}
+#bulkSection>p:not(.warning){margin:8px 0 15px}
+#bulkSection>label[for=bulkImages]{margin-top:8px}
+#bulkSection>input[type=file]{border:1px dashed #696052;background:linear-gradient(145deg,#191a1e,#222019);padding:20px;min-height:78px;border-radius:14px}
+#bulkSection>.actions{margin-top:14px;margin-bottom:4px;justify-content:flex-start}
+#analyzeBulk{min-width:210px;background:#e8d4a2;border-color:#e8d4a2}
+#analyzeBulk:hover:not(:disabled){background:#f7e5b6}
+#clearBulk{min-width:104px}
+#bulkStats{min-height:24px;margin:12px 0 0}
+#bulkCommercial{margin:24px 0!important;padding:clamp(16px,2.3vw,25px)!important;border:1px solid #383b43!important;border-radius:16px!important;background:#16181d!important}
+#bulkCommercial>h3{margin:0 0 7px;font-size:18px}
+#bulkCommercial>p{margin:0 0 12px}
+#bulkCommercial>.grid{margin-top:8px!important;gap:16px}
+#bulkCommercial>.actions{margin:18px 0 14px}
+#bulkCommercial>label[for=bulkSearch]{margin-top:14px}
+#bulkProductsTitle{margin:22px 0 14px;font-size:21px;line-height:1.3}
+#catalogProductNavigation{padding:18px!important;background:#17191e;border-color:#3b3e46;margin:0 0 22px!important}
+#catalogProductNavigation>label{margin:0 0 9px}
+#catalogProductNavigation>.actions{margin:0 0 9px!important;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}
+#catalogProductNavigation select{min-width:0!important;width:100%}
+#catalogProductNavigation button{white-space:nowrap}
+#bulkResults{display:grid;gap:20px;min-width:0}
+#bulkResults>.catalog-product-card{margin:0!important;padding:clamp(16px,2.5vw,28px)!important}
+#bulkResults .catalog-product-card .actions{gap:9px;margin-top:14px}
+#bulkResults .catalog-product-card button{font-size:13px}
+#bulkResults .catalog-product-card input,#bulkResults .catalog-product-card select{font-size:13px}
+#bulkResults .catalog-product-card label{margin-top:12px}
+#bulkResults .catalog-product-card h3{margin-top:0}
+#bulkResults .catalog-product-card .catalog-product-layout{margin-top:14px}
+#bulkResults .catalog-description-actions{margin-top:18px;padding-top:16px;border-top:1px solid #363941}
+#bulkSection>.warning{margin:22px 0 0}
+#app>section.panel:last-of-type textarea{min-height:155px;line-height:1.6}
+#app>section.panel:last-of-type .actions{justify-content:flex-start}
+#catalogRunQueue{background:#e8d4a2;border-color:#e8d4a2;color:#181715}
+#catalogRunQueue:hover:not(:disabled){background:#f7e5b6}
+#catalogBuildVersion{font-size:11px!important;letter-spacing:.04em;margin:0 0 14px!important;opacity:.75}
+button:active:not(:disabled){transform:translateY(0)}
+@media(max-width:740px){
+ #catalogProductNavigation>.actions{grid-template-columns:1fr}
+ #catalogProductNavigation button{width:100%}
+ #bulkCommercial>.grid{grid-template-columns:1fr}
+ #bulkResults{gap:14px}
+ #analyzeBulk,#clearBulk{min-width:0}
+}
 </style></head><body><main id="app" class="hidden">
 <header><div><small>BLACK ENTERPRISE / HERRAMIENTAS</small><h1>Black Catalog AI</h1><p>Subí fotografías, agrupá modelos, generá descripciones con IA y revisá cada producto antes de publicar.</p></div><span class="tag">ETAPA 1 · PREPARACIÓN</span></header>
 <div class="actions" style="margin-top:16px"><a href="black-catalog-library.html" target="_blank" rel="noopener" style="display:inline-block;padding:12px 16px;border:1px solid #b6a087;border-radius:9px;color:#e7d6be;text-decoration:none;font-weight:700">📚 ABRIR BIBLIOTECAS DE MARCAS Y RECURSOS BLACK ↗</a></div><div class="actions hidden"><button type="button" id="bulkTab">Carga inteligente · Individual y masiva</button><button type="button" class="secondary" id="individualTab">Edición manual (opcional)</button></div><div id="individualSection" class="grid hidden"><section class="panel"><h2>Nueva publicación</h2><label for="name">Nombre del producto *</label><input id="name" maxlength="180" placeholder="Opcional: se detecta desde el archivo">
