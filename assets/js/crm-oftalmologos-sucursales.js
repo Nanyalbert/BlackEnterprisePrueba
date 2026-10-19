@@ -481,7 +481,14 @@
   function renderImportHistory() {
     const host = document.getElementById('commission-import-history');
     if (!host) return;
-    const history = readImportHistory();
+    const history = readImportHistory().filter((item, index, all) => all.findIndex(other =>
+      String(other.branch) === String(item.branch) &&
+      String(other.fileName) === String(item.fileName) &&
+      String(other.from) === String(item.from) &&
+      String(other.to) === String(item.to) &&
+      Number(other.records) === Number(item.records) &&
+      Number(other.total) === Number(item.total)
+    ) === index);
     if (!history.length) {
       host.innerHTML = '<div class="import-history-empty">Todavía no hay importaciones registradas.</div>';
       return;
