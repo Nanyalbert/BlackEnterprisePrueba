@@ -151,7 +151,11 @@
 
     const docList = Object.values(byDoc).sort((a, b) => b.monto - a.monto);
     lastDocList = docList;
-    const totalCom = docList.reduce((a, d) => a + comisionDe(d), 0);
+    const totalCom = docList.reduce((sum, d) => sum + d.recetas.reduce((subtotal, recipe) => {
+      const branch = branchCodeForRecipe(recipe);
+      const pct = window.BlackCommissionRules?.getPct?.(d.medico, branch, recipe.fecha) ?? getBranchCommission(d.medico, branch);
+      return subtotal + (Number(recipe.monto) || 0) * (Number(pct) || 0) / 100;
+    }, 0), 0);
 
     document.getElementById('kpi-facturacion').textContent = `$${formatNum(totalFact)}`;
     document.getElementById('kpi-comisiones').textContent = `$${formatNum(totalCom)}`;
@@ -165,7 +169,10 @@
       const grouped = groupDoctorByBranch(d);
       Object.values(grouped).forEach(item => {
         if (!isBranchPaid(d.medico, desde, hasta, item.branch)) {
-          pendiente += item.monto * getBranchCommission(d.medico, item.branch) / 100;
+          pendiente += item.recetas.reduce((subtotal, recipe) => {
+            const pct = window.BlackCommissionRules?.getPct?.(d.medico, item.branch, recipe.fecha) ?? getBranchCommission(d.medico, item.branch);
+            return subtotal + (Number(recipe.monto) || 0) * (Number(pct) || 0) / 100;
+          }, 0);
         }
       });
     });
@@ -500,8 +507,13 @@
     wrap.id = 'commission-import-history-wrap';
     wrap.className = 'commission-import-history-wrap';
     wrap.innerHTML = `
-      <div class="import-history-head"><div><strong>Últimas cargas</strong><span>Control rápido de Excel procesados</span></div></div>
-      <div id="commission-import-history"></div>`;
+      <details class="commission-import-history-disclosure">
+        <summary class="import-history-head" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:16px;list-style:none">
+          <div><strong>Últimas cargas</strong><span>Control rápido de Excel procesados · Registro histórico, no equivale al período filtrado</span></div>
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <div id="commission-import-history"></div>
+      </details>`;
     toolbar.insertAdjacentElement('afterend', wrap);
     renderImportHistory();
   }
