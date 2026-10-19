@@ -337,4 +337,19 @@ const refresh=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',refresh,{once:true});else refresh();
 new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true,characterData:true});
 })();
+</script><section class="panel" id="tiendanubeIntegration" style="margin-top:20px"><h2>Integración Tiendanube</h2><p>Comprobación segura de conexión. No crea ni modifica productos, precios o existencias.</p><div class="actions"><button type="button" id="tiendanubeCheck" class="secondary">Comprobar acceso del administrador</button></div><small id="tiendanubeStatus" role="status" aria-live="polite">Pendiente de comprobación.</small></section><script>
+(function(){
+ const btn=document.getElementById('tiendanubeCheck'),status=document.getElementById('tiendanubeStatus');
+ if(!btn||!status)return;
+ btn.addEventListener('click',async()=>{
+  btn.disabled=true;status.textContent='Comprobando autorización…';
+  try{
+   const sb=window.BlackPortal.getSupabase();
+   const {data,error}=await sb.functions.invoke('black-catalog-tiendanube',{body:{action:'status'}});
+   if(error||data?.error)throw Error(data?.error||error?.message||'No se pudo validar');
+   status.textContent='Conector activo. Modo de preparación: no se envían productos a Tiendanube.';
+  }catch(e){status.textContent='No se pudo comprobar: '+e.message}
+  finally{btn.disabled=false}
+ });
+})();
 </script></body></html>
