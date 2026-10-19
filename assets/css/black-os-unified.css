@@ -34,3 +34,59 @@ body.black-unified.doctors-ui .bottom-nav{background:var(--black-surface)!import
 body.black-unified.doctors-ui .bottom-nav-tab{color:#818191;transition:color .16s ease,background .16s ease}
 body.black-unified.doctors-ui .bottom-nav-tab.active{color:var(--black-accent)!important}
 body.black-unified.doctors-ui .bottom-nav-tab svg{stroke:currentColor}
+
+/* CRM Black exact navigation treatment for Catalog AI, screenshot reference */
+body.black-unified.catalog-ui #catalogSidebar{
+ position:fixed!important;left:50%!important;right:auto!important;top:auto!important;
+ bottom:max(20px,env(safe-area-inset-bottom))!important;
+ transform:translateX(-50%)!important;
+ width:max-content!important;max-width:calc(100vw - 24px)!important;
+ display:flex!important;flex-direction:row!important;align-items:center!important;
+ justify-content:center!important;gap:4px!important;
+ padding:7px!important;background:#101012!important;
+ border:1px solid rgba(255,255,255,.12)!important;border-radius:19px!important;
+ box-shadow:0 16px 50px rgba(0,0,0,.62)!important;overflow-x:auto!important;
+}
+body.black-unified.catalog-ui #catalogSidebar button{
+ flex:0 0 auto!important;width:auto!important;max-width:none!important;
+ min-width:0!important;min-height:48px!important;display:inline-flex!important;
+ flex-direction:row!important;gap:9px!important;padding:12px 13px!important;
+ border-radius:12px!important;background:transparent!important;color:#a4a4a8!important;
+ font-size:12px!important;font-weight:550!important;letter-spacing:0!important;
+ white-space:nowrap!important;box-shadow:none!important;
+}
+body.black-unified.catalog-ui #catalogSidebar button:hover{
+ background:#232326!important;color:#fff!important;
+}
+body.black-unified.catalog-ui #catalogSidebar button[aria-selected="true"]{
+ background:#f5f5f4!important;color:#111114!important;
+ border:1px solid #f5f5f4!important;box-shadow:none!important;
+}
+body.black-unified.catalog-ui #catalogSidebar button .catalog-nav-svg{
+ width:18px!important;height:18px!important;stroke:currentColor!important;
+}
+body.black-unified.catalog-ui #catalogSidebar button .catalog-nav-label{
+ font-size:12px!important;color:inherit!important;
+}
+body.black-unified.catalog-ui #catalogWorkspaceContent{padding-bottom:115px!important}
+body.black-unified.catalog-ui .panel{background:#101012!important;border-color:rgba(255,255,255,.11)!important;border-radius:17px!important}
+body.black-unified.catalog-ui #app button:not(#catalogSidebar button):not(.secondary){
+ background:#f2f2f0!important;color:#111114!important;
+}
+body.black-unified.catalog-ui #app button.secondary{
+ background:#202023!important;color:#e6e6e8!important;border-color:rgba(255,255,255,.12)!important;
+}
+body.black-unified.catalog-ui .tag{
+ background:#1b1b1d!important;border-color:rgba(255,255,255,.12)!important;color:#aaaab0!important;
+}
+body.black-unified.catalog-ui #catalogBuildVersion{color:#777782!important}
+@media(max-width:850px){
+ body.black-unified.catalog-ui #catalogSidebar{
+  bottom:max(7px,env(safe-area-inset-bottom))!important;
+  justify-content:flex-start!important;
+  max-width:calc(100vw - 14px)!important;
+ }
+ body.black-unified.catalog-ui #catalogSidebar button{
+  padding:10px!important;min-height:46px!important;
+ }
+}
