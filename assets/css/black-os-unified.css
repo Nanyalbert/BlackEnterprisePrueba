@@ -1,0 +1,36 @@
+/* Black OS visual language — CRM Black reference, v1 */
+:root{--black-bg:#0e0e10;--black-surface:#18181b;--black-surface2:#222226;--black-surface3:#2a2a30;--black-border:rgba(255,255,255,.09);--black-text:#f0f0f2;--black-muted:#9898a8;--black-accent:#6c8fff;--black-accent-bg:rgba(108,143,255,.12)}
+body.black-unified{background:var(--black-bg);color:var(--black-text);font-family:'Geist','Plus Jakarta Sans',system-ui,sans-serif}
+body.black-unified button,body.black-unified input,body.black-unified textarea,body.black-unified select{font-family:inherit}
+body.black-unified :is(button,a,input,textarea,select):focus-visible{outline:2px solid var(--black-accent);outline-offset:2px}
+body.black-unified :is(.panel,.modal,.modal-sheet,.work-item){border-radius:12px}
+body.black-unified .black-unified-accent{color:var(--black-accent)}
+/* Catalog module: preserve functionality, normalize every visual surface */
+body.black-unified.catalog-ui{padding:clamp(12px,2vw,24px) clamp(12px,2.5vw,28px)}
+body.black-unified.catalog-ui main{max-width:1240px}
+body.black-unified.catalog-ui h1{font-size:26px;letter-spacing:-.5px}
+body.black-unified.catalog-ui :is(p,small){color:var(--black-muted)}
+body.black-unified.catalog-ui .panel{background:var(--black-surface);border:1px solid var(--black-border);border-radius:12px;padding:clamp(16px,2vw,24px)}
+body.black-unified.catalog-ui :is(input,textarea,select){background:#111114;border:1px solid rgba(255,255,255,.15);border-radius:9px;color:var(--black-text)}
+body.black-unified.catalog-ui :is(input,textarea,select):focus{border-color:var(--black-accent);outline:none;box-shadow:0 0 0 3px var(--black-accent-bg)}
+body.black-unified.catalog-ui #app button:not(#catalogSidebar button){border-radius:9px}
+body.black-unified.catalog-ui #app button:not(#catalogSidebar button):not(.secondary){background:var(--black-accent);color:#0e1220}
+body.black-unified.catalog-ui #app button.secondary{background:var(--black-surface2);border:1px solid rgba(255,255,255,.12);color:var(--black-text)}
+body.black-unified.catalog-ui #app button:disabled{opacity:.5;cursor:not-allowed}
+body.black-unified.catalog-ui .tag{background:var(--black-accent-bg);border-color:rgba(108,143,255,.26);color:#a9bdff}
+body.black-unified.catalog-ui #catalogBuildVersion{color:#a9bdff!important}
+body.black-unified.catalog-ui #catalogWorkspace{display:block!important;margin-top:20px}
+body.black-unified.catalog-ui #catalogWorkspaceContent{padding-bottom:104px}
+body.black-unified.catalog-ui #catalogSidebar{position:fixed!important;inset:auto 0 0 0!important;left:0!important;bottom:0!important;transform:none!important;display:flex!important;flex-direction:row!important;justify-content:center!important;align-items:stretch!important;width:100%!important;max-width:none!important;margin:0!important;padding:7px max(8px,env(safe-area-inset-left)) max(8px,env(safe-area-inset-bottom))!important;gap:2px!important;border:0!important;border-top:1px solid var(--black-border)!important;border-radius:0!important;background:rgba(24,24,27,.98)!important;box-shadow:0 -5px 22px rgba(0,0,0,.22)!important;overflow-x:auto;z-index:1100}
+body.black-unified.catalog-ui #catalogSidebar button{min-width:82px!important;max-width:140px;min-height:60px!important;flex:1 0 auto!important;padding:7px 10px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:5px!important;border:0!important;border-radius:9px!important;background:transparent!important;color:#818191!important;box-shadow:none!important;font-size:10px!important;font-weight:600!important;white-space:nowrap!important}
+body.black-unified.catalog-ui #catalogSidebar button:hover{background:var(--black-surface2)!important;color:var(--black-text)!important}
+body.black-unified.catalog-ui #catalogSidebar button[aria-selected="true"]{background:var(--black-accent-bg)!important;color:var(--black-accent)!important;box-shadow:inset 0 -2px 0 var(--black-accent)!important}
+body.black-unified.catalog-ui #catalogSidebar button .catalog-nav-svg{width:21px!important;height:21px!important;stroke:currentColor!important}
+body.black-unified.catalog-ui #catalogSidebar button .catalog-nav-label{color:inherit!important}
+body.black-unified.catalog-ui #catalogSidebar button[data-tab] .catalog-nav-svg{stroke:currentColor!important}
+@media(max-width:650px){body.black-unified.catalog-ui #catalogSidebar{justify-content:flex-start!important}body.black-unified.catalog-ui #catalogSidebar button{min-width:75px!important;max-width:none;min-height:56px!important;padding:6px!important}body.black-unified.catalog-ui #catalogWorkspaceContent{padding-bottom:96px}}
+/* Ophthalmologists: match CRM Black's bottom navigation and accent */
+body.black-unified.doctors-ui .bottom-nav{background:var(--black-surface)!important;border-top:1px solid var(--black-border)!important;box-shadow:0 -4px 20px rgba(0,0,0,.2)}
+body.black-unified.doctors-ui .bottom-nav-tab{color:#818191;transition:color .16s ease,background .16s ease}
+body.black-unified.doctors-ui .bottom-nav-tab.active{color:var(--black-accent)!important}
+body.black-unified.doctors-ui .bottom-nav-tab svg{stroke:currentColor}
