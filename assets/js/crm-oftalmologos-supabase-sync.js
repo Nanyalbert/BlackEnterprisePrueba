@@ -694,6 +694,19 @@
     refresh: hydrateFromSupabase
   };
 
+  // Al regresar al CRM desde otra pestaña o desde el celular, releer la
+  // fuente central. Evita mantener importes y estados obsoletos en pantalla.
+  let lastForegroundSync = 0;
+  function refreshWhenVisible() {
+    if (document.visibilityState !== 'visible' || syncing) return;
+    const now = Date.now();
+    if (now - lastForegroundSync < 15000) return;
+    lastForegroundSync = now;
+    hydrateFromSupabase();
+  }
+  document.addEventListener('visibilitychange', refreshWhenVisible);
+  window.addEventListener('focus', refreshWhenVisible);
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => setTimeout(hydrateFromSupabase, 700));
   } else {
