@@ -1021,6 +1021,14 @@ function parseDate(str){
     return isNaN(d)?null:d;
   }
   const s = String(str).trim();
+  // Las fechas ISO de Supabase son días calendario, no instantes UTC.
+  // new Date('2026-10-01') en Argentina representa el 30/09 a las 21:00.
+  // Interpretarlas en horario local evita excluir el primer día del período.
+  const iso = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(s);
+  if (iso) {
+    const d = new Date(Number(iso[1]), Number(iso[2])-1, Number(iso[3]));
+    return d.getFullYear()===Number(iso[1]) && d.getMonth()===Number(iso[2])-1 && d.getDate()===Number(iso[3]) ? d : null;
+  }
   const parts = s.split("/");
   if(parts.length===3){
     const d=new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
