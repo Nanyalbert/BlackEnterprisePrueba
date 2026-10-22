@@ -40,6 +40,7 @@ $('unified-source').onchange=()=>{refreshOptions();$('unified-print').disabled=t
 await history();note('Conectado. Analizá los Excel y verificá el período antes de guardar.');
 }
 window.addEventListener('black:commissions-invalidated',()=>{draft=null;decisions.clear();$('unified-save').disabled=true;$('unified-matches').innerHTML='';$('unified-print').disabled=true;$('unified-preview').innerHTML='<p class="com-empty">El análisis cambió. Generá nuevamente el informe.</p>';refreshOptions()});
+window.addEventListener('black:commissions-rendered',()=>{if(draft)window.dispatchEvent(new CustomEvent('black:commissions-review-changed',{detail:{rows:draft.rows}}))});
 window.addEventListener('black:commissions-analyzed',e=>{draft=e.detail;reviewFilter='pending';reviewSearch='';for(const r of draft.rows){const d=decisions.get(key(r));if(d&&r.reason){r.reviewDecision=d.action;r.reviewNote=d.note;r.selectedLines=d.selectedLines||[];r.manualItemNames=d.manualItemNames||{};if(Number.isFinite(d.originalBase))r.originalBase=d.originalBase;if(Number.isFinite(d.base))r.base=d.base;if(Number.isFinite(d.commission))r.commission=d.commission}}$('unified-source').value='preview';renderMatches();refreshOptions();$('unified-print').disabled=true;$('unified-preview').innerHTML='<p class="com-empty">Hay un nuevo análisis. Volvé a generar el informe.</p>';});
 function match(v){const candidates=people.filter(p=>norm(p.full_name)===norm(v));return candidates.length===1?candidates[0]:null}
 function accepted(){return (draft?.rows||[]).filter(r=>eligible(r)&&match(r.vendor))}
