@@ -14,7 +14,7 @@ const baseCobro = (amount = 64400) => ({
  Cliente:'CASTILLO SALVADOR',Vendedor:'ORTEGA CASTRO, VALENTIN',
  NroVenta:'00005-00000972',NroComprobante:'00005-00000440','Total Importe':amount
 });
-async function calculate(ventas, cobros = [baseCobro()], rxRows = null) {
+async function calculate(ventas, cobros = [baseCobro()], rxRows = null, expectInvalid = false) {
  const events = []; const elements = new Map();
  const get = id => {
   if (!elements.has(id)) elements.set(id, {
@@ -36,6 +36,7 @@ async function calculate(ventas, cobros = [baseCobro()], rxRows = null) {
  const window={XLSX,dispatchEvent(event){if(event.type==='black:commissions-analyzed')events.push(event.detail)},addEventListener(){}};
  vm.runInNewContext(source,{window,document,XLSX,CustomEvent,console,Blob:class{},URL:{}},{timeout:2000});
  for (const k of ['ventas','cobros','recetas']) await get(k).on_change();
+ if(expectInvalid){assert.equal(get('analyze').disabled,true);assert.match(get('status-ventas').textContent,/Importe vacío o inválido/);return [];}
  assert.equal(get('analyze').disabled,false);
  get('analyze').on_click();
  assert.ok(events.length,'Expected commission analysis event');
@@ -98,7 +99,6 @@ test('Duplicate receipts are blocked',async()=>{
  assert.match(rows[1].reason,/Comprobante de cobro repetido/);
 });
 test('Invalid financial cells fail file validation',async()=>{
- const events=[];
- const rows=await calculate([row('ORGANICO',60000,72600)]);
- assert.equal(rows.length,1);
+ const rows=await calculate([row('ORGANICO','',72600)],[baseCobro()],null,true);
+ assert.equal(rows.length,0);
 });
