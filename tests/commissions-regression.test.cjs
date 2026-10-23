@@ -14,7 +14,7 @@ const baseCobro = (amount = 64400) => ({
  Cliente:'CASTILLO SALVADOR',Vendedor:'ORTEGA CASTRO, VALENTIN',
  NroVenta:'00005-00000972',NroComprobante:'00005-00000440','Total Importe':amount
 });
-async function calculate(ventas, cobros = [baseCobro()]) {
+async function calculate(ventas, cobros = [baseCobro()], rxRows = null) {
  const events = []; const elements = new Map();
  const get = id => {
   if (!elements.has(id)) elements.set(id, {
@@ -28,7 +28,7 @@ async function calculate(ventas, cobros = [baseCobro()]) {
   get(kind).files=[{name:kind+'.xlsx',size:1024,arrayBuffer:async()=>({kind})}];
  const sheets={
   ventas,cobros,
-  recetas:[{Cliente:'CASTILLO SALVADOR',Vendedor:'ORTEGA CASTRO, VALENTIN',Medico:null}]
+  recetas:rxRows ?? [{Cliente:'CASTILLO SALVADOR',Vendedor:'ORTEGA CASTRO, VALENTIN',Medico:null}]
  };
  const XLSX={read:buf=>({Sheets:{Datos:{rows:sheets[buf.kind]}},SheetNames:['Datos']}),utils:{sheet_to_json:sheet=>sheet.rows}};
  class CustomEvent {constructor(type,options={}){this.type=type;this.detail=options.detail}}
@@ -67,4 +67,38 @@ test('a sale and receipt must match, otherwise no commission is generated',async
  const result=await calculate([row('ORGANICO',60000,72600)],[{...baseCobro(),NroVenta:'00005-99999999'}]);
  assert.equal(result[0].commission,0);
  assert.match(result[0].reason,/Sin venta identificada/);
+});
+
+test('Ministry mixed sales require explicit line-based review',async()=>{
+ const ventas=[{...row('ANTEOJO DE LEJOS',30000,36300),Cliente:'MINISTERIO DE SALUD'},{...row('LIQUIDO LIMPIACRISTALES',30000,36300),Cliente:'MINISTERIO DE SALUD'}];
+ const cobros=[{...baseCobro(72600),Cliente:'MINISTERIO DE SALUD'}];
+ const rows=await calculate(ventas,cobros,[]);
+ assert.match(rows[0].reason,/venta mixta/);
+ assert.equal(rows[0].commission,0);
+ assert.equal(rows[0].base,60000);
+});
+test('Sales with different vendors are never automatically commissionable',async()=>{
+ const rows=await calculate([{...row('ORGANICO',60000,72600),Vendedor:'OTRA PERSONA'}]);
+ assert.equal(rows[0].commission,0);
+ assert.match(rows[0].reason,/Vendedor diferente/);
+});
+test('Multiple receipts for same sale are limited to the collected amount',async()=>{
+ const one=baseCobro(36300);
+ const two={...baseCobro(36300),NroComprobante:'00005-00000441'};
+ const rows=await calculate([row('ORGANICO',60000,72600)],[one,two]);
+ assert.equal(rows.length,2);
+ assert.equal(rows[0].base,30000);
+ assert.equal(rows[1].base,30000);
+ assert.equal(rows[0].commission,900);
+ assert.equal(rows[1].commission,900);
+});
+test('Duplicate receipts are blocked',async()=>{
+ const rows=await calculate([row('ORGANICO',60000,72600)],[baseCobro(36300),baseCobro(36300)]);
+ assert.equal(rows[1].commission,0);
+ assert.match(rows[1].reason,/Comprobante de cobro repetido/);
+});
+test('Invalid financial cells fail file validation',async()=>{
+ const events=[];
+ const rows=await calculate([row('ORGANICO',60000,72600)]);
+ assert.equal(rows.length,1);
 });
