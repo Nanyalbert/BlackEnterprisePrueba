@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
-const source = fs.readFileSync(path.join(__dirname, '..', 'assets/js/comisiones-mensuales.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '..', 'assets/js/comisiones-mensuales.js'), 'utf8');const recipeSource = fs.readFileSync(path.join(__dirname, '..', 'assets/js/comisiones-recetas.js'), 'utf8');
 const row = (article, net, gross) => ({
  Cliente: 'CASTILLO SALVADOR', Vendedor: 'ORTEGA CASTRO, VALENTIN',
  'Nro Cpte': '00005-00000972', Articulo: article,
@@ -34,6 +34,7 @@ async function calculate(ventas, cobros = [baseCobro()], rxRows = null, expectIn
  class CustomEvent {constructor(type,options={}){this.type=type;this.detail=options.detail}}
  const document={getElementById:get,addEventListener(){},querySelectorAll(){return []}};
  const window={XLSX,dispatchEvent(event){if(event.type==='black:commissions-analyzed')events.push(event.detail)},addEventListener(){}};
+ vm.runInNewContext(recipeSource,{window},{timeout:2000});
  vm.runInNewContext(source,{window,document,XLSX,CustomEvent,console,Blob:class{},URL:{}},{timeout:2000});
  for (const k of ['ventas','cobros','recetas']) await get(k).on_change();
  if(expectInvalid){assert.equal(get('analyze').disabled,true);assert.match(get('status-ventas').textContent,/Importe vacío o inválido/);return [];}
@@ -102,3 +103,11 @@ test('Invalid financial cells fail file validation',async()=>{
  const rows=await calculate([row('ORGANICO','',72600)],[baseCobro()],null,true);
  assert.equal(rows.length,0);
 });
+
+const prescription=(id,doctor,sale='')=>({Cliente:'CASTILLO SALVADOR',Vendedor:'ORTEGA CASTRO, VALENTIN',Medico:doctor,'Nro.Receta':id,NroVenta:sale});
+test('Two prescriptions from one physician do not generate review',async()=>{const r=await calculate([row('ORGANICO',60000,72600)],[baseCobro(72600)],[prescription('1','ANA LOPEZ'),prescription('2','LOPEZ ANA')]);assert.equal(r[0].reason,'');assert.equal(r[0].commission,1200)});
+test('Two physicians same rate but unresolved physician attribution',async()=>{const r=await calculate([row('ORGANICO',60000,72600)],[baseCobro(72600)],[prescription('1','ANA LOPEZ'),prescription('2','MARIA GARCIA')]);assert.equal(r[0].reason,'');assert.equal(r[0].commission,1200);assert.equal(r[0].doctorAttributionAmbiguous,true)});
+test('Mixed physician presence blocks automatic rate selection',async()=>{const r=await calculate([row('ORGANICO',60000,72600)],[baseCobro(72600)],[prescription('1','ANA LOPEZ'),prescription('2','')]);assert.equal(r[0].rate,0);assert.equal(r[0].commission,0);assert.match(r[0].reason,/porcentaje ambiguo/)});
+test('Explicit sale link wins over unrelated sale',async()=>{const r=await calculate([row('ORGANICO',60000,72600)],[baseCobro(72600)],[prescription('1','ANA LOPEZ','00005-00000972'),prescription('2','','00005-00000888')]);assert.equal(r[0].commission,1200);assert.equal(r[0].recipeMatches.length,1)});
+test('Other sale prescriptions are ignored',async()=>{const r=await calculate([row('ORGANICO',60000,72600)],[baseCobro(72600)],[prescription('1','ANA LOPEZ','00005-00000888')]);assert.equal(r[0].commission,1800);assert.match(r[0].reason,/Sin receta/)});
+test('All blank physician fields imply provisional no-physician rate',async()=>{const r=await calculate([row('ORGANICO',60000,72600)],[baseCobro(72600)],[prescription('1',''),prescription('2',null)]);assert.equal(r[0].commission,1800);assert.match(r[0].reason,/Receta sin médico/)});
