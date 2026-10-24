@@ -48,6 +48,15 @@ function sanitizeBranches(raw:any){
     : [];
   return values.length ? [...new Set(values)] : ["all"];
 }
+function validateBranchScope(raw:any): string[] {
+  if(!Array.isArray(raw) || raw.length===0) throw new Error("Seleccioná al menos una sucursal válida");
+  const aliases:Record<string,string>={"zona-norte":"cerro-de-las-rosas","alto-palermo":"cerro-de-las-rosas","cerro":"cerro-de-las-rosas"};
+  const valid=new Set(["all","general-paz","cerro-de-las-rosas"]);
+  const values=raw.map((value:any)=>aliases[String(value)]||String(value));
+  if(values.some((value:string)=>!valid.has(value))) throw new Error("Se recibió una sucursal no reconocida");
+  if(values.includes("all") && values.length>1) throw new Error("Elegí todas las sucursales o una selección específica");
+  return [...new Set(values)];
+}
 function appsFromPermissions(permissions:Record<string,any>){
   return Object.entries(permissions).filter(([,cfg])=>cfg?.level && cfg.level!=="none").map(([id])=>id);
 }
@@ -71,7 +80,8 @@ async function syncDirectory(admin:any,user:any,permissions:Record<string,any>,b
   },{onConflict:"id"});
   if(profileError) throw profileError;
 
-  await admin.from("user_branches").delete().eq("user_id",user.id);
+  const {error:clearBranchesError}=await admin.from("user_branches").delete().eq("user_id",user.id);
+  if(clearBranchesError) throw clearBranchesError;
   let branchCodes=branchScope.includes("all")?["general-paz","cerro-de-las-rosas"]:branchScope;
   branchCodes=[...new Set(branchCodes.filter(Boolean))];
   if(branchCodes.length){
@@ -90,7 +100,8 @@ async function syncDirectory(admin:any,user:any,permissions:Record<string,any>,b
     level:cfg?.level||"none",
     items:cfg?.items==="*"?"*":Array.isArray(cfg?.items)?cfg.items:[]
   }));
-  await admin.from("black_os_user_permissions").delete().eq("user_id",user.id);
+  const {error:clearPermissionsError}=await admin.from("black_os_user_permissions").delete().eq("user_id",user.id);
+  if(clearPermissionsError) throw clearPermissionsError;
   if(permissionRows.length){
     const {error:permissionError}=await admin.from("black_os_user_permissions").insert(permissionRows);
     if(permissionError) throw permissionError;
@@ -99,7 +110,8 @@ async function syncDirectory(admin:any,user:any,permissions:Record<string,any>,b
   const {data:role,error:roleError}=await admin.from("roles").select("id").eq("code",roleCodeFromPermissions(permissions)).maybeSingle();
   if(roleError) throw roleError;
   if(role?.id){
-    await admin.from("user_roles").delete().eq("user_id",user.id);
+    const {error:clearRolesError}=await admin.from("user_roles").delete().eq("user_id",user.id);
+    if(clearRolesError) throw clearRolesError;
     const {error}=await admin.from("user_roles").insert({user_id:user.id,role_id:role.id});
     if(error) throw error;
   }
@@ -191,7 +203,9 @@ Deno.serve(async req => {
       if(password.length<10) return reply({error:"La contraseña temporal debe tener al menos 10 caracteres"},400);
       if(!nombre) return reply({error:"Ingresá el nombre del usuario"},400);
       const permissions=sanitizePermissions(body?.permissions);
-      const branchScope=sanitizeBranches(body?.branchScope);
+      let branchScope:string[];
+      try { branchScope=validateBranchScope(body?.branchScope); }
+      catch(error:any) { return reply({error:String(error?.message||"Sucursal inválida")},400); }
       const apps=appsFromPermissions(permissions);
       const active=body?.activo!==false;
       const {data,error}=await admin.auth.admin.createUser({
@@ -219,7 +233,9 @@ Deno.serve(async req => {
       if(isOwnerByMetadata(current.user)||adminIds.has(String(current.user.id))) return reply({error:"El administrador principal no se edita desde esta pantalla"},400);
 
       const permissions=sanitizePermissions(body?.permissions);
-      const branchScope=sanitizeBranches(body?.branchScope);
+      let branchScope:string[];
+      try { branchScope=validateBranchScope(body?.branchScope); }
+      catch(error:any) { return reply({error:String(error?.message||"Sucursal inválida")},400); }
       const apps=appsFromPermissions(permissions);
       const nombre=String(body?.nombre||current.user.user_metadata?.full_name||"").trim();
       const email=String(body?.email||current.user.email||"").trim().toLowerCase();
