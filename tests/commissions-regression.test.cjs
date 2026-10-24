@@ -111,3 +111,21 @@ test('Mixed physician presence blocks automatic rate selection',async()=>{const 
 test('Explicit sale link wins over unrelated sale',async()=>{const r=await calculate([row('ORGANICO',60000,72600)],[baseCobro(72600)],[prescription('1','ANA LOPEZ','00005-00000972'),prescription('2','','00005-00000888')]);assert.equal(r[0].commission,1200);assert.equal(r[0].recipeMatches.length,1)});
 test('Other sale prescriptions are ignored',async()=>{const r=await calculate([row('ORGANICO',60000,72600)],[baseCobro(72600)],[prescription('1','ANA LOPEZ','00005-00000888')]);assert.equal(r[0].commission,1800);assert.equal(r[0].reason,'')});
 test('All blank physician fields imply provisional no-physician rate',async()=>{const r=await calculate([row('ORGANICO',60000,72600)],[baseCobro(72600)],[prescription('1',''),prescription('2',null)]);assert.equal(r[0].commission,1800);assert.equal(r[0].reason,'')});
+
+test('Unified commission ledger excludes pending, rejected and invalid payments in both totals',()=>{
+ const excerpt=source.slice(source.indexOf('const ledgerBlocked='),source.indexOf('let result=[];const overrides='));
+ const wnd={};
+ vm.runInNewContext(excerpt,{window:wnd,name:x=>String(x||'').trim().toUpperCase()});
+ const policy=wnd.BlackCommissionLedger;
+ const rows=[
+  {vendor:'ORTEGA CASTRO, VALENTIN',base:50000,commission:1207.04,reason:''},
+  {vendor:'ORTEGA CASTRO, VALENTIN',base:50000,commission:1207.04,reason:'Observación pendiente'},
+  {vendor:'ORTEGA CASTRO, VALENTIN',base:50000,commission:1207.04,reason:'Observación aprobada',reviewDecision:'approved'},
+  {vendor:'ORTEGA CASTRO, VALENTIN',base:50000,commission:1207.04,reason:'',reviewDecision:'rejected'},
+  {vendor:'ORTEGA CASTRO, VALENTIN',base:50000,commission:1207.04,reason:'Comprobante de cobro repetido',reviewDecision:'approved'}
+ ];
+ assert.equal(policy.sumCents(rows),241408);
+ assert.equal(policy.sumCents(rows.filter(policy.included)),policy.sumCents(rows));
+ assert.equal(policy.included(rows[1]),false);
+ assert.equal(policy.included(rows[4]),false);
+});
