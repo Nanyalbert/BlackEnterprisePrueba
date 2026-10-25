@@ -5,7 +5,7 @@ const input=document.getElementById('bulkImages');
 const section=document.getElementById('bulkSection');
 if(!input||!section)return;
 const panel=document.createElement('section');panel.className='panel catalog-safe-editor';
-panel.innerHTML='<h3>Estudio fotográfico fiel</h3><p>Sin IA generativa: no redibuja armazones. Limpia únicamente fondos claros conectados con los bordes, conserva los píxeles del producto y permite centrarlo en un lienzo cuadrado.</p><div class="actions"><button type="button" id="safeRun">Preparar fotos sin redibujar</button><button type="button" class="secondary" id="safeClear">Limpiar resultados</button></div><p id="safeSummary" role="status"></p><div id="safeRows"></div>';
+panel.innerHTML='<h3>Estudio fotográfico fiel</h3><p>Sin IA generativa: no redibuja armazones. Limpia únicamente fondos claros conectados con los bordes, conserva los píxeles del producto y lo posiciona ligeramente debajo del centro (eje Y: 680 px) en un lienzo de 1200 × 1200, dejando libre la zona superior para los controles de Tiendanube.</p><div class="actions"><button type="button" id="safeRun">Preparar fotos sin redibujar</button><button type="button" class="secondary" id="safeClear">Limpiar resultados</button></div><p id="safeSummary" role="status"></p><div id="safeRows"></div>';
 section.querySelector('#bulkStats').after(panel);
 const rows=panel.querySelector('#safeRows'),summary=panel.querySelector('#safeSummary');
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -24,8 +24,11 @@ function process(img,options){
  ctx.putImageData(pixels,0,0);
  // Solo se traslada y escala la imagen completa. No se altera la geometría de ningún componente.
  const side=1200,out=document.createElement('canvas');out.width=side;out.height=side;const oc=out.getContext('2d');oc.fillStyle='#fff';oc.fillRect(0,0,side,side);
- const fit=Math.min((side-100)/w,(side-100)/h)*options.zoom;
- const dw=Math.round(w*fit),dh=Math.round(h*fit),dx=Math.round((side-dw)/2),dy=Math.round((side-dh)/2);
+ // Tiendanube: centro visual a y=680px (80px por debajo del centro del lienzo), con márgenes seguros.
+ const targetY=680,topMargin=65,bottomMargin=55;
+ const maxHeight=2*Math.min(targetY-topMargin,side-bottomMargin-targetY);
+ const fit=Math.min((side-100)/w,maxHeight/h)*Math.min(1,options.zoom);
+ const dw=Math.round(w*fit),dh=Math.round(h*fit),dx=Math.round((side-dw)/2),dy=Math.round(targetY-dh/2);
  oc.drawImage(src,dx,dy,dw,dh);
  return {url:out.toDataURL('image/png'),backgroundSafe:!options.clean||tail>0,cleaned:tail};
 }
