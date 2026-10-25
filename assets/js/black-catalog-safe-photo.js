@@ -5,7 +5,7 @@ const input=document.getElementById('bulkImages');
 const section=document.getElementById('bulkSection');
 if(!input||!section)return;
 const panel=document.createElement('section');panel.className='panel catalog-safe-editor';
-panel.innerHTML='<h3>Estudio fotográfico fiel</h3><p>Sin IA generativa: no redibuja armazones. Limpia únicamente fondos claros conectados con los bordes, conserva los píxeles del producto y lo posiciona ligeramente debajo del centro (eje Y: 680 px) en un lienzo de 1200 × 1200, dejando libre la zona superior para los controles de Tiendanube.</p><div class="actions"><button type="button" id="safeRun">Preparar fotos sin redibujar</button><button type="button" class="secondary" id="safeClear">Limpiar resultados</button></div><p id="safeSummary" role="status"></p><div id="safeRows"></div>';
+panel.innerHTML='<h3>Estudio fotográfico fiel</h3><p>Sin IA generativa: no redibuja armazones. Limpia únicamente fondos claros conectados con los bordes, no reconstruye la geometría del producto y lo posiciona ligeramente debajo del centro (eje Y: 680 px) en un lienzo de 1200 × 1200, dejando libre la zona superior para los controles de Tiendanube.</p><div class="actions"><button type="button" id="safeRun">Preparar fotos sin redibujar</button><button type="button" class="secondary" id="safeClear">Limpiar resultados</button></div><p id="safeSummary" role="status"></p><div id="safeRows"></div>';
 section.querySelector('#bulkStats').after(panel);
 const rows=panel.querySelector('#safeRows'),summary=panel.querySelector('#safeSummary');
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -27,9 +27,23 @@ function process(img,options){
  // Tiendanube: centro visual a y=680px (80px por debajo del centro del lienzo), con márgenes seguros.
  const targetY=680,topMargin=65,bottomMargin=55;
  const maxHeight=2*Math.min(targetY-topMargin,side-bottomMargin-targetY);
- const fit=Math.min((side-100)/w,maxHeight/h)*Math.min(1,options.zoom);
- const dw=Math.round(w*fit),dh=Math.round(h*fit),dx=Math.round((side-dw)/2),dy=Math.round(targetY-dh/2);
- oc.drawImage(src,dx,dy,dw,dh);
+ // Detectar el contorno visual, no la caja completa de la fotografía original.
+ // Un fondo no blanco o una detección dudosa conserva el encuadre original.
+ let left=w,top=h,right=-1,bottom=-1,count=0;
+ const step=Math.max(1,Math.floor(Math.min(w,h)/550));
+ for(let y=0;y<h;y+=step)for(let x=0;x<w;x+=step){
+  const p=(y*w+x)*4,r=d[p],g=d[p+1],b=d[p+2];
+  if(Math.min(r,g,b)<222||Math.max(r,g,b)-Math.min(r,g,b)>35){
+   left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y);count++;
+  }
+ }
+ const reliable=count>20&&right>left&&bottom>top&&(right-left)<w*.96&&(bottom-top)<h*.96;
+ const pad=Math.round(Math.min(w,h)*.035);
+ const sx=reliable?Math.max(0,left-pad):0,sy=reliable?Math.max(0,top-pad):0;
+ const sw=reliable?Math.min(w-sx,right-left+step+pad*2):w,sh=reliable?Math.min(h-sy,bottom-top+step+pad*2):h;
+ const fit=Math.min((side-120)/sw,maxHeight/sh)*Math.min(1,options.zoom);
+ const dw=Math.round(sw*fit),dh=Math.round(sh*fit),dx=Math.round((side-dw)/2),dy=Math.round(targetY-dh/2);
+ oc.drawImage(src,sx,sy,sw,sh,dx,dy,dw,dh);
  return {url:out.toDataURL('image/png'),backgroundSafe:!options.clean||tail>0,cleaned:tail};
 }
 let active=[];
@@ -47,7 +61,7 @@ panel.querySelector('#safeRun').onclick=async()=>{
   const objectUrl=URL.createObjectURL(file);orig.src=objectUrl;active.push(objectUrl);
   let img;try{img=await load(file)}catch(e){status.textContent=e.message;continue}
   let approved=false,output='',zoom=1,threshold=242,clean=true;
-  function render(){const processed=process(img,{zoom,threshold,clean});output=processed.url;result.src=output;approved=false;status.textContent=processed.cleaned?'Fondo claro periférico limpiado; producto sin redibujar. Revisá los bordes antes de aprobar.':'No se detectó fondo claro seguro. Se conserva el fondo original; para eliminarlo sin riesgos, fotografiá sobre blanco.';row.querySelector('.safeApprove').textContent='Aprobar y descargar'}
+  function render(){const processed=process(img,{zoom,threshold,clean});output=processed.url;result.src=output;approved=false;status.textContent=processed.cleaned?'Fondo claro periférico procesado. Revisá especialmente cristales transparentes y bordes antes de aprobar.':'No se detectó fondo claro seguro. Se conserva el fondo original; para eliminarlo sin riesgos, fotografiá sobre blanco.';row.querySelector('.safeApprove').textContent='Aprobar y descargar'}
   render();
   row.querySelector('.safeRedo').onclick=()=>{const n=note.value.toLowerCase();if(/más chico|muy grande|alejar|menos zoom/.test(n))zoom=Math.max(.65,zoom-.08);if(/más grande|muy chico|acercar/.test(n))zoom=Math.min(1.18,zoom+.08);if(/fondo|blanco|sombra/.test(n))threshold=Math.max(225,threshold-5);if(/conservar fondo|sin quitar fondo/.test(n))clean=false;render();status.textContent+=' Corrección aplicada solo al encuadre o fondo. No se reinterpretó el producto.'};
   row.querySelector('.safeReject').onclick=()=>{approved=false;status.textContent='Resultado rechazado. Conservamos la fotografía original. Escribí qué corregir y volvé a generar.';row.querySelector('.safeApprove').textContent='Aprobar y descargar'};
