@@ -173,18 +173,6 @@
     const activeCloudDoctors = (dbDoctors || []).filter(d => d.active !== false);
     const normalizePerson = value => normName(String(value || '')
       .replace(/^(dra?\.?|doctor(?:a)?)\s+/i, '').trim());
-    const cloudAliases = new Map();
-    activeCloudDoctors.forEach(d => {
-      const full = normalizePerson(d.full_name);
-      const parts = full.split(/[\s,]+/).filter(Boolean);
-      const candidates = new Set([full]);
-      // Usar solo apellidos distintivos, nunca nombres de pila genéricos.
-      if (parts.length > 1) candidates.add(parts[parts.length - 1]);
-      candidates.forEach(k => {
-        if (!cloudAliases.has(k)) cloudAliases.set(k, []);
-        cloudAliases.get(k).push(d);
-      });
-    });
     const cloudIds = new Set(activeCloudDoctors.map(d => d.id));
     const hasMatchingSchedule = (local, doctorId) => {
       const groups = schedulesByDoctor.get(doctorId);
