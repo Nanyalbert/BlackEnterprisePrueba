@@ -167,10 +167,50 @@
       mergedDoctors.push(local);
     });
 
-    // Nunca borrar un médico local que todavía no llegó a sincronizarse.
+    // Reconciliar nombres históricos con el identificador estable de Supabase.
+    // Al completar "Corradini" -> "Dra. Adriana Corradini", el respaldo
+    // local no debe aparecer como un segundo profesional.
+    const activeCloudDoctors = (dbDoctors || []).filter(d => d.active !== false);
+    const normalizePerson = value => normName(String(value || '')
+      .replace(/^(dra?\.?|doctor(?:a)?)\s+/i, '').trim());
+    const cloudAliases = new Map();
+    activeCloudDoctors.forEach(d => {
+      const full = normalizePerson(d.full_name);
+      const parts = full.split(/[\s,]+/).filter(Boolean);
+      const candidates = new Set([full]);
+      // Usar solo apellidos distintivos, nunca nombres de pila genéricos.
+      if (parts.length > 1) candidates.add(parts[parts.length - 1]);
+      candidates.forEach(k => {
+        if (!cloudAliases.has(k)) cloudAliases.set(k, []);
+        cloudAliases.get(k).push(d);
+      });
+    });
+    const cloudIds = new Set(activeCloudDoctors.map(d => d.id));
+    const hasMatchingSchedule = (local, doctorId) => {
+      const groups = schedulesByDoctor.get(doctorId);
+      if (!groups?.size) return false;
+      return (local.instituciones || []).some(inst =>
+        [...groups.entries()].some(([name, turns]) =>
+          normName(name) === normName(inst.nombre) &&
+          (inst.turnos || []).some(t => turns.some(remote =>
+            remote.dia === t.dia && remote.desde === t.desde && remote.hasta === t.hasta
+          ))
+        )
+      );
+    };
+    // Preservar solo fichas locales realmente no sincronizadas.
     (Array.isArray(doctors) ? doctors : []).forEach(local => {
       const key = normName(local?.nombre);
-      if (key && !cloudNames.has(key)) mergedDoctors.push(local);
+      if (!key || cloudNames.has(key)) return;
+      if (local._supabaseId && cloudIds.has(local._supabaseId)) return;
+      const alias = normalizePerson(local.nombre);
+      const candidates = activeCloudDoctors.filter(d => {
+        const full = normalizePerson(d.full_name);
+        return full === alias || full.endsWith(' ' + alias) ||
+          full.startsWith(alias + ',');
+      });
+      if (candidates.length === 1 && hasMatchingSchedule(local, candidates[0].id)) return;
+      mergedDoctors.push(local);
     });
 
     doctors = mergedDoctors.sort((a,b) => String(a.nombre||'').localeCompare(String(b.nombre||''),'es'));
