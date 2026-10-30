@@ -5,7 +5,7 @@ const input=document.getElementById('bulkImages');
 const section=document.getElementById('bulkSection');
 if(!input||!section)return;
 const panel=document.createElement('section');panel.className='panel catalog-safe-editor';
-panel.innerHTML='<h3>Estudio fotográfico fiel</h3><p>Sin IA generativa: no redibuja armazones. Limpia únicamente fondos claros conectados con los bordes, no reconstruye la geometría del producto y lo posiciona ligeramente debajo del centro (eje Y: 680 px) en un lienzo de 1200 × 1200, dejando libre la zona superior para los controles de Tiendanube.</p><div class="actions"><button type="button" id="safeRun">Preparar fotos sin redibujar</button><button type="button" class="secondary" id="safeClear">Limpiar resultados</button></div><p id="safeSummary" role="status"></p><div id="safeRows"></div>';
+panel.innerHTML='<h3>Estudio fotográfico fiel</h3><p>Sin IA generativa: no redibuja armazones. Permite limpiar fondos claros opcionalmente, no reconstruye la geometría del producto y lo posiciona ligeramente debajo del centro (eje Y: 680 px) en un lienzo de 1200 × 1200, dejando libre la zona superior para los controles de Tiendanube.</p><div class="actions"><button type="button" id="safeRun">Preparar fotos sin redibujar</button><button type="button" class="secondary" id="safeClear">Limpiar resultados</button></div><p id="safeSummary" role="status"></p><div id="safeRows"></div>';
 section.querySelector('#bulkStats').after(panel);
 const rows=panel.querySelector('#safeRows'),summary=panel.querySelector('#safeSummary');
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -60,13 +60,13 @@ panel.querySelector('#safeRun').onclick=async()=>{
   const orig=row.querySelector('.safeOriginal'),result=row.querySelector('.safeResult'),status=row.querySelector('.safeStatus'),note=row.querySelector('.safeNote');
   const objectUrl=URL.createObjectURL(file);orig.src=objectUrl;active.push(objectUrl);
   let img;try{img=await load(file)}catch(e){status.textContent=e.message;continue}
-  let approved=false,output='',zoom=1,threshold=242,clean=true;
+  let approved=false,output='',zoom=1,threshold=242,clean=false;
   function render(){const processed=process(img,{zoom,threshold,clean});output=processed.url;result.src=output;approved=false;status.textContent=processed.cleaned?'Fondo claro periférico procesado. Revisá especialmente cristales transparentes y bordes antes de aprobar.':'No se detectó fondo claro seguro. Se conserva el fondo original; para eliminarlo sin riesgos, fotografiá sobre blanco.';row.querySelector('.safeApprove').textContent='Aprobar y descargar'}
   render();
-  row.querySelector('.safeRedo').onclick=()=>{const n=note.value.toLowerCase();if(/más chico|muy grande|alejar|menos zoom/.test(n))zoom=Math.max(.65,zoom-.08);if(/más grande|muy chico|acercar/.test(n))zoom=Math.min(1.18,zoom+.08);if(/fondo|blanco|sombra/.test(n))threshold=Math.max(225,threshold-5);if(/conservar fondo|sin quitar fondo/.test(n))clean=false;render();status.textContent+=' Corrección aplicada solo al encuadre o fondo. No se reinterpretó el producto.'};
+  row.querySelector('.safeRedo').onclick=()=>{const n=note.value.toLowerCase();if(/más chico|muy grande|alejar|menos zoom/.test(n))zoom=Math.max(.65,zoom-.08);if(/más grande|muy chico|acercar/.test(n))zoom=Math.min(1.18,zoom+.08);if(/limpiar fondo|blanquear fondo|quitar fondo/.test(n)){clean=true;threshold=Math.max(225,threshold-5)}if(/conservar fondo|sin quitar fondo|mantener fondo/.test(n))clean=false;render();status.textContent+=' Corrección aplicada solo al encuadre o fondo. No se reinterpretó el producto.'};
   row.querySelector('.safeReject').onclick=()=>{approved=false;status.textContent='Resultado rechazado. Conservamos la fotografía original. Escribí qué corregir y volvé a generar.';row.querySelector('.safeApprove').textContent='Aprobar y descargar'};
   row.querySelector('.safeApprove').onclick=()=>{approved=true;const a=document.createElement('a');a.href=output;a.download=file.name.replace(/\.[^.]+$/,'')+'-fiel-1200.png';a.click();status.textContent='Resultado aprobado y descargado. El archivo original no se modificó.';row.querySelector('.safeApprove').textContent='Aprobado ✓'};
  }
- summary.textContent='Preparadas '+files.length+' fotografías. La aprobación es individual y no publica automáticamente en Tiendanube.';
+ summary.textContent='Preparadas '+files.length+' fotografías sin limpieza automática de fondo. Para activarla, escribí «limpiar fondo» en la corrección. Revisá antes de aprobar; no se publica automáticamente.';
 };
 })();
