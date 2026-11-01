@@ -473,4 +473,84 @@ new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true
 .catalog-ui #tiendanubeIntegration{border-color:#414a58}
 .catalog-ui button:focus-visible{outline:2px solid #a7bfff;outline-offset:3px}
 @media(max-width:700px){.catalog-ui .catalog-safe-editor{padding:15px!important}.catalog-ui .catalog-safe-editor .catalog-photo-compare{grid-template-columns:1fr!important}.catalog-ui .catalog-safe-editor .actions>button{flex:1 1 100%}}
-</style><link rel="stylesheet" href="assets/css/black-os-unified.css?v=20261019-02"><script src="assets/js/black-catalog-tiendanube-ui.js?v=20261019-10" defer></script><script src="assets/js/black-catalog-safe-photo.js?v=20261030-preserve"></script></body></html>
+</style><link rel="stylesheet" href="assets/css/black-os-unified.css?v=20261019-02"><script src="assets/js/black-catalog-tiendanube-ui.js?v=20261019-10" defer></script><script src="assets/js/black-catalog-safe-photo.js?v=20261030-preserve"></script><!-- Black Catalog AI: recorrido progresivo, carga única y paneles plegables -->
+<style>
+#catalogWizard{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+#catalogWizard .cw-step{border:1px solid #3e4147;border-radius:18px;background:#181a1f;overflow:hidden;transition:border-color .2s,box-shadow .2s}
+#catalogWizard .cw-step[open]{border-color:#d4c4b5;box-shadow:0 10px 32px rgba(0,0,0,.12)}
+#catalogWizard .cw-step:not([data-unlocked="true"]){display:none!important}
+#catalogWizard .cw-step>summary{list-style:none;display:flex;align-items:center;gap:14px;padding:19px 20px;cursor:pointer;user-select:none}
+#catalogWizard .cw-step>summary::-webkit-details-marker{display:none}
+#catalogWizard .cw-num{width:37px;height:37px;flex:none;display:grid;place-items:center;border-radius:12px;background:#292b31;color:#d4c4b5;font-size:14px;font-weight:800}
+#catalogWizard .cw-step[open] .cw-num{background:#d4c4b5;color:#121212}
+#catalogWizard .cw-heading{flex:1;min-width:0}
+#catalogWizard .cw-heading strong{display:block;font-size:16px;line-height:1.3;color:#fff}
+#catalogWizard .cw-heading small{display:block;margin-top:4px;color:#b6b7bc;line-height:1.45;font-size:12px}
+#catalogWizard .cw-chevron{color:#d4c4b5;font-size:21px;transition:transform .2s}
+#catalogWizard .cw-step[open] .cw-chevron{transform:rotate(180deg)}
+#catalogWizard .cw-body{padding:4px 20px 22px;border-top:1px solid #34363c}
+#catalogWizard .cw-body>*{max-width:100%}
+#catalogWizard .cw-footer{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;padding-top:18px}
+#catalogWizard .cw-footer button{width:auto;min-width:210px}
+#catalogWizard .cw-step .panel{max-width:100%}
+#catalogWizard .cw-progress{font-size:12px;color:#d4c4b5;letter-spacing:.035em;margin:2px 0 8px}
+#catalogWizard .cw-note{color:#c4c4c4;font-size:13px;line-height:1.65}
+#catalogWizard .cw-step[open] .cw-body>.panel{margin:12px 0!important}
+#catalogWizard .cw-step .hidden{display:none!important}
+@media(max-width:640px){#catalogWizard .cw-step>summary{padding:15px 12px;gap:10px}#catalogWizard .cw-body{padding:6px 12px 18px}#catalogWizard .cw-footer button{width:100%}}
+</style>
+<script>
+(function(){
+ 'use strict';
+ const root=document.getElementById('bulkSection');
+ if(!root||document.getElementById('catalogWizard'))return;
+ const children=[...root.children];
+ const wizard=document.createElement('div');wizard.id='catalogWizard';
+ const progress=document.createElement('p');progress.className='cw-progress';progress.id='cwProgress';progress.setAttribute('role','status');
+ root.prepend(progress);root.insertBefore(wizard,progress.nextSibling);
+ const definitions=[
+  ['Cargar fotografías','Una foto o un lote completo. Siempre el mismo proceso.'],
+  ['Organizar productos','Revisá la agrupación por modelo, color y vistas; completá datos comerciales.'],
+  ['Preparar y revisar','Generá descripciones y revisá cada resultado antes de aprobar.'],
+  ['Publicación','Revisá la conexión y las opciones disponibles en Tiendanube.']
+ ];
+ const stages=definitions.map(([title,subtitle],i)=>{
+  const details=document.createElement('details');details.className='cw-step';details.dataset.step=String(i+1);details.dataset.unlocked=i===0?'true':'false';details.open=i===0;
+  const summary=document.createElement('summary');
+  const num=document.createElement('span');num.className='cw-num';num.textContent=String(i+1).padStart(2,'0');
+  const heading=document.createElement('span');heading.className='cw-heading';const strong=document.createElement('strong');strong.textContent=title;const small=document.createElement('small');small.textContent=subtitle;heading.append(strong,small);
+  const chevron=document.createElement('span');chevron.className='cw-chevron';chevron.textContent='⌄';chevron.setAttribute('aria-hidden','true');summary.append(num,heading,chevron);
+  const body=document.createElement('div');body.className='cw-body';details.append(summary,body);wizard.append(details);
+  details.addEventListener('toggle',()=>{if(details.open){stages.forEach(s=>{if(s!==details)s.open=false});updateProgress()}});
+  return details;
+ });
+ const bodies=stages.map(x=>x.querySelector('.cw-body'));
+ const uploadIds=new Set(['bulkImages','analyzeBulk','clearBulk','bulkStats','catalogBuildVersion']);
+ const groupIds=new Set(['bulkCommercial','bulkSearch','bulkProductsTitle','catalogProductNavigation','bulkResults']);
+ let reachedResults=false;
+ for(const node of children){
+  if(node.id==='bulkCommercial'||node.id==='bulkProductsTitle'||node.id==='catalogProductNavigation'||node.id==='bulkResults'||node.querySelector?.('#bulkSearch'))reachedResults=true;
+  if(node.id==='bulkResults')reachedResults=true;
+  if(!reachedResults)bodies[0].append(node);
+  else if(node.id==='bulkResults'||node.id==='bulkCommercial'||node.id==='bulkProductsTitle'||node.id==='catalogProductNavigation'||node.querySelector?.('#bulkSearch')||node.matches?.('label[for="bulkSearch"]')||node.classList?.contains('warning'))bodies[1].append(node);
+  else bodies[2].append(node);
+ }
+ const makeFooter=(body,label,fn)=>{const footer=document.createElement('div');footer.className='cw-footer';const btn=document.createElement('button');btn.type='button';btn.textContent=label;btn.addEventListener('click',fn);footer.append(btn);body.append(footer);return btn};
+ function updateProgress(){const visible=stages.filter(x=>x.dataset.unlocked==='true').length;const current=stages.findIndex(x=>x.open)+1;progress.textContent='PROCESO DE CARGA · ETAPA '+(current||1)+' DE 4 · '+visible+' disponibles'}
+ function unlock(i){for(let j=0;j<=i;j++)stages[j].dataset.unlocked='true';stages[i].open=true;stages.forEach((step,j)=>{if(j!==i)step.open=false});updateProgress();stages[i].scrollIntoView({behavior:'smooth',block:'start'})}
+ const input=document.getElementById('bulkImages'),analyze=document.getElementById('analyzeBulk'),results=document.getElementById('bulkResults'),clear=document.getElementById('clearBulk');
+ // La etapa 2 solo se habilita después de identificar al menos una ficha real.
+ analyze?.addEventListener('click',()=>{setTimeout(()=>{if(results?.querySelector('.catalog-product-card'))unlock(1)},0)});
+ input?.addEventListener('change',()=>{if(!results?.querySelector('.catalog-product-card')){for(let i=1;i<stages.length;i++){stages[i].dataset.unlocked='false';stages[i].open=false}stages[0].open=true;updateProgress()}});
+ clear?.addEventListener('click',()=>{for(let i=1;i<stages.length;i++){stages[i].dataset.unlocked='false';stages[i].open=false}stages[0].open=true;updateProgress()});
+ makeFooter(bodies[1],'Continuar a preparación y revisión',()=>{if(!results?.querySelector('.catalog-product-card')){window.alert('Primero procesá fotografías para identificar al menos un producto.');return}unlock(2)});
+ const step3info=document.createElement('p');step3info.className='cw-note';step3info.textContent='Verificá fotos originales, agrupación, títulos, medidas y descripción. Las imágenes generadas requieren aprobación; nada se publica automáticamente.';bodies[2].prepend(step3info);
+ makeFooter(bodies[2],'Continuar a publicación',()=>unlock(3));
+ const note=document.createElement('p');note.className='cw-note';note.textContent='La publicación completa con fotografías aún no está habilitada. No se enviará ningún producto sin confirmación. Podés verificar la conexión y acceder a las pruebas controladas desde Integraciones.';bodies[3].append(note);
+ makeFooter(bodies[3],'Abrir integración Tiendanube',()=>{const tab=document.querySelector('#catalogSidebar [data-tab="integraciones"]');if(tab)tab.click();else document.getElementById('tiendanubeIntegration')?.scrollIntoView({behavior:'smooth'})});
+ // Los módulos antiguos agregan controles al final de bulkSection. Se incorporan a la etapa de revisión.
+ const observer=new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes){if(node.nodeType!==1||node===wizard||node===progress||node.parentNode!==root)continue;bodies[2].append(node)}});
+ observer.observe(root,{childList:true});
+ updateProgress();
+})();
+</script></body></html>
