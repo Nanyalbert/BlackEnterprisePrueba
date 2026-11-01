@@ -27,21 +27,28 @@ function process(img,options){
  // Tiendanube: centro visual a y=680px (80px por debajo del centro del lienzo), con márgenes seguros.
  const targetY=options.targetY??680;
  // Calcular escala sin depender de la posición vertical.
- // Detectar el contorno visual, no la caja completa de la fotografía original.
- // Un fondo no blanco o una detección dudosa conserva el encuadre original.
- let left=w,top=h,right=-1,bottom=-1,count=0;
- const step=Math.max(1,Math.floor(Math.min(w,h)/550));
- for(let y=0;y<h;y+=step)for(let x=0;x<w;x+=step){
-  const p=(y*w+x)*4,r=d[p],g=d[p+1],b=d[p+2];
-  if(Math.min(r,g,b)<222||Math.max(r,g,b)-Math.min(r,g,b)>35){
-   left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y);count++;
-  }
+ // Detectar el producto por contraste contra el fondo, con protección ante bordes y sombras.
+ // La imagen original puede tener mucho margen blanco: no usar su caja completa como tamaño del anteojo.
+ const threshold=options.clean?220:238;
+ const rowCounts=new Uint32Array(h),colCounts=new Uint32Array(w);
+ const stride=Math.max(1,Math.floor(Math.max(w,h)/1600));
+ for(let y=0;y<h;y+=stride)for(let x=0;x<w;x+=stride){
+   const p=(y*w+x)*4,r=d[p],g=d[p+1],b=d[p+2],dark=Math.min(r,g,b)<threshold;
+   const colored=Math.max(r,g,b)-Math.min(r,g,b)>20&&Math.min(r,g,b)<248;
+   if(dark||colored){rowCounts[y]++;colCounts[x]++}
  }
- const reliable=count>20&&right>left&&bottom>top&&(right-left)<w*.96&&(bottom-top)<h*.96;
- const pad=Math.round(Math.min(w,h)*.035);
- const sx=reliable?Math.max(0,left-pad):0,sy=reliable?Math.max(0,top-pad):0;
- const sw=reliable?Math.min(w-sx,right-left+step+pad*2):w,sh=reliable?Math.min(h-sy,bottom-top+step+pad*2):h;
- const fit=Math.min((side-120)/sw,(side-120)/sh)*options.zoom;
+ // Descartar ruido periférico aislado: exigir evidencia a lo largo de varias filas/columnas.
+ const minCol=Math.max(2,Math.round(h/stride*.012)),minRow=Math.max(2,Math.round(w/stride*.012));
+ let left=0,right=w-1,top=0,bottom=h-1;
+ let x1=colCounts.findIndex(v=>v>=minCol),x2=colCounts.findLastIndex(v=>v>=minCol);
+ let y1=rowCounts.findIndex(v=>v>=minRow),y2=rowCounts.findLastIndex(v=>v>=minRow);
+ const detected=x1>=0&&x2>x1&&y1>=0&&y2>y1;
+ if(detected){left=x1;right=x2;top=y1;bottom=y2}
+ const pad=Math.round(Math.min(w,h)*.014);
+ const sx=Math.max(0,left-pad),sy=Math.max(0,top-pad);
+ const sw=Math.min(w-sx,right-left+1+2*pad),sh=Math.min(h-sy,bottom-top+1+2*pad);
+ // 74 % del lienzo de 1200 px; conservar proporción y permitir ajustar escala aparte.
+ const targetWidth=side*.74,fit=Math.min(targetWidth/sw,(side*.72)/sh)*options.zoom;
  const dw=Math.round(sw*fit),dh=Math.round(sh*fit),dx=Math.round((side-dw)/2);
  const dy=Math.round(Math.max(0,Math.min(side-dh,targetY-dh/2)));
  oc.drawImage(src,sx,sy,sw,sh,dx,dy,dw,dh);
@@ -52,7 +59,7 @@ const modal=document.createElement('dialog');modal.className='catalog-safe-light
 modal.innerHTML='<div class="safe-lightbox-head"><strong id="safeLightboxTitle">Vista ampliada</strong><button type="button" class="secondary" id="safeLightboxClose">Cerrar ×</button></div><img id="safeLightboxImage" alt="Fotografía ampliada"><p>Compará los detalles antes de aprobar.</p>';
 document.body.append(modal);modal.querySelector('#safeLightboxClose').onclick=()=>modal.close();modal.addEventListener('click',event=>{if(event.target===modal)modal.close()});
 function enlarge(url,title){modal.querySelector('#safeLightboxImage').src=url;modal.querySelector('#safeLightboxTitle').textContent=title;modal.showModal()}
-const style=document.createElement('style');style.textContent='.catalog-safe-editor .safeOriginal,.catalog-safe-editor .safeResult{cursor:zoom-in}.catalog-safe-editor .safe-controls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:12px 0}.catalog-safe-editor .safe-controls label{flex:1 1 230px;font-size:13px}.catalog-safe-editor .safe-controls input{width:100%;accent-color:#D4C4B5}.catalog-safe-lightbox{width:min(94vw,1080px);max-width:94vw;max-height:94vh;box-sizing:border-box;border:1px solid #5a5a5a;border-radius:16px;padding:18px;background:#151515;color:#fff}.catalog-safe-lightbox::backdrop{background:rgba(0,0,0,.88)}.catalog-safe-lightbox .safe-lightbox-head{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:14px}.catalog-safe-lightbox img{display:block;width:100%;max-height:75vh;object-fit:contain;background:#fff;border-radius:8px}.catalog-safe-lightbox p{font-size:12px;color:#bbb}.catalog-safe-editor .safePreview{background:#D4C4B5;color:#121212;border-color:#D4C4B5}';document.head.append(style);
+const style=document.createElement('style');style.textContent='.catalog-safe-editor .safeOriginal,.catalog-safe-editor .safeResult{cursor:zoom-in}.catalog-safe-editor .safe-controls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:12px 0}.catalog-safe-editor .safe-controls label{flex:1 1 230px;font-size:13px}.catalog-safe-editor .safe-controls input{width:100%;accent-color:#D4C4B5}.catalog-safe-lightbox{width:min(94vw,1080px);max-width:94vw;max-height:94vh;box-sizing:border-box;border:1px solid #5a5a5a;border-radius:16px;padding:18px;background:#151515;color:#fff}.catalog-safe-lightbox::backdrop{background:rgba(0,0,0,.88)}.catalog-safe-lightbox .safe-lightbox-head{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:14px}.catalog-safe-lightbox img{display:block;width:100%;max-height:75vh;object-fit:contain;background:#fff;border-radius:8px}.catalog-safe-lightbox p{font-size:12px;color:#bbb}.catalog-safe-editor .safePreview{background:#D4C4B5;color:#121212;border-color:#D4C4B5}';style.textContent+='.catalog-safe-editor .catalog-photo-compare{align-items:start}.catalog-safe-editor .catalog-photo-compare figure{min-width:0}.catalog-safe-editor .catalog-photo-compare img{width:100%!important;height:auto!important;aspect-ratio:1/1!important;object-fit:contain!important;background:#fff;border:1px solid #494949;border-radius:12px}.catalog-safe-editor .safe-size-note{color:#bfbfbf;font-size:12px;margin:8px 0 14px}.catalog-safe-editor .safeResult{outline:2px solid #D4C4B5;outline-offset:2px}';document.head.append(style);
 function reset(){rows.replaceChildren();summary.textContent='';for(const u of active)URL.revokeObjectURL(u);active=[]}
 panel.querySelector('#safeClear').onclick=reset;
 input.addEventListener('change',reset);
@@ -62,7 +69,7 @@ panel.querySelector('#safeRun').onclick=async()=>{
  summary.textContent='Preparando '+files.length+' fotografías…';
  for(const file of files){
   const row=document.createElement('article');row.className='catalog-compare-row';rows.append(row);
-  row.innerHTML='<strong>'+esc(file.name)+'</strong><div class="catalog-photo-compare" style="margin-top:12px"><figure><figcaption>ORIGINAL</figcaption><img class="safeOriginal" alt="Original"></figure><figure><figcaption>RESULTADO FIEL</figcaption><img class="safeResult" alt="Retoque fiel"></figure></div><label><div class="safe-controls"><label>Posición vertical del armazón <input class="safePosition" type="range" min="560" max="760" step="10" value="680"></label><span class="safePositionValue">+80 px</span></div><div class="actions"><button type="button" class="secondary safePreview">Ampliar resultado</button><button type="button" class="secondary safePreviewOriginal">Ampliar original</button></div><label>¿Qué querés corregir?</label><textarea class="safeNote" rows="2" placeholder="Ej.: quedó muy chico, fondo blanco irregular, quedó muy grande. No se permite modificar el armazón."></textarea><div class="actions"><button type="button" class="secondary safeRedo">Corregir y regenerar</button><button type="button" class="secondary safeReject">Rechazar resultado</button><button type="button" class="safeApprove">Aprobar y descargar</button></div><small class="safeStatus" role="status"></small>';
+  row.innerHTML='<strong>'+esc(file.name)+'</strong><div class="catalog-photo-compare" style="margin-top:12px"><figure><figcaption>ORIGINAL</figcaption><img class="safeOriginal" alt="Original"></figure><figure><figcaption>RESULTADO FIEL</figcaption><img class="safeResult" alt="Retoque fiel"></figure></div><div class="safe-controls"><label>Posición vertical del armazón <input class="safePosition" type="range" min="560" max="760" step="10" value="680"></label><span class="safePositionValue">+80 px</span></div><div class="safe-size-note">Vista previa cuadrada · 1200 × 1200 px · el armazón ocupa aproximadamente el 74 % del ancho.</div><div class="actions"><button type="button" class="secondary safePreview">Ampliar resultado</button><button type="button" class="secondary safePreviewOriginal">Ampliar original</button></div><label>¿Qué querés corregir?</label><textarea class="safeNote" rows="2" placeholder="Ej.: quedó muy chico, fondo blanco irregular, quedó muy grande. No se permite modificar el armazón."></textarea><div class="actions"><button type="button" class="secondary safeRedo">Corregir y regenerar</button><button type="button" class="secondary safeReject">Rechazar resultado</button><button type="button" class="safeApprove">Aprobar y descargar</button></div><small class="safeStatus" role="status"></small>';
   const orig=row.querySelector('.safeOriginal'),result=row.querySelector('.safeResult'),status=row.querySelector('.safeStatus'),note=row.querySelector('.safeNote');
   const objectUrl=URL.createObjectURL(file);orig.src=objectUrl;active.push(objectUrl);
   let img;try{img=await load(file)}catch(e){status.textContent=e.message;continue}
