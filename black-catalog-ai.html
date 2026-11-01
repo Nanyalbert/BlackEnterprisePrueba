@@ -141,7 +141,7 @@ function interpretFilename(filename) {
  const norm=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9.]/g,'');
  const viewWords=new Set(views.map(norm));
  let view='Sin identificar';
- while(parts.length>2){const last=norm(parts[parts.length-1]);const prev=norm(parts[parts.length-2]);if(viewWords.has(last)){view=parts.pop()+(view==='Sin identificar'?'':' '+view);continue}if(/^\d{1,2}$/.test(last)&&viewWords.has(prev)){parts.pop();view=parts.pop()+' '+last;continue}if(/^(foto|img|imagen|vista|frente|perfil|lateral|costado|detalle)[0-9]{1,2}$/.test(last)){view=parts.pop()+(view==='Sin identificar'?'':' '+view);continue}break}
+ while(parts.length>1){const last=norm(parts[parts.length-1]);const prev=norm(parts[parts.length-2]);if(viewWords.has(last)){view=parts.pop()+(view==='Sin identificar'?'':' '+view);continue}if(/^\d{1,2}$/.test(last)&&viewWords.has(prev)){parts.pop();view=parts.pop()+' '+last;continue}if(/^(foto|img|imagen|vista|frente|perfil|lateral|costado|detalle)[0-9]{1,2}$/.test(last)){view=parts.pop()+(view==='Sin identificar'?'':' '+view);continue}break}
  // Etiquetas auxiliares del nombre del archivo, no identifican productos distintos.
  const suffixes=new Set(['optics','optic','optical','optica','optico','eyewear','glasses','gafas','anteojos','anteojo','armazon','armazones','frame','frames','producto','product','foto','image']);
  for(let i=parts.length-1;i>=1;i--)if(suffixes.has(norm(parts[i])))parts.splice(i,1);
@@ -150,8 +150,14 @@ function interpretFilename(filename) {
  const colors=new Set(base.map(norm)),modifiers=new Set(prefixes.map(norm));
  const isColorToken=t=>{const n=norm(t);if(colors.has(n))return true;const ab=n.match(/^([a-z]+)\.([a-z]+)$/);return !!(ab&&modifiers.has(ab[1])&&(colors.has(ab[2])||['blue','black','brown','grey','gray','gold','green','red'].includes(ab[2])));};
  let taken=[];
- if(parts.length>=3&&isColorToken(parts[parts.length-1])){
+ // Admitir colores compuestos: "Gris Oscuro", "Azul Claro", "Negro Mate".
+ const toneWords=new Set(['oscuro','oscura','claro','clara','mate','matte','brillante','translucido','translucida','transparente','dark','light','matt','glossy']);
+ if(parts.length>=4&&toneWords.has(norm(parts[parts.length-1]))&&isColorToken(parts[parts.length-2])){
+   taken.unshift(parts.pop());taken.unshift(parts.pop());
+ }else if(parts.length>=3&&isColorToken(parts[parts.length-1])){
    taken.unshift(parts.pop());
+ }
+ if(taken.length){
    while(parts.length>=3&&taken.length<3){
      const candidate=norm(parts[parts.length-1]);
      if(colors.has(candidate)||modifiers.has(candidate)||isColorToken(parts[parts.length-1]))taken.unshift(parts.pop());else break;
