@@ -47,8 +47,10 @@ function process(img,options){
  const pad=Math.round(Math.min(w,h)*.014);
  const sx=Math.max(0,left-pad),sy=Math.max(0,top-pad);
  const sw=Math.min(w-sx,right-left+1+2*pad),sh=Math.min(h-sy,bottom-top+1+2*pad);
- // 74 % del lienzo de 1200 px; conservar proporción y permitir ajustar escala aparte.
- const targetWidth=side*.74,fit=Math.min(targetWidth/sw,(side*.72)/sh)*options.zoom;
+ // El tamaño es independiente de la posición: 82 % del ancho por defecto.
+ // Se limita la altura para evitar recortes; la posición vertical no modifica la escala.
+ const targetWidth=side*(options.widthPercent??82)/100;
+ const fit=Math.min(targetWidth/sw,(side*.90)/sh)*options.zoom;
  const dw=Math.round(sw*fit),dh=Math.round(sh*fit),dx=Math.round((side-dw)/2);
  const dy=Math.round(Math.max(0,Math.min(side-dh,targetY-dh/2)));
  oc.drawImage(src,sx,sy,sw,sh,dx,dy,dw,dh);
@@ -69,17 +71,18 @@ panel.querySelector('#safeRun').onclick=async()=>{
  summary.textContent='Preparando '+files.length+' fotografías…';
  for(const file of files){
   const row=document.createElement('article');row.className='catalog-compare-row';rows.append(row);
-  row.innerHTML='<strong>'+esc(file.name)+'</strong><div class="catalog-photo-compare" style="margin-top:12px"><figure><figcaption>ORIGINAL</figcaption><img class="safeOriginal" alt="Original"></figure><figure><figcaption>RESULTADO FIEL</figcaption><img class="safeResult" alt="Retoque fiel"></figure></div><div class="safe-controls"><label>Posición vertical del armazón <input class="safePosition" type="range" min="560" max="760" step="10" value="680"></label><span class="safePositionValue">+80 px</span></div><div class="safe-size-note">Vista previa cuadrada · 1200 × 1200 px · el armazón ocupa aproximadamente el 74 % del ancho.</div><div class="actions"><button type="button" class="secondary safePreview">Ampliar resultado</button><button type="button" class="secondary safePreviewOriginal">Ampliar original</button></div><label>¿Qué querés corregir?</label><textarea class="safeNote" rows="2" placeholder="Ej.: quedó muy chico, fondo blanco irregular, quedó muy grande. No se permite modificar el armazón."></textarea><div class="actions"><button type="button" class="secondary safeRedo">Corregir y regenerar</button><button type="button" class="secondary safeReject">Rechazar resultado</button><button type="button" class="safeApprove">Aprobar y descargar</button></div><small class="safeStatus" role="status"></small>';
+  row.innerHTML='<strong>'+esc(file.name)+'</strong><div class="catalog-photo-compare" style="margin-top:12px"><figure><figcaption>ORIGINAL</figcaption><img class="safeOriginal" alt="Original"></figure><figure><figcaption>RESULTADO FIEL</figcaption><img class="safeResult" alt="Retoque fiel"></figure></div><div class="safe-controls"><label>Tamaño del armazón <input class="safeWidth" type="range" min="65" max="90" step="1" value="82"></label><span class="safeWidthValue">82 %</span></div><div class="safe-controls"><label>Posición vertical del armazón <input class="safePosition" type="range" min="560" max="760" step="10" value="680"></label><span class="safePositionValue">+80 px</span></div><div class="safe-size-note">Vista previa cuadrada · 1200 × 1200 px · tamaño inicial 82 % del ancho.</div><div class="actions"><button type="button" class="secondary safePreview">Ampliar resultado</button><button type="button" class="secondary safePreviewOriginal">Ampliar original</button></div><label>¿Qué querés corregir?</label><textarea class="safeNote" rows="2" placeholder="Ej.: quedó muy chico, fondo blanco irregular, quedó muy grande. No se permite modificar el armazón."></textarea><div class="actions"><button type="button" class="secondary safeRedo">Corregir y regenerar</button><button type="button" class="secondary safeReject">Rechazar resultado</button><button type="button" class="safeApprove">Aprobar y descargar</button></div><small class="safeStatus" role="status"></small>';
   const orig=row.querySelector('.safeOriginal'),result=row.querySelector('.safeResult'),status=row.querySelector('.safeStatus'),note=row.querySelector('.safeNote');
   const objectUrl=URL.createObjectURL(file);orig.src=objectUrl;active.push(objectUrl);
   let img;try{img=await load(file)}catch(e){status.textContent=e.message;continue}
-  let approved=false,output='',zoom=1,threshold=242,clean=false,targetY=680;
+  let approved=false,output='',zoom=1,threshold=242,clean=false,targetY=680,widthPercent=82;
+  const widthControl=row.querySelector('.safeWidth');widthControl.addEventListener('input',()=>{widthPercent=Number(widthControl.value);row.querySelector('.safeWidthValue').textContent=widthPercent+' %';render()});
   const position=row.querySelector('.safePosition');position.addEventListener('input',()=>{targetY=Number(position.value);row.querySelector('.safePositionValue').textContent=(targetY>=600?'+':'')+(targetY-600)+' px';render()});
   row.querySelector('.safePreview').onclick=()=>enlarge(output,'Resultado ampliado · '+file.name);
   row.querySelector('.safePreviewOriginal').onclick=()=>enlarge(objectUrl,'Fotografía original · '+file.name);
   orig.onclick=()=>enlarge(objectUrl,'Fotografía original · '+file.name);
   result.onclick=()=>enlarge(output,'Resultado ampliado · '+file.name);
-  function render(){const processed=process(img,{zoom,threshold,clean,targetY});output=processed.url;result.src=output;approved=false;status.textContent=processed.cleaned?'Fondo claro periférico procesado. Revisá especialmente cristales transparentes y bordes antes de aprobar.':'No se detectó fondo claro seguro. Se conserva el fondo original; para eliminarlo sin riesgos, fotografiá sobre blanco.';row.querySelector('.safeApprove').textContent='Aprobar y descargar'}
+  function render(){const processed=process(img,{zoom,threshold,clean,targetY,widthPercent});output=processed.url;result.src=output;approved=false;status.textContent=processed.cleaned?'Fondo claro periférico procesado. Revisá especialmente cristales transparentes y bordes antes de aprobar.':'No se detectó fondo claro seguro. Se conserva el fondo original; para eliminarlo sin riesgos, fotografiá sobre blanco.';row.querySelector('.safeApprove').textContent='Aprobar y descargar'}
   render();
   row.querySelector('.safeRedo').onclick=()=>{const n=note.value.toLowerCase();if(/más chico|muy grande|alejar|menos zoom/.test(n))zoom=Math.max(.65,zoom-.08);
   if(/más abajo|bajar|bajalo|más bajo/.test(n)){targetY=Math.min(760,targetY+30);position.value=String(targetY)}
