@@ -228,7 +228,7 @@ function startApp() {
   loadState();
   document.getElementById("app").classList.add("visible");
   updateNavUser();
-  selectedDay = DIAS[new Date().getDay()];
+  selectedDay = getScheduleClock().day;
   renderDaySelector();
   renderSchedule();
   renderHero();
@@ -272,8 +272,18 @@ function renderHero() {
 // ══════════════════════════════════════════════════════
 // DAY SELECTOR & SCHEDULE
 // ══════════════════════════════════════════════════════
+function getScheduleClock(date=new Date()){
+  const parts=new Intl.DateTimeFormat("en-CA",{
+    timeZone:"America/Argentina/Cordoba",year:"numeric",month:"2-digit",day:"2-digit",
+    hour:"2-digit",minute:"2-digit",hourCycle:"h23"
+  }).formatToParts(date).reduce((a,p)=>{a[p.type]=p.value;return a;},{});
+  const iso=parts.year+"-"+parts.month+"-"+parts.day;
+  return {day:DIAS[new Date(iso+"T12:00:00Z").getUTCDay()],
+    minutes:Number(parts.hour)*60+Number(parts.minute),time:parts.hour+":"+parts.minute};
+}
+
 function renderDaySelector() {
-  const today = DIAS[new Date().getDay()];
+  const today = getScheduleClock().day;
   const ordered = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
   document.getElementById("day-selector").innerHTML = ordered.map(d=>{
     const hasDocs = getDoctorsForDay(d).length>0;
@@ -283,7 +293,7 @@ function renderDaySelector() {
 
 function selectDay(d) {
   selectedDay=d;
-  const today=DIAS[new Date().getDay()];
+  const today=getScheduleClock().day;
   if(scheduleFilters.time==="now" && d!==today) scheduleFilters.time="all";
   sanitizeScheduleInstitutions();
   saveScheduleFilters();
@@ -379,10 +389,11 @@ function setScheduleSearch(value){
 
 function setScheduleTime(value){
   if(!["all","morning","afternoon","now"].includes(value)) value="all";
-  const today=DIAS[new Date().getDay()];
-  if(value==="now" && selectedDay!==today){
-    showToast("El filtro “Ahora” solo está disponible para hoy.");
-    return;
+  const today=getScheduleClock().day;
+  if(value==="now"){
+    selectedDay=today;
+    sanitizeScheduleInstitutions();
+    renderDaySelector();
   }
   scheduleFilters.time=value;
   saveScheduleFilters();
@@ -403,7 +414,7 @@ function clearScheduleFilters(){
   renderSchedule();
 }
 
-function scheduleTurnMatchesTime(t,mode){
+function scheduleTurnMatchesTime(t,mode,clock=getScheduleClock()){
   if(mode==="all") return true;
   if(!t?.desde || !t?.hasta) return mode!=="now";
   const start=timeToMin(t.desde), end=timeToMin(t.hasta);
@@ -411,28 +422,41 @@ function scheduleTurnMatchesTime(t,mode){
   if(mode==="morning") return start<13*60;
   if(mode==="afternoon") return end>13*60;
   if(mode==="now"){
-    const now=new Date();
-    const mins=now.getHours()*60+now.getMinutes();
-    return start<=mins && end>=mins;
+    return end>clock.minutes;
   }
   return true;
 }
 
 function getFilteredDoctorsForDay(day){
+  const clock=getScheduleClock();
+  if(scheduleFilters.time==="now" && day!==clock.day) return [];
   const query=normName(scheduleFilters.query);
   const selected=new Set(scheduleFilters.institutions);
-  return getDoctorsForDay(day).map(doc=>{
+  const result=getDoctorsForDay(day).map(doc=>{
     const doctorMatches=!query || normName(doc.nombre).includes(query);
     const insts=doc.institucionesDelDia.map(inst=>{
       const instKey=scheduleInstitutionKey(inst.nombre);
       if(selected.size && !selected.has(instKey)) return null;
       if(query && !doctorMatches && !normName(inst.nombre).includes(query)) return null;
-      const turnos=inst.turnos.filter(t=>scheduleTurnMatchesTime(t,scheduleFilters.time));
+      const turnos=inst.turnos.filter(t=>scheduleTurnMatchesTime(t,scheduleFilters.time,clock));
       return turnos.length?{...inst,turnos}:null;
     }).filter(Boolean);
     const allTurnos=insts.flatMap(i=>i.turnos);
     return insts.length?{...doc,institucionesDelDia:insts,turnosDelDia:allTurnos}:null;
   }).filter(Boolean);
+  if(scheduleFilters.time==="now"){
+    const priority=doc=>{
+      const active=doc.turnosDelDia.filter(t=>timeToMin(t.desde)<=clock.minutes);
+      return active.length
+        ? [0,Math.min(...active.map(t=>timeToMin(t.hasta)))]
+        : [1,Math.min(...doc.turnosDelDia.map(t=>timeToMin(t.desde)))];
+    };
+    result.sort((a,b)=>{
+      const pa=priority(a),pb=priority(b);
+      return pa[0]-pb[0] || pa[1]-pb[1] || a.nombre.localeCompare(b.nombre,"es");
+    });
+  }
+  return result;
 }
 
 function renderScheduleFilters(){
@@ -458,7 +482,8 @@ function renderScheduleFilters(){
 
   document.querySelectorAll("[data-schedule-time]").forEach(btn=>{
     btn.classList.toggle("active",btn.dataset.scheduleTime===scheduleFilters.time);
-    btn.disabled=btn.dataset.scheduleTime==="now" && selectedDay!==DIAS[new Date().getDay()];
+    btn.disabled=false;
+    btn.setAttribute("aria-pressed",btn.dataset.scheduleTime===scheduleFilters.time?"true":"false");
   });
 
   const activeCount=selected.size+(scheduleFilters.query.trim()?1:0)+(scheduleFilters.time!=="all"?1:0);
@@ -470,7 +495,7 @@ function renderScheduleFilters(){
   if(selected.size) parts.push(selected.size===1?"1 clínica":selected.size+" clínicas");
   if(scheduleFilters.query.trim()) parts.push("búsqueda activa");
   if(scheduleFilters.time!=="all"){
-    parts.push({morning:"mañana",afternoon:"tarde",now:"ahora"}[scheduleFilters.time]);
+    parts.push({morning:"mañana",afternoon:"tarde",now:"desde ahora · "+getScheduleClock().time+" (Córdoba)"}[scheduleFilters.time]);
   }
   document.getElementById("schedule-filter-summary").textContent=parts.length?parts.join(" · "):"Sin filtros adicionales";
 }
@@ -478,13 +503,13 @@ function renderScheduleFilters(){
 function renderSchedule() {
   renderScheduleFilters();
   const docsForDay = getFilteredDoctorsForDay(selectedDay);
-  const today = DIAS[new Date().getDay()];
-  document.getElementById("schedule-day-label").textContent = selectedDay===today?`Hoy · ${selectedDay}`:selectedDay;
+  const today = getScheduleClock().day;
+  document.getElementById("schedule-day-label").textContent = selectedDay===today?`Hoy · ${selectedDay}${scheduleFilters.time==="now"?" · Desde "+getScheduleClock().time:""}`:selectedDay;
   document.getElementById("schedule-count").textContent = `${docsForDay.length} profesional${docsForDay.length!==1?"es":""}`;
 
   if (!docsForDay.length) {
     const filtered=scheduleFilters.institutions.length || scheduleFilters.query.trim() || scheduleFilters.time!=="all";
-    document.getElementById("schedule-list").innerHTML=`<div class="empty-state"><div class="empty-icon"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--arena)" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="empty-title">${filtered?"Sin resultados con estos filtros":"Sin consultas programadas"}</div><div class="empty-sub">${filtered?"Probá otra clínica, franja horaria o nombre.":`No hay oftalmólogos para el ${selectedDay}.`}</div>${filtered?'<button type="button" class="schedule-empty-clear" onclick="clearScheduleFilters()">Limpiar filtros</button>':""}</div>`;
+    document.getElementById("schedule-list").innerHTML=`<div class="empty-state"><div class="empty-icon"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--arena)" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="empty-title">${filtered?"Sin resultados con estos filtros":"Sin consultas programadas"}</div><div class="empty-sub">${filtered?(scheduleFilters.time==="now"?"No quedan horarios de atención confirmados desde este momento con los filtros actuales.":"Probá otra clínica, franja horaria o nombre."):`No hay oftalmólogos para el ${selectedDay}.`}</div>${filtered?'<button type="button" class="schedule-empty-clear" onclick="clearScheduleFilters()">Limpiar filtros</button>':""}</div>`;
     return;
   }
 
@@ -1554,6 +1579,23 @@ document.getElementById("manifest-link").href=URL.createObjectURL(blob);
 // BOOT
 // ══════════════════════════════════════════════════════
 
+
+
+// Mantener el filtro al día sin recargar ni cambiar los demás modos.
+function refreshLiveSchedule(){
+  if(scheduleFilters.time!=="now" || !selectedDay || document.visibilityState!=="visible") return;
+  const today=getScheduleClock().day;
+  if(selectedDay!==today){
+    selectedDay=today;
+    sanitizeScheduleInstitutions();
+    saveScheduleFilters();
+    renderDaySelector();
+  }
+  renderSchedule();
+}
+setInterval(refreshLiveSchedule,30000);
+document.addEventListener("visibilitychange",refreshLiveSchedule);
+window.addEventListener("focus",refreshLiveSchedule);
 
 (async function bootCrmOftalmologos(){
   const session = await ensurePortalSession();

@@ -830,7 +830,8 @@ svg[stroke="var(--arena)"], svg[fill="var(--arena)"]{stroke:var(--portal-text-3)
   background:var(--marfil);
   box-shadow:var(--shadow-card);
 }
-.schedule-filter-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.schedule-filter-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:12px}
+.schedule-filter-top>div:first-child{flex:1 1 160px}
 .schedule-filter-kicker{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--espresso)}
 .schedule-filter-hint{font-size:.68rem;color:var(--roble);margin-top:3px}
 .schedule-filter-more{
