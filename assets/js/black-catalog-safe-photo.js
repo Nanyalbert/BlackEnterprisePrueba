@@ -5,7 +5,7 @@ const input=document.getElementById('bulkImages');
 const section=document.getElementById('bulkSection');
 if(!input||!section)return;
 const panel=document.createElement('section');panel.className='panel catalog-safe-editor';
-panel.innerHTML='<h3>Estudio fotográfico fiel</h3><p>Edición conservadora: no redibuja armazones. Permite limpiar fondos claros opcionalmente, no reconstruye la geometría del producto y lo desplaza ligeramente debajo del centro sin reducir su escala (posición inicial Y: 680 px) en un lienzo de 1200 × 1200, dejando libre la zona superior para los controles de Tiendanube.</p><div class="actions"><button type="button" id="safeRun">Preparar fotos sin redibujar</button><button type="button" class="secondary" id="safeClear">Limpiar resultados</button></div><p id="safeSummary" role="status"></p><div id="safeRows"></div>';
+panel.innerHTML='<h3>2 · Preparar fotografías del lote</h3><p>Se utilizan las mismas fotos seleccionadas en la carga. Cada archivo se prepara en formato cuadrado de 1200 × 1200. Podés ajustar el encuadre y elegir qué versión usar en la ficha; todavía no se publica en Tiendanube.</p><div class="actions"><button type="button" id="safeRun">Preparar encuadres del lote</button><button type="button" class="secondary" id="safeClear">Limpiar resultados</button></div><p id="safeSummary" role="status"></p><div id="safeRows"></div>';
 section.querySelector('#bulkStats').after(panel);
 const rows=panel.querySelector('#safeRows'),summary=panel.querySelector('#safeSummary');
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -67,7 +67,7 @@ panel.querySelector('#safeClear').onclick=reset;
 input.addEventListener('change',reset);
 panel.querySelector('#safeRun').onclick=async()=>{
  reset();const currentGeneration=generation;const files=[...input.files].filter(f=>/^image\/(png|jpeg|webp)$/.test(f.type));
- if(!files.length){summary.textContent='Seleccioná fotografías en la carga masiva.';return}
+ if(!files.length){summary.textContent='Primero seleccioná fotografías en la etapa de carga. Esta herramienta utiliza exactamente esos archivos.';return}
  summary.textContent='Preparando '+files.length+' fotografías…';
  for(const file of files){
   const row=document.createElement('article');row.className='catalog-compare-row';rows.append(row);
@@ -119,7 +119,7 @@ panel.querySelector('#safeRun').onclick=async()=>{
   });
   row.querySelector('.safeModelReject').onclick=()=>{clearModelPreview();modelUpload.value='';modelReview.hidden=false;modelStatus.textContent='Imagen descartada. El producto original se conserva.'};
   row.querySelector('.safeModelApprove').onclick=()=>{if(!modelObjectUrl){modelStatus.textContent='Primero importá una imagen para revisar.';return}modelStatus.textContent='Imagen de modelo aprobada en esta sesión. Aún no se guarda ni publica automáticamente.'};
-  function render(){const processed=process(img,{threshold,clean,targetY,widthPercent});output=processed.url;result.src=output;approved=false;status.textContent=processed.cleaned?'Fondo claro periférico procesado. Revisá especialmente cristales transparentes y bordes antes de aprobar.':'No se detectó fondo claro seguro. Se conserva el fondo original; para eliminarlo sin riesgos, fotografiá sobre blanco.';row.querySelector('.safeApprove').textContent='Aprobar y descargar'}
+  function render(){const processed=process(img,{threshold,clean,targetY,widthPercent});output=processed.url;result.src=output;approved=false;status.textContent=processed.cleaned?'Fondo claro periférico procesado. Revisá especialmente cristales transparentes y bordes antes de aprobar.':'No se detectó fondo claro seguro. Se conserva el fondo original; para eliminarlo sin riesgos, fotografiá sobre blanco.';row.querySelector('.safeApprove').textContent='Aprobar y usar en ficha'}
   render();
   row.querySelector('.safeRedo').onclick=()=>{const n=note.value.toLowerCase();if(/más chico|muy grande|alejar|menos zoom/.test(n)){widthPercent=Math.max(65,widthPercent-3);widthControl.value=String(widthPercent)}
   if(/más abajo|bajar|bajalo|más bajo/.test(n)){targetY=Math.min(760,targetY+30);position.value=String(targetY)}
