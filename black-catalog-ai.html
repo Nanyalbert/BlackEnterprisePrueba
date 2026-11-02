@@ -473,7 +473,7 @@ new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true
 .catalog-ui #tiendanubeIntegration{border-color:#414a58}
 .catalog-ui button:focus-visible{outline:2px solid #a7bfff;outline-offset:3px}
 @media(max-width:700px){.catalog-ui .catalog-safe-editor{padding:15px!important}.catalog-ui .catalog-safe-editor .catalog-photo-compare{grid-template-columns:1fr!important}.catalog-ui .catalog-safe-editor .actions>button{flex:1 1 100%}}
-</style><link rel="stylesheet" href="assets/css/black-os-unified.css?v=20261019-02"><script src="assets/js/black-catalog-tiendanube-ui.js?v=20261019-10" defer></script><script src="assets/js/black-catalog-safe-photo.js?v=20261102-photo-choice-4"></script><!-- Black Catalog AI: recorrido progresivo, carga única y paneles plegables -->
+</style><link rel="stylesheet" href="assets/css/black-os-unified.css?v=20261019-02"><script src="assets/js/black-catalog-tiendanube-ui.js?v=20261019-10" defer></script><script src="assets/js/black-catalog-safe-photo.js?v=20261102-simple-photos-5"></script><!-- Black Catalog AI: recorrido progresivo, carga única y paneles plegables -->
 <style>
 #catalogWizard{display:flex;flex-direction:column;gap:12px;margin-top:12px}
 #catalogWizard .cw-step{border:1px solid #3e4147;border-radius:18px;background:#181a1f;overflow:hidden;transition:border-color .2s,box-shadow .2s}
@@ -575,46 +575,5 @@ new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true
   }
  });
  document.getElementById('bulkImages')?.addEventListener('change',()=>{for(const url of approved.values())URL.revokeObjectURL(url);approved.clear()});
-})();
-</script><style>
-.catalog-model-card{margin:16px 0;padding:16px;border:1px solid #4c4843;border-radius:14px;background:#1c1d20}
-.catalog-model-card summary{cursor:pointer;color:#d4c4b5;font-weight:700}
-.catalog-model-card .catalog-model-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:12px 0}
-.catalog-model-card .catalog-model-output img{width:min(100%,420px);aspect-ratio:1;object-fit:contain;border-radius:12px;background:white;cursor:zoom-in}
-.catalog-model-card .catalog-model-output{margin-top:12px}
-</style>
-<script>
-(function(){
- const results=document.getElementById('bulkResults');if(!results)return;
- function attach(card){
-  if(card.querySelector('.catalog-model-card'))return;
-  const details=document.createElement('details');details.className='catalog-model-card';
-  details.innerHTML='<summary>Opcional · Generar persona con este anteojo (IA)</summary><p>Usá la foto de este producto como referencia. La imagen generada es complementaria y requiere revisión.</p><div class="catalog-model-fields"><label>Modelo<select class="catalog-model-gender"><option value="neutral">Persona adulta</option><option value="femenino">Mujer adulta</option><option value="masculino">Hombre adulto</option></select></label><label>Escenario<select class="catalog-model-scene"><option value="studio">Estudio fotográfico</option><option value="lifestyle">Ambiente cotidiano</option></select></label></div><div class="actions"><button type="button" class="catalog-model-generate">Generar modelo con IA</button></div><p class="catalog-model-status" role="status"></p><div class="catalog-model-output" hidden><img alt="Persona generada con IA usando el anteojo"><p>Revisá puente, aros, color, bisagras y varillas. La IA puede alterar detalles.</p><div class="actions"><button type="button" class="catalog-model-approve">Aprobar para esta sesión</button><button type="button" class="secondary catalog-model-reject">Descartar</button></div></div>';
-  const photos=card.querySelector('.catalog-product-photos');(photos||card).append(details);
-  const status=details.querySelector('.catalog-model-status'),output=details.querySelector('.catalog-model-output'),preview=output.querySelector('img'),generate=details.querySelector('.catalog-model-generate');
-  generate.addEventListener('click',async()=>{
-   const img=card.querySelector('.catalog-product-photos img');
-   if(!img?.src){status.textContent='Primero cargá una fotografía de este producto.';return}
-   if(!window.BlackPortal?.getSupabase){status.textContent='Iniciá sesión para usar la generación.';return}
-   generate.disabled=true;generate.textContent='Generando fotografía…';status.textContent='Generando una persona con el anteojo seleccionado…';
-   try{
-    const response=await fetch(img.src);if(!response.ok)throw Error('No se pudo leer la foto');
-    const blob=await response.blob();if(!blob.type.startsWith('image/'))throw Error('La referencia no es una imagen');
-    const input=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('No se pudo leer la imagen'));reader.readAsDataURL(blob)});
-    const {data,error}=await window.BlackPortal.getSupabase().functions.invoke('black-catalog-model-photo',{body:{image:input,presentation:details.querySelector('.catalog-model-gender').value,scene:details.querySelector('.catalog-model-scene').value}});
-    if(error||data?.error)throw Error(data?.detail||data?.error||error?.message||'Error de generación');
-    if(!data?.image?.startsWith('data:image/'))throw Error('No se recibió una imagen válida');
-    preview.src=data.image;output.hidden=false;card.dataset.modelApproved='false';
-    status.textContent='Imagen generada. Revisá la fidelidad del armazón antes de aprobar.';
-    generate.textContent='Regenerar modelo con IA';
-   }catch(e){status.textContent='No se pudo generar: '+e.message;generate.textContent='Volver a intentar'}
-   finally{generate.disabled=false}
-  });
-  preview.addEventListener('click',()=>window.open(preview.src,'_blank'));
-  details.querySelector('.catalog-model-approve').addEventListener('click',()=>{card.dataset.modelApproved='true';status.textContent='Imagen de modelo aprobada para esta sesión. Todavía no se guarda ni publica automáticamente.'});
-  details.querySelector('.catalog-model-reject').addEventListener('click',()=>{preview.removeAttribute('src');output.hidden=true;card.dataset.modelApproved='false';status.textContent='Imagen descartada.'});
- }
- const scan=()=>results.querySelectorAll('.catalog-product-card').forEach(attach);
- new MutationObserver(scan).observe(results,{childList:true,subtree:true});scan();
 })();
 </script></body></html>
