@@ -553,4 +553,27 @@ new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true
  observer.observe(root,{childList:true});
  updateProgress();
 })();
+</script><script>
+/* Aprobaciones del estudio fotográfico: vincularlas con la ficha activa. */
+(function(){
+ const approved=new Map();
+ document.addEventListener('black-catalog:photo-approved',event=>{
+  const detail=event.detail;if(!detail?.file||!detail.originalName)return;
+  const cards=[...document.querySelectorAll('#bulkResults .catalog-product-card')];
+  for(const card of cards){
+   const original=[...card.querySelectorAll('.catalog-product-photos img')].find(img=>img.title===detail.originalName);
+   if(!original)continue;
+   const previous=approved.get(detail.originalName);if(previous)URL.revokeObjectURL(previous);
+   const url=URL.createObjectURL(detail.file);approved.set(detail.originalName,url);
+   original.src=url;original.alt='Fotografía aprobada · '+detail.originalName;
+   const status=card.querySelector('.catalog-photo-approval-status')||document.createElement('p');
+   status.className='catalog-photo-approval-status';status.style.cssText='color:#D4C4B5;font-size:12px;margin:10px 0';
+   status.textContent='Fotografía editada aprobada: '+detail.originalName+'. Vista vinculada a esta ficha; pendiente de persistencia y publicación.';
+   original.closest('.catalog-product-photos')?.append(status);
+   card.dataset.approved='false';
+   return;
+  }
+ });
+ document.getElementById('bulkImages')?.addEventListener('change',()=>{for(const url of approved.values())URL.revokeObjectURL(url);approved.clear()});
+})();
 </script></body></html>
