@@ -574,7 +574,7 @@
       }
 
       const hasCloudRecipes = await loadPrescriptions();
-      await Promise.all([loadCommissionRules(), loadPayments(), loadImportHistory()]);
+      await Promise.all([loadCommissionRules(), loadPayments(), loadImportHistory(), window.BlackDoctorVisits?.refresh()]);
 
       // Si Supabase todavía está vacío, no borramos el respaldo local actual.
       saveState();
@@ -676,6 +676,7 @@
       try {
         await loadCatalogs();
         await persistPayment(medico, branch);
+        await window.BlackDoctorVisits?.refresh();
         setSyncBadge('ok', 'Supabase sincronizado');
       } catch (err) {
         console.error(err);

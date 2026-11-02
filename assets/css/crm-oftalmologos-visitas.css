@@ -1,0 +1,23 @@
+/* Solo las tarjetas del cronograma; conserva estructura, filtros y acciones. */
+#schedule-list .schedule-visit {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  flex-wrap:wrap; padding:14px 18px; border-top:1px solid rgba(128,128,128,.16);
+}
+.schedule-visit-info { display:flex; flex-direction:column; gap:5px; min-width:0; }
+.schedule-visit-status { border-radius:999px; padding:5px 10px; font-size:.76rem;
+  font-weight:700; width:fit-content; line-height:1.4; }
+.schedule-visit-date { font-size:.72rem; color:var(--roble,#777); line-height:1.5; }
+.visit-never { color:#595959; background:#ededed; }
+.visit-recent { color:#17633c; background:#e1f3e8; }
+.visit-due { color:#795500; background:#fff2c2; }
+.visit-late { color:#8d3d0a; background:#ffe7d2; }
+.visit-overdue { color:#9c2525; background:#fbe0e0; }
+#schedule-list .schedule-visit-btn { border:1px solid #121212; border-radius:10px;
+  background:#121212; color:#fff; padding:10px 12px; min-height:44px;
+  font:inherit; font-size:.76rem; font-weight:600; cursor:pointer; }
+#schedule-list .schedule-visit-btn:disabled { cursor:default; opacity:.55; }
+#schedule-list .schedule-visit-btn.is-visited { background:#e1f3e8; color:#17633c; border-color:#abd1ba; opacity:1; }
+#schedule-list .schedule-visit-btn:focus-visible { outline:3px solid #b6a28d; outline-offset:3px; }
+@media(max-width:420px) {
+  #schedule-list .schedule-visit { padding:12px 14px; gap:10px; }
+}

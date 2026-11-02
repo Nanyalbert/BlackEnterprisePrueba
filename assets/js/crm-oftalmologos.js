@@ -503,7 +503,7 @@ function renderSchedule() {
       <button type="button" onclick="openCrmModal('${escAttr(doc.id)}')">Ver ficha</button>
       <button type="button" class="schedule-wa-btn" ${doc.telefono?"":"disabled"} onclick="openWhatsApp('${escAttr(doc.telefono||"")}')" title="${doc.telefono?"Abrir WhatsApp":"Sin teléfono cargado"}">WhatsApp</button>
     </div>`;
-    return `<div class="doctor-card" style="animation-delay:${idx*45}ms"><div class="doctor-card-header"><div class="doctor-avatar">${initials(doc.nombre)}</div><div class="doctor-info"><div class="doctor-name">${escHtml(doc.nombre)}</div><span class="doctor-service${isDemanda?" demanda":""}">${escHtml(doc.servicio)}</span></div></div>${instHTML}${actions}</div>`;
+    return `<div class="doctor-card" style="animation-delay:${idx*45}ms"><div class="doctor-card-header"><div class="doctor-avatar">${initials(doc.nombre)}</div><div class="doctor-info"><div class="doctor-name">${escHtml(doc.nombre)}</div><span class="doctor-service${isDemanda?" demanda":""}">${escHtml(doc.servicio)}</span></div></div>${instHTML}${window.BlackDoctorVisits?.card(doc)||""}${actions}</div>`;
   }).join("");
 }
 
