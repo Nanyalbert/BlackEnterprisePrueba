@@ -228,7 +228,7 @@ document.getElementById('analyzeBulk').onclick=()=>{
  const frontalSelect=document.createElement('select');frontalSelect.className='catalog-measures-front-photo';frontalSelect.setAttribute('aria-label','Seleccionar foto frontal del modelo '+g.info.name);
  const emptyFront=document.createElement('option');emptyFront.value='';emptyFront.textContent='Sin fotografía frontal';frontalSelect.append(emptyFront);
  g.files.forEach(({file,info})=>{const opt=document.createElement('option');opt.value=file.name;opt.textContent=file.name+' · '+(info.view||'Sin identificar');frontalSelect.append(opt)});
- const autoFront=g.files.find(x=>/\\b(frente|frontal|front)\\b/i.test(x.info.view||''));g.info.frontPhotoName=autoFront?.file.name||'';
+ const autoFront=g.files.find(x=>/\b(frente|frontal|front)\b/i.test(x.info.view||''));g.info.frontPhotoName=autoFront?.file.name||'';
  frontalSelect.value=g.info.frontPhotoName;
  const frontalHint=document.createElement('p');frontalHint.style.cssText='font-size:12px;color:#aaa;margin:7px 0 0';
  const updateFrontalHint=()=>{const file=g.files.find(x=>x.file.name===frontalSelect.value);const approved=file&&window.BlackCatalogPhotoSelections?.getApprovedFile(file.file.name);frontalHint.textContent=!file?'Sin foto frontal: la descripción mostrará un espacio pendiente.':approved?'Fotografía frontal aprobada y lista para incorporarse a la descripción.':'Seleccionaste una fotografía frontal. Debés aprobarla en el Estudio fotográfico antes de generar la descripción.'};
