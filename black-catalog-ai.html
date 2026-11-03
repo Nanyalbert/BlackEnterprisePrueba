@@ -176,6 +176,7 @@ function resetBulk(){bulkUrls.forEach(URL.revokeObjectURL);bulkUrls=[];bulkInput
 document.getElementById('clearBulk').onclick=resetBulk;
 bulkInput.addEventListener('change',()=>{bulkStats.textContent=bulkInput.files.length+' fotografías seleccionadas. Paso 1: identificá y agrupá los productos. Después prepará sus fotos y aprobá las versiones finales.'});
 document.getElementById('analyzeBulk').onclick=()=>{
+ const state=window.BlackCatalogSafePhoto?.count();if(!state||!state.total||state.approved!==state.total){bulkStats.textContent='Antes de agrupar, revisá y aprobá todas las fotografías preparadas ('+(state?.approved||0)+'/'+(state?.total||0)+').';return}
  bulkUrls.forEach(URL.revokeObjectURL);bulkUrls=[];bulkResults.replaceChildren();
  const files=[...bulkInput.files].filter(f=>['image/jpeg','image/png','image/webp'].includes(f.type)&&f.size<=12000000);
  if(files.length===0){bulkStats.textContent='Seleccioná al menos una fotografía compatible.';return}
@@ -473,7 +474,7 @@ new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true
 .catalog-ui #tiendanubeIntegration{border-color:#414a58}
 .catalog-ui button:focus-visible{outline:2px solid #a7bfff;outline-offset:3px}
 @media(max-width:700px){.catalog-ui .catalog-safe-editor{padding:15px!important}.catalog-ui .catalog-safe-editor .catalog-photo-compare{grid-template-columns:1fr!important}.catalog-ui .catalog-safe-editor .actions>button{flex:1 1 100%}}
-</style><link rel="stylesheet" href="assets/css/black-os-unified.css?v=20261019-02"><script src="assets/js/black-catalog-tiendanube-ui.js?v=20261019-10" defer></script><script src="assets/js/black-catalog-safe-photo.js?v=20261102-simple-photos-5"></script><!-- Black Catalog AI: recorrido progresivo, carga única y paneles plegables -->
+</style><link rel="stylesheet" href="assets/css/black-os-unified.css?v=20261019-02"><script src="assets/js/black-catalog-tiendanube-ui.js?v=20261019-10" defer></script><script src="assets/js/black-catalog-safe-photo.js?v=20261103-prepared-default-1"></script><!-- Black Catalog AI: recorrido progresivo, carga única y paneles plegables -->
 <style>
 #catalogWizard{display:flex;flex-direction:column;gap:12px;margin-top:12px}
 #catalogWizard .cw-step{border:1px solid #3e4147;border-radius:18px;background:#181a1f;overflow:hidden;transition:border-color .2s,box-shadow .2s}
@@ -509,9 +510,9 @@ new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true
  const progress=document.createElement('p');progress.className='cw-progress';progress.id='cwProgress';progress.setAttribute('role','status');
  root.prepend(progress);root.insertBefore(wizard,progress.nextSibling);
  const definitions=[
-  ['Cargar fotografías','Una foto o un lote completo. Siempre el mismo proceso.'],
-  ['Organizar productos','Revisá la agrupación por modelo, color y vistas; completá datos comerciales.'],
-  ['Preparar y revisar','Generá descripciones y revisá cada resultado antes de aprobar.'],
+  ['Cargar fotografías','Elegí una o muchas imágenes. La preparación comienza automáticamente.'],
+  ['Preparar y aprobar','Compará original y preparada. La preparada es la predeterminada.'],
+  ['Agrupar y revisar productos','Identificá frentes y perfiles por modelo; revisá fichas y descripciones.'],
   ['Publicación','Revisá la conexión y las opciones disponibles en Tiendanube.']
  ];
  const stages=definitions.map(([title,subtitle],i)=>{
@@ -525,27 +526,30 @@ new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true
   return details;
  });
  const bodies=stages.map(x=>x.querySelector('.cw-body'));
- const uploadIds=new Set(['bulkImages','analyzeBulk','clearBulk','bulkStats','catalogBuildVersion']);
- const groupIds=new Set(['bulkCommercial','bulkSearch','bulkProductsTitle','catalogProductNavigation','bulkResults']);
+ const editor=document.querySelector('.catalog-safe-editor');
  let reachedResults=false;
  for(const node of children){
+  if(node===editor){bodies[1].append(node);continue}
   if(node.id==='bulkCommercial'||node.id==='bulkProductsTitle'||node.id==='catalogProductNavigation'||node.id==='bulkResults'||node.querySelector?.('#bulkSearch'))reachedResults=true;
-  if(node.id==='bulkResults')reachedResults=true;
   if(!reachedResults)bodies[0].append(node);
-  else if(node.id==='bulkResults'||node.id==='bulkCommercial'||node.id==='bulkProductsTitle'||node.id==='catalogProductNavigation'||node.querySelector?.('#bulkSearch')||node.matches?.('label[for="bulkSearch"]')||node.classList?.contains('warning'))bodies[1].append(node);
   else bodies[2].append(node);
  }
  const makeFooter=(body,label,fn)=>{const footer=document.createElement('div');footer.className='cw-footer';const btn=document.createElement('button');btn.type='button';btn.textContent=label;btn.addEventListener('click',fn);footer.append(btn);body.append(footer);return btn};
  function updateProgress(){const visible=stages.filter(x=>x.dataset.unlocked==='true').length;const current=stages.findIndex(x=>x.open)+1;progress.textContent='PROCESO DE CARGA · ETAPA '+(current||1)+' DE 4 · '+visible+' disponibles'}
  function unlock(i){for(let j=0;j<=i;j++)stages[j].dataset.unlocked='true';stages[i].open=true;stages.forEach((step,j)=>{if(j!==i)step.open=false});updateProgress();stages[i].scrollIntoView({behavior:'smooth',block:'start'})}
  const input=document.getElementById('bulkImages'),analyze=document.getElementById('analyzeBulk'),results=document.getElementById('bulkResults'),clear=document.getElementById('clearBulk');
- // La etapa 2 solo se habilita después de identificar al menos una ficha real.
- analyze?.addEventListener('click',()=>{setTimeout(()=>{if(results?.querySelector('.catalog-product-card'))unlock(1)},0)});
- input?.addEventListener('change',()=>{if(!results?.querySelector('.catalog-product-card')){for(let i=1;i<stages.length;i++){stages[i].dataset.unlocked='false';stages[i].open=false}stages[0].open=true;updateProgress()}});
+ const updatePhotoStage=()=>{const count=window.BlackCatalogSafePhoto?.count();if(count?.total){stages[1].dataset.unlocked='true';updateProgress()}};
+ input?.addEventListener('change',()=>{
+  for(let i=1;i<stages.length;i++){stages[i].dataset.unlocked='false';stages[i].open=false}
+  stages[0].open=true;updateProgress();
+  setTimeout(()=>{updatePhotoStage();if(window.BlackCatalogSafePhoto?.count()?.total)unlock(1)},100);
+ });
  clear?.addEventListener('click',()=>{for(let i=1;i<stages.length;i++){stages[i].dataset.unlocked='false';stages[i].open=false}stages[0].open=true;updateProgress()});
- makeFooter(bodies[1],'Continuar a preparación y revisión',()=>{if(!results?.querySelector('.catalog-product-card')){window.alert('Primero procesá fotografías para identificar al menos un producto.');return}unlock(2)});
- const step3info=document.createElement('p');step3info.className='cw-note';step3info.textContent='Verificá fotos originales, agrupación, títulos, medidas y descripción. Las imágenes generadas requieren aprobación; nada se publica automáticamente.';bodies[2].prepend(step3info);
- makeFooter(bodies[2],'Continuar a publicación',()=>unlock(3));
+ makeFooter(bodies[1],'Aprobar fotografías y continuar a agrupación',async()=>{
+  try{await window.BlackCatalogSafePhoto.approveAll();unlock(2)}catch(e){window.alert(e.message)}
+ });
+ analyze?.addEventListener('click',()=>{setTimeout(()=>{if(results?.querySelector('.catalog-product-card'))unlock(2)},0)});
+ makeFooter(bodies[2],'Continuar a publicación',()=>{if(!results?.querySelector('.catalog-product-card')){window.alert('Primero identificá y agrupá los productos.');return}unlock(3)});
  const note=document.createElement('p');note.className='cw-note';note.textContent='La publicación completa con fotografías aún no está habilitada. No se enviará ningún producto sin confirmación. Podés verificar la conexión y acceder a las pruebas controladas desde Integraciones.';bodies[3].append(note);
  makeFooter(bodies[3],'Abrir integración Tiendanube',()=>{const tab=document.querySelector('#catalogSidebar [data-tab="integraciones"]');if(tab)tab.click();else document.getElementById('tiendanubeIntegration')?.scrollIntoView({behavior:'smooth'})});
  // Los módulos antiguos agregan controles al final de bulkSection. Se incorporan a la etapa de revisión.
@@ -559,6 +563,7 @@ new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true
  const approved=new Map();
  document.addEventListener('black-catalog:photo-approved',event=>{
   const detail=event.detail;if(!detail?.file||!detail.originalName)return;
+  if(!document.querySelector('#bulkResults .catalog-product-card'))return;
   const cards=[...document.querySelectorAll('#bulkResults .catalog-product-card')];
   for(const card of cards){
    const original=[...card.querySelectorAll('.catalog-product-photos img')].find(img=>img.title===detail.originalName);
@@ -574,6 +579,7 @@ new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true
    return;
   }
  });
+ document.addEventListener('black-catalog:photo-dirty',event=>{const key=event.detail?.originalName;if(!key)return;const prior=approved.get(key);if(prior){URL.revokeObjectURL(prior);approved.delete(key)}});
  document.getElementById('bulkImages')?.addEventListener('change',()=>{for(const url of approved.values())URL.revokeObjectURL(url);approved.clear()});
 })();
 </script></body></html>
