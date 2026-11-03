@@ -88,7 +88,7 @@ function cleanProductHeading(d,brand){
  const base=raw.split(/\s+[—–|]\s+/)[0].trim()
   .replace(/\s+(?:anteojos|armaz[oó]n|gafas)\s+(?:de\s+)?(?:receta|sol|frente|forma)\b.*$/i,'').trim();
  const brandText=String(brand||'').trim();
- let title=base;
+ let title=base.replace(/(?:\s*[-–—|_:]\s*|\s+)(?:foto\s+|vista\s+)?(?:frente|frontal|front|perfil|profile|lateral|side|costado|posterior|trasera)(?:\s*\d{1,2})?$/i,'').trim();
  if(brandText&&title.toLowerCase().startsWith(brandText.toLowerCase()+' '))title=title.slice(brandText.length).trim();
  if(!title)title=String(d.model||raw).trim();
  const variant=String(d.color||'').trim();
