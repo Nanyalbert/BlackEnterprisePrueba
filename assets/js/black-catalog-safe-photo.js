@@ -5,7 +5,7 @@ const input=document.getElementById('bulkImages');
 const section=document.getElementById('bulkSection');
 if(!input||!section)return;
 const panel=document.createElement('section');panel.className='panel catalog-safe-editor';
-panel.innerHTML='<h3>2 · Preparar fotografías del lote</h3><p>Se utilizan las mismas fotos seleccionadas en la carga. Cada archivo se prepara en formato cuadrado de 1200 × 1200. Podés ajustar el encuadre y elegir qué versión usar en la ficha; todavía no se publica en Tiendanube.</p><div class="actions"><button type="button" id="safeRun">Preparar encuadres del lote</button><button type="button" class="secondary" id="safeClear">Limpiar resultados</button></div><p id="safeSummary" role="status"></p><div id="safeRows"></div>';
+panel.innerHTML='<h3>Preparación automática de fotografías</h3><p>El sistema prepara las fotografías seleccionadas en 1200 × 1200 px. La versión preparada es la predeterminada, pero siempre ves la original a su lado para comparar. Revisá el encuadre y aprobá antes de agrupar.</p><div class="actions"><button type="button" id="safeRun">Volver a preparar fotografías</button><button type="button" class="secondary" id="safeClear">Limpiar resultados</button></div><p id="safeSummary" role="status"></p><div id="safeRows"></div>';
 section.querySelector('#bulkStats').after(panel);
 const rows=panel.querySelector('#safeRows'),summary=panel.querySelector('#safeSummary');
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -64,49 +64,59 @@ function enlarge(url,title){modal.querySelector('#safeLightboxImage').src=url;mo
 const style=document.createElement('style');style.textContent='.catalog-safe-editor .safeOriginal,.catalog-safe-editor .safeResult{cursor:zoom-in}.catalog-safe-editor .safe-controls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:12px 0}.catalog-safe-editor .safe-controls label{flex:1 1 230px;font-size:13px}.catalog-safe-editor .safe-controls input{width:100%;accent-color:#D4C4B5}.catalog-safe-lightbox{width:min(94vw,1080px);max-width:94vw;max-height:94vh;box-sizing:border-box;border:1px solid #5a5a5a;border-radius:16px;padding:18px;background:#151515;color:#fff}.catalog-safe-lightbox::backdrop{background:rgba(0,0,0,.88)}.catalog-safe-lightbox .safe-lightbox-head{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:14px}.catalog-safe-lightbox img{display:block;width:100%;max-height:75vh;object-fit:contain;background:#fff;border-radius:8px}.catalog-safe-lightbox p{font-size:12px;color:#bbb}.catalog-safe-editor .safePreview{background:#D4C4B5;color:#121212;border-color:#D4C4B5}';style.textContent+='.catalog-safe-editor .catalog-photo-compare{align-items:start}.catalog-safe-editor .catalog-photo-compare figure{min-width:0}.catalog-safe-editor .catalog-photo-compare img{width:100%!important;height:auto!important;aspect-ratio:1/1!important;object-fit:contain!important;background:#fff;border:1px solid #494949;border-radius:12px}.catalog-safe-editor .safe-size-note{color:#bfbfbf;font-size:12px;margin:8px 0 14px}.catalog-safe-editor .safeResult{outline:2px solid #D4C4B5;outline-offset:2px}';document.head.append(style);
 function reset(){generation++;rows.replaceChildren();summary.textContent='';for(const u of active)URL.revokeObjectURL(u);active=[]}
 panel.querySelector('#safeClear').onclick=reset;
-input.addEventListener('change',reset);
+input.addEventListener('change',()=>{reset();if(input.files.length)panel.querySelector('#safeRun').click()});
 panel.querySelector('#safeRun').onclick=async()=>{
  reset();const currentGeneration=generation;const files=[...input.files].filter(f=>/^image\/(png|jpeg|webp)$/.test(f.type));
  if(!files.length){summary.textContent='Primero seleccioná fotografías en la etapa de carga. Esta herramienta utiliza exactamente esos archivos.';return}
  summary.textContent='Preparando '+files.length+' fotografías…';
  for(const file of files){
   const row=document.createElement('article');row.className='catalog-compare-row';rows.append(row);
-  row.innerHTML='<strong>'+esc(file.name)+'</strong><div class="catalog-photo-compare" style="margin-top:12px"><figure><figcaption>ORIGINAL</figcaption><img class="safeOriginal" alt="Original"></figure><figure><figcaption>RESULTADO FIEL</figcaption><img class="safeResult" alt="Retoque fiel"></figure></div><div class="safe-controls"><label>Tamaño del armazón <input class="safeWidth" type="range" min="65" max="90" step="1" value="83"></label><span class="safeWidthValue">83 %</span></div><div class="safe-controls"><label>Posición vertical del armazón <input class="safePosition" type="range" min="560" max="760" step="10" value="680"></label><span class="safePositionValue">+80 px</span></div><div class="actions"><button type="button" class="secondary safeReset">Restablecer encuadre</button></div><div class="safe-size-note">Vista previa cuadrada · 1200 × 1200 px · tamaño inicial 83 % del ancho.</div><div class="actions"><button type="button" class="secondary safePreview">Ampliar resultado</button><button type="button" class="secondary safePreviewOriginal">Ampliar original</button></div><label>¿Qué querés corregir?</label><textarea class="safeNote" rows="2" placeholder="Ej.: quedó muy chico, fondo blanco irregular, quedó muy grande. No se permite modificar el armazón."></textarea><div class="actions"><button type="button" class="secondary safeRedo">Corregir y regenerar</button><button type="button" class="secondary safeReject">Rechazar resultado</button><button type="button" class="secondary safeUseOriginal">Usar original</button><button type="button" class="safeApprove">Usar editada</button></div><small class="safeStatus" role="status"></small>';
+  row.innerHTML='<strong>'+esc(file.name)+'</strong><div class="catalog-photo-compare" style="margin-top:12px"><figure><figcaption>ORIGINAL · REFERENCIA</figcaption><img class="safeOriginal" alt="Original"></figure><figure><figcaption>PREPARADA · SE USARÁ AL APROBAR</figcaption><img class="safeResult" alt="Retoque fiel"></figure></div><div class="safe-controls"><label>Tamaño del armazón <input class="safeWidth" type="range" min="65" max="90" step="1" value="83"></label><span class="safeWidthValue">83 %</span></div><div class="safe-controls"><label>Posición vertical del armazón <input class="safePosition" type="range" min="560" max="760" step="10" value="680"></label><span class="safePositionValue">+80 px</span></div><div class="actions"><button type="button" class="secondary safeReset">Restablecer encuadre</button></div><div class="safe-size-note">Vista previa cuadrada · 1200 × 1200 px · tamaño inicial 83 % del ancho.</div><div class="actions"><button type="button" class="secondary safePreview">Ampliar resultado</button><button type="button" class="secondary safePreviewOriginal">Ampliar original</button></div><label>¿Qué querés corregir?</label><textarea class="safeNote" rows="2" placeholder="Ej.: quedó muy chico, fondo blanco irregular, quedó muy grande. No se permite modificar el armazón."></textarea><div class="actions"><button type="button" class="secondary safeRedo">Aplicar ajustes</button><button type="button" class="safeApprove">Aprobar fotografía preparada</button></div><small class="safeStatus" role="status"></small>';
   const orig=row.querySelector('.safeOriginal'),result=row.querySelector('.safeResult'),status=row.querySelector('.safeStatus'),note=row.querySelector('.safeNote');
   const objectUrl=URL.createObjectURL(file);orig.src=objectUrl;active.push(objectUrl);
   let img;try{img=await load(file)}catch(e){if(currentGeneration===generation)status.textContent=e.message;continue}
   if(currentGeneration!==generation)return;
-  let approved=false,output='',threshold=242,clean=false,targetY=680,widthPercent=83;
+  let approved=false,output='',threshold=242,clean=true,targetY=680,widthPercent=83;
   const widthControl=row.querySelector('.safeWidth');widthControl.addEventListener('input',()=>{widthPercent=Number(widthControl.value);row.querySelector('.safeWidthValue').textContent=widthPercent+' %';render()});
-  row.querySelector('.safeReset').onclick=()=>{widthPercent=83;targetY=680;threshold=242;clean=false;widthControl.value='83';row.querySelector('.safeWidthValue').textContent='83 %';row.querySelector('.safePositionValue').textContent='+80 px';row.querySelector('.safePosition').value='680';note.value='';render();};
+  row.querySelector('.safeReset').onclick=()=>{widthPercent=83;targetY=680;threshold=242;clean=true;widthControl.value='83';row.querySelector('.safeWidthValue').textContent='83 %';row.querySelector('.safePositionValue').textContent='+80 px';row.querySelector('.safePosition').value='680';note.value='';render();};
   const position=row.querySelector('.safePosition');position.addEventListener('input',()=>{targetY=Number(position.value);row.querySelector('.safePositionValue').textContent=(targetY>=600?'+':'')+(targetY-600)+' px';render()});
   row.querySelector('.safePreview').onclick=()=>enlarge(output,'Resultado ampliado · '+file.name);
   row.querySelector('.safePreviewOriginal').onclick=()=>enlarge(objectUrl,'Fotografía original · '+file.name);
   orig.onclick=()=>enlarge(objectUrl,'Fotografía original · '+file.name);
   result.onclick=()=>enlarge(output,'Resultado ampliado · '+file.name);
-  function render(){row.querySelector('.safeUseOriginal').textContent='Usar original';const processed=process(img,{threshold,clean,targetY,widthPercent});output=processed.url;result.src=output;approved=false;status.textContent=processed.cleaned?'Fondo claro periférico procesado. Revisá especialmente cristales transparentes y bordes antes de aprobar.':'No se detectó fondo claro seguro. Se conserva el fondo original; para eliminarlo sin riesgos, fotografiá sobre blanco.';row.querySelector('.safeApprove').textContent='Usar editada'}
+  function render(){
+   const processed=process(img,{threshold,clean,targetY,widthPercent});
+   output=processed.url;result.src=output;approved=false;
+   row.dataset.photoReady='true';row.dataset.photoApproved='false';
+   document.dispatchEvent(new CustomEvent('black-catalog:photo-dirty',{detail:{originalName:file.name}}));
+   row.querySelector('.safeApprove').textContent='Aprobar fotografía preparada';
+   status.textContent=processed.cleaned?'Pendiente de aprobación · fondo claro y encuadre preparados. Revisá los bordes y cristales transparentes.':'Pendiente de aprobación · encuadre preparado. No se pudo eliminar todo el fondo con seguridad; revisá la comparación.';
+  }
   render();
   row.querySelector('.safeRedo').onclick=()=>{const n=note.value.toLowerCase();if(/más chico|muy grande|alejar|menos zoom/.test(n)){widthPercent=Math.max(65,widthPercent-3);widthControl.value=String(widthPercent)}
   if(/más abajo|bajar|bajalo|más bajo/.test(n)){targetY=Math.min(760,targetY+30);position.value=String(targetY)}
   if(/más arriba|subir|subilo|más alto/.test(n)){targetY=Math.max(560,targetY-30);position.value=String(targetY)}
   row.querySelector('.safePositionValue').textContent=(targetY>=600?'+':'')+(targetY-600)+' px';if(/más grande|muy chico|acercar/.test(n)){widthPercent=Math.min(90,widthPercent+3);widthControl.value=String(widthPercent)}row.querySelector('.safeWidthValue').textContent=widthPercent+' %';if(/limpiar fondo|blanquear fondo|quitar fondo/.test(n)){clean=true;threshold=Math.max(225,threshold-5)}if(/conservar fondo|sin quitar fondo|mantener fondo/.test(n))clean=false;render();status.textContent+=' Corrección aplicada solo al encuadre o fondo. No se reinterpretó el producto.'};
-  row.querySelector('.safeReject').onclick=()=>{approved=false;status.textContent='Edición descartada. Podés usar la original o ajustar nuevamente el encuadre.';row.querySelector('.safeApprove').textContent='Usar editada'};
-  row.querySelector('.safeUseOriginal').onclick=()=>{document.dispatchEvent(new CustomEvent('black-catalog:photo-approved',{detail:{originalName:file.name,file,variant:'original'}}));approved=true;status.textContent='Original elegida para la ficha de este producto. No se descargó nada.';row.querySelector('.safeUseOriginal').textContent='Original elegida ✓';row.querySelector('.safeApprove').textContent='Usar editada'};
-  row.querySelector('.safeApprove').onclick=async()=>{
+  row._approvePrepared=async()=>{
    const button=row.querySelector('.safeApprove');button.disabled=true;
    try{
      const response=await fetch(output),blob=await response.blob();
-     const newName=file.name.replace(/\.[^.]+$/,'')+'-fiel-1200.png';
+     const newName=file.name;
      const approvedFile=new File([blob],newName,{type:'image/png'});
      // El evento vincula el resultado con su ficha en la carga actual, sin alterar el archivo fuente.
      document.dispatchEvent(new CustomEvent('black-catalog:photo-approved',{detail:{originalName:file.name,file:approvedFile,variant:'editada'}}));
-     approved=true;status.textContent='Fotografía aprobada y vinculada a la ficha del producto en esta sesión. El original se conserva.';
-     button.textContent='Editada elegida ✓';row.querySelector('.safeUseOriginal').textContent='Usar original';
+     approved=true;row.dataset.photoApproved='true';status.textContent='Aprobada ✓ · se utilizará la versión preparada al agrupar. El original sigue disponible como referencia.';
+     button.textContent='Fotografía aprobada ✓';
    }catch(error){status.textContent='No se pudo guardar la aprobación: '+error.message}
    finally{button.disabled=false}
   };
+  row.querySelector('.safeApprove').onclick=row._approvePrepared;
  }
  if(currentGeneration!==generation)return;
- summary.textContent='Preparadas '+files.length+' fotografías sin limpieza automática de fondo. Para activarla, escribí «limpiar fondo» en la corrección. Revisá antes de aprobar; no se publica automáticamente.';
+ summary.textContent='Preparadas '+files.length+' fotografías. Compará original y preparada; la preparada es la opción predeterminada. Aprobá todas para pasar a la agrupación.';
+};
+window.BlackCatalogSafePhoto={
+  approveAll:async()=>{const list=[...rows.querySelectorAll('.catalog-compare-row')];if(!list.length)throw Error('Primero cargá fotografías.');for(const row of list){if(row.dataset.photoReady!=='true')throw Error('Todavía hay fotografías procesándose.');if(row.dataset.photoApproved!=='true'){await row._approvePrepared();if(row.dataset.photoApproved!=='true')throw Error('No se pudo aprobar una fotografía.')}}return true},
+  count:()=>({total:rows.querySelectorAll('.catalog-compare-row').length,approved:rows.querySelectorAll('[data-photo-approved="true"]').length})
 };
 })();
