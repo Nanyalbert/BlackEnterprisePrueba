@@ -82,16 +82,41 @@ function editorialSection(d){
  '<p style="font:400 14px/1.9 Montserrat,Arial,sans-serif;color:#E5E5E5;margin:0 0 30px;max-width:360px">'+e(story.body)+'</p></div>'+
  '<div style="position:relative;border-top:1px solid #474747;padding-top:19px"><p style="font:500 12px/1.8 Montserrat,Arial,sans-serif;color:#CFCFCF;margin:0">'+e(story.closing)+'</p></div></div></section>';
 }
+function titleKey(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'')}
+function cleanProductHeading(d,brand){
+ const raw=String(d.name||d.model||'Modelo pendiente').trim();
+ const base=raw.split(/\s+[—–|]\s+/)[0].trim()
+  .replace(/\s+(?:anteojos|armaz[oó]n|gafas)\s+(?:de\s+)?(?:receta|sol|frente|forma)\b.*$/i,'').trim();
+ const brandText=String(brand||'').trim();
+ let title=base;
+ if(brandText&&title.toLowerCase().startsWith(brandText.toLowerCase()+' '))title=title.slice(brandText.length).trim();
+ if(!title)title=String(d.model||raw).trim();
+ const variant=String(d.color||'').trim();
+ const words=title.split(/\s+/);
+ const variantWords=variant.split(/\s+/).filter(Boolean);
+ // El color o código de variante no se repite al final del nombre.
+ if(variantWords.length&&words.length>=variantWords.length*2){
+  const last=words.slice(-variantWords.length).join(' ');
+  const previous=words.slice(-variantWords.length*2,-variantWords.length).join(' ');
+  if(titleKey(last)===titleKey(variant)&&titleKey(previous)===titleKey(variant))title=words.slice(0,-variantWords.length).join(' ');
+ }
+ const showVariant=variant&&titleKey(variant)&&!titleKey(title).includes(titleKey(variant));
+ return {title,variant:showVariant?variant:''};
+}
 function render(d,brands=[]){
- const b=brands.find(x=>x.id===d.brandId),brand=b?.name||d.brand||'Black Óptica',kind=d.category==='sun'?'Lentes de sol':d.category==='optical'?'Armazón recetado':'Anteojos',name=d.name||'Modelo pendiente',color=d.color||'',k=shape(d.shape||d.style),facts=(d.confirmed||[]).map(String).filter(Boolean).slice(0,12),logo=b?.logo&&/^https:\/\//.test(b.logo)?b.logo:'';
+ const b=brands.find(x=>x.id===d.brandId),brand=b?.name||d.brand||'Black Óptica',kind=d.category==='sun'?'Anteojos de sol':d.category==='optical'?'Anteojos de receta':d.category==='clip2'?'Clip-on 2 en 1':d.category==='clip5'?'Clip-on 5 en 1':'Anteojos',heading=cleanProductHeading(d,brand),name=heading.title,color=heading.variant,k=shape(d.shape||d.style),facts=(d.confirmed||[]).map(String).filter(Boolean).slice(0,12),logo=b?.logo&&/^https:\/\//.test(b.logo)?b.logo:'';
  const fixed=d.category==='sun'?'En Black Óptica te ayudamos a elegir anteojos de sol según diseño, ajuste y especificaciones de protección verificadas.':'En Black Óptica te asesoramos para combinar este armazón con cristales adecuados a tu receta y necesidades de uso.';
  const intro=e(d.intro||'Conocé este modelo de cerca: su forma, su color y los detalles que lo hacen único.');
  return '<style>@import url(https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap);.bo-panel{transition:transform .25s ease,box-shadow .25s ease}.bo-panel:hover{transform:translateY(-3px);box-shadow:0 15px 30px rgba(0,0,0,.09)}.bo-benefit{transition:transform .2s ease,border-color .2s ease}.bo-benefit:hover{transform:translateY(-2px);border-color:#AFAFAF!important}@media(max-width:500px){.bo-flex-wrap{flex-direction:column!important}.bo-rostros-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.bo-medidas-wrap{flex-wrap:wrap!important}.bo-editorial-grid{grid-template-columns:1fr!important}.bo-panel{padding:24px!important}}@media(prefers-reduced-motion:reduce){.bo-panel,.bo-benefit{transition:none!important}}</style><div style="font-family:Montserrat,Arial,sans-serif;color:#111;background:#fff;max-width:740px;margin:0 auto;padding:36px 20px;box-sizing:border-box">'+
- (logo?'<div style="text-align:center;margin:0 0 16px"><img src="'+e(logo)+'" alt="'+e(brand)+'" style="height:34px;object-fit:contain"></div>':'')+
- '<p style="text-align:center;font:700 10px Montserrat,Arial,sans-serif;letter-spacing:7px;text-transform:uppercase;color:#D4C4B5;margin:0 0 12px">'+e(brand)+' &middot; '+e(kind)+'</p><h1 style="text-align:center;font:700 28px Montserrat,Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;margin:0 0 8px">'+e(name)+(color?' &mdash; '+e(color):'')+'</h1><p style="text-align:center;font:300 11px Montserrat,Arial,sans-serif;color:#aaa;letter-spacing:4px;margin:0 0 20px">'+e(d.sku||'')+(d.sku?' &mdash; ':'')+e(k==='unknown'?'':k)+'</p><div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:0 0 28px"><span style="border:1px solid #111;padding:6px 13px;border-radius:100px;font:700 10px Montserrat,Arial,sans-serif">'+e(kind)+'</span><span style="background:#111;color:#FFF;padding:6px 13px;border-radius:100px;font:700 10px Montserrat,Arial,sans-serif">'+e(brand)+'</span></div>'+
+ (logo?'<div style="text-align:center;margin:0 0 22px"><img src="'+e(logo)+'" alt="'+e(brand)+'" style="display:inline-block;height:54px;width:auto;max-width:250px;max-height:70px;object-fit:contain"></div>':'')+
+ '<p style="text-align:center;font:600 10px/1.5 Montserrat,Arial,sans-serif;letter-spacing:3px;text-transform:uppercase;color:#777;margin:0 0 13px">'+(logo?'EL MODELO':e(brand))+'</p>'+
+ '<h1 style="text-align:center;font:700 clamp(24px,4vw,34px)/1.24 Montserrat,Arial,sans-serif;letter-spacing:-.7px;text-transform:uppercase;overflow-wrap:anywhere;color:#121212;max-width:650px;margin:0 auto 12px">'+e(name)+'</h1>'+
+ (color?'<p style="text-align:center;font:500 12px/1.6 Montserrat,Arial,sans-serif;color:#666;letter-spacing:1px;margin:0 0 12px">Color · '+e(color)+'</p>':'')+
+ (d.sku?'<p style="text-align:center;font:500 11px/1.5 Montserrat,Arial,sans-serif;color:#8A8A8A;letter-spacing:1.2px;margin:0 0 16px">Código · '+e(d.sku)+'</p>':'')+
+ '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:0 0 28px"><span style="border:1px solid #DEDEDE;background:#F6F6F6;color:#222;padding:8px 16px;border-radius:100px;font:600 11px/1.3 Montserrat,Arial,sans-serif">'+e(kind)+'</span></div>'+
  line()+clips(d)+measures(d.measurements)+line()+faces(d)+line()+
  '<p style="text-align:center;font:400 15px/1.9 Montserrat,Arial,sans-serif;color:#444;max-width:590px;margin:0 auto 32px">'+intro+'</p>'+editorialSection(d)+benefits(d)+line()+
  '<div style="text-align:center"><p style="font:700 16px Montserrat,Arial,sans-serif;margin:0 0 8px">Vení a probarlo en nuestras sucursales o consultanos por WhatsApp.</p><p style="font:300 12px/1.7 Montserrat,Arial,sans-serif;color:#777;margin:0">Asesoramiento personalizado · Consultanos por retiro, disponibilidad y opciones de envío</p></div></div>';
 }
-window.BlackCatalogMasterV2={render,version:'2.4'};
+window.BlackCatalogMasterV2={render,version:'2.6'};
 })();
