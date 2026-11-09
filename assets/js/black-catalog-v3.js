@@ -93,13 +93,35 @@ async function annotateFrontPhoto(source,requested,guides){
  if(!segments.length)return {image:source,count:0};
  const photo=new Image();photo.src=source;await photo.decode();
  const canvas=document.createElement('canvas');
- const w=canvas.width=photo.naturalWidth,h=canvas.height=photo.naturalHeight;
- const ctx=canvas.getContext('2d');ctx.drawImage(photo,0,0,w,h);
- const unit=Math.max(1,Math.min(w,h)/360);
+ const w=photo.naturalWidth,h=photo.naturalHeight;
+ const unit=Math.max(1,Math.min(w,h)/420),margin=Math.ceil(96*unit);
+ canvas.width=w+2*margin;canvas.height=h+2*margin;
+ const ctx=canvas.getContext('2d');
+ ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+ ctx.drawImage(photo,margin,margin,w,h);
  ctx.lineCap='round';ctx.lineJoin='round';ctx.textAlign='center';ctx.textBaseline='middle';
- ctx.font='bold '+(15*unit)+'px Arial,sans-serif';
- for(const [key,[x1,y1,x2,y2]] of segments){
-  const ax=x1*w,ay=y1*h,bx=x2*w,by=y2*h;
+ ctx.font='bold '+(16*unit)+'px Arial,sans-serif';
+ const anchors=segments.map(([key,[x1,y1,x2,y2]])=>[key,margin+x1*w,margin+y1*h,margin+x2*w,margin+y2*h]);
+ const top=Math.min(...anchors.map(([, ,y1, ,y2])=>Math.min(y1,y2)));
+ const bottom=Math.max(...anchors.map(([, ,y1, ,y2])=>Math.max(y1,y2)));
+ const left=Math.min(...anchors.map(([,x1, ,x2])=>Math.min(x1,x2)));
+ const right=Math.max(...anchors.map(([,x1, ,x2])=>Math.max(x1,x2)));
+ const dimensions=anchors.map(([key,x1,y1,x2,y2])=>{
+  if(key==='height'){
+   const useLeft=(x1+x2)/2<(left+right)/2;
+   const x=useLeft?left-28*unit:right+28*unit;
+   return {key,x1,y1,x2,y2,ax:x,ay:y1,bx:x,by:y2,side:useLeft?-1:1};
+  }
+  const y=key==='total'?bottom+30*unit:top-(key==='bridge'?66:30)*unit;
+  return {key,x1,y1,x2,y2,ax:x1,ay:y,bx:x2,by:y,side:0};
+ });
+ for(const {x1,y1,x2,y2,ax,ay,bx,by} of dimensions){
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(ax,ay);
+  ctx.moveTo(x2,y2);ctx.lineTo(bx,by);
+  ctx.strokeStyle='#fff';ctx.lineWidth=3*unit;ctx.stroke();
+  ctx.strokeStyle='#8b8178';ctx.lineWidth=unit;ctx.stroke();
+ }
+ for(const {ax,ay,bx,by} of dimensions){
   const angle=Math.atan2(by-ay,bx-ax),head=Math.min(8*unit,Math.hypot(bx-ax,by-ay)/3);
   ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);
   for(const [x,y,direction] of [[ax,ay,angle],[bx,by,angle+Math.PI]]){
@@ -110,12 +132,12 @@ async function annotateFrontPhoto(source,requested,guides){
   ctx.strokeStyle='#fff';ctx.lineWidth=5*unit;ctx.stroke();
   ctx.strokeStyle='#44382e';ctx.lineWidth=2*unit;ctx.stroke();
  }
- for(const [key,[x1,y1,x2,y2]] of segments){
-  const label=frontGuideLabels[key],half=ctx.measureText(label).width/2+3*unit;
-  const x=Math.max(half,Math.min(w-half,(x1+x2)*w/2+(key==='height'?half+5*unit:0)));
-  const y=Math.max(10*unit,Math.min(h-10*unit,(y1+y2)*h/2-(key==='height'?0:12*unit)));
-  ctx.strokeStyle='#fff';ctx.lineWidth=4*unit;ctx.strokeText(label,x,y);
-  ctx.fillStyle='#302820';ctx.fillText(label,x,y);
+ for(const {key,ax,ay,bx,by,side} of dimensions){
+  ctx.save();
+  ctx.translate((ax+bx)/2+side*14*unit,(ay+by)/2-(side?0:13*unit));
+  if(side)ctx.rotate(-Math.PI/2);
+  ctx.fillStyle='#302820';ctx.fillText(frontGuideLabels[key],0,0);
+  ctx.restore();
  }
  return {image:canvas.toDataURL('image/jpeg',.9),count:segments.length};
 }
