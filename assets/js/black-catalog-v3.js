@@ -81,7 +81,45 @@ by('name').addEventListener('input',()=>{aiResult=null;const detected=identifyBr
 by('v3Copy').onclick=()=>navigator.clipboard.writeText(lastHTML).then(()=>by('v3Status').textContent='Código HTML copiado.');
 
 async function imageData(file){const img=await createImageBitmap(file);const scale=Math.min(1,1000/Math.max(img.width,img.height));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);img.close();return canvas.toDataURL('image/jpeg',.74)}
-async function analyzeGroup(info,files,status){const brand=identifyBrand(info.name);if(!files.length)throw Error('Sin fotografías');if(files.length>3)files=files.slice(0,3);const images=await Promise.all(files.map(imageData));const client=window.BlackPortal.getSupabase();const {data,error}=await client.functions.invoke('black-catalog-analyze',{body:{name:info.name,images,brand:brand?.name||info.brand,references:brand?.description||''}});if(error||data?.error){let detail=data?.detail||data?.error||'';if(error?.context?.json){try{const body=await error.context.json();detail=body?.detail||body?.error||detail}catch(_){}}throw Error((detail?String(detail)+' · ':'')+(error?.context?.status?'HTTP '+error.context.status:'')+(detail?'':error?.message||'No se pudo analizar'))}const result=data.result||{};const category=result.category||info.category||'unknown';const title=window.BlackCatalogTitleWithCategory?.(result.suggestedTitle||info.name,category)||result.suggestedTitle||info.name;result.suggestedTitle=title;const doc=htmlFor({name:title,brandId:brand?.id,brand:info.brand,color:info.color,category,shape:result.shape||'',gender:result.gender||'',confirmed:result.confirmedFeatures||[],intro:result.editorial||'',measurements:info.measurements,frontImage:info.frontImage||''});if(status)status.textContent='HTML generado · confianza '+(result.confidence||'no informada')+'. Revisá antes de publicar.';return {html:doc,result}}
+const frontGuideLabels={lens:'Ancho lente',bridge:'Puente',height:'Alto lente',total:'Ancho total'};
+async function annotateFrontPhoto(source,requested,guides){
+ const segments=requested.flatMap(key=>{
+  const points=guides?.[key];
+  if(!Array.isArray(points)||points.length!==4||!points.every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1))return [];
+  const [x1,y1,x2,y2]=points;
+  const plausible=key==='height'?y2-y1>=.04&&Math.abs(x2-x1)<=.04:x2-x1>=.025&&Math.abs(y2-y1)<=.04;
+  return plausible?[[key,points]]:[];
+ });
+ if(!segments.length)return {image:source,count:0};
+ const photo=new Image();photo.src=source;await photo.decode();
+ const canvas=document.createElement('canvas');
+ const w=canvas.width=photo.naturalWidth,h=canvas.height=photo.naturalHeight;
+ const ctx=canvas.getContext('2d');ctx.drawImage(photo,0,0,w,h);
+ const unit=Math.max(1,Math.min(w,h)/360);
+ ctx.lineCap='round';ctx.lineJoin='round';ctx.textAlign='center';ctx.textBaseline='middle';
+ ctx.font='bold '+(15*unit)+'px Arial,sans-serif';
+ for(const [key,[x1,y1,x2,y2]] of segments){
+  const ax=x1*w,ay=y1*h,bx=x2*w,by=y2*h;
+  const angle=Math.atan2(by-ay,bx-ax),head=Math.min(8*unit,Math.hypot(bx-ax,by-ay)/3);
+  ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);
+  for(const [x,y,direction] of [[ax,ay,angle],[bx,by,angle+Math.PI]]){
+   ctx.moveTo(x+head*Math.cos(direction-.55),y+head*Math.sin(direction-.55));
+   ctx.lineTo(x,y);
+   ctx.lineTo(x+head*Math.cos(direction+.55),y+head*Math.sin(direction+.55));
+  }
+  ctx.strokeStyle='#fff';ctx.lineWidth=5*unit;ctx.stroke();
+  ctx.strokeStyle='#44382e';ctx.lineWidth=2*unit;ctx.stroke();
+ }
+ for(const [key,[x1,y1,x2,y2]] of segments){
+  const label=frontGuideLabels[key],half=ctx.measureText(label).width/2+3*unit;
+  const x=Math.max(half,Math.min(w-half,(x1+x2)*w/2+(key==='height'?half+5*unit:0)));
+  const y=Math.max(10*unit,Math.min(h-10*unit,(y1+y2)*h/2-(key==='height'?0:12*unit)));
+  ctx.strokeStyle='#fff';ctx.lineWidth=4*unit;ctx.strokeText(label,x,y);
+  ctx.fillStyle='#302820';ctx.fillText(label,x,y);
+ }
+ return {image:canvas.toDataURL('image/jpeg',.9),count:segments.length};
+}
+async function analyzeGroup(info,files,status,frontIndex=-1){const brand=identifyBrand(info.name);if(!files.length)throw Error('Sin fotografías');const frontImage=info.frontImage||'';const requested=frontImage&&files[frontIndex]?Object.keys(frontGuideLabels).filter(k=>{const n=Number(info.measurements?.[k]);return Number.isFinite(n)&&n>0&&n<250}):[];const images=requested.length?[frontImage,...await Promise.all(files.filter((_,i)=>i!==frontIndex).slice(0,2).map(imageData))]:await Promise.all(files.slice(0,3).map(imageData));const client=window.BlackPortal.getSupabase();const {data,error}=await client.functions.invoke('black-catalog-analyze',{body:{name:info.name,images,frontGuides:requested,brand:brand?.name||info.brand,references:brand?.description||''}});if(error||data?.error){let detail=data?.detail||data?.error||'';if(error?.context?.json){try{const body=await error.context.json();detail=body?.detail||body?.error||detail}catch(_){}}throw Error((detail?String(detail)+' · ':'')+(error?.context?.status?'HTTP '+error.context.status:'')+(detail?'':error?.message||'No se pudo analizar'))}const result=data.result||{};const category=result.category||info.category||'unknown';const title=window.BlackCatalogTitleWithCategory?.(result.suggestedTitle||info.name,category)||result.suggestedTitle||info.name;result.suggestedTitle=title;let annotated={image:frontImage,count:0};if(requested.length){try{annotated=await annotateFrontPhoto(frontImage,requested,result.frontGuides)}catch(error){console.warn('No se pudo dibujar las cotas',error)}}const doc=htmlFor({name:title,brandId:brand?.id,brand:info.brand,color:info.color,category,shape:result.shape||'',gender:result.gender||'',confirmed:result.confirmedFeatures||[],intro:result.editorial||'',measurements:info.measurements,frontImage:annotated.image,hasFrontGuides:annotated.count>0});if(status)status.textContent='HTML generado · confianza '+(result.confidence||'no informada')+'. Revisá antes de publicar.'+(annotated.count<requested.length?' · Se ubicaron '+annotated.count+' de '+requested.length+' cotas. Revisá la foto frontal.':'');return {html:doc,result}}
 function downloadHtml(html,name){const blob=new Blob([html],{type:'text/html;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=String(name||'producto').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9-]+/gi,'-').slice(0,90)+'.html';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 window.BlackCatalogV3={analyzeGroup,downloadHtml,generateIndividual:()=>by('v3Generate').click(),analyzeIndividual:()=>by('v3Analyze').click(),getLastHTML:()=>lastHTML,generateBulk:(info)=>{const brand=identifyBrand(info.name)||brands.find(x=>x.name.toLocaleLowerCase('es')===info.brand.toLocaleLowerCase('es'));by('v3Brand').value=brand?.id||'';by('v3Category').value='unknown';by('v3Confirmed').value='';aiResult=null;generate({name:info.name,brandId:brand?.id,brand:info.brand,color:info.color,category:'unknown',confirmed:[],measurements:info.measurements,frontImage:info.frontImage||''},'bulk')},reload:load};
 load();
