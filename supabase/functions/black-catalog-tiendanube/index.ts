@@ -35,6 +35,44 @@ Deno.serve(async req=>{
    return send({categories});
   }catch{return send({error:"No se pudieron consultar las categorías"},502)}
  }
+ if(body.action==="verify_hidden"){
+  const sku=typeof body.sku==="string"?body.sku:"";
+  const key=sku||reference,photoCount=Number(body.photoCount);
+  if(!key||(sku&&!/^[A-Za-z0-9_-]{5,60}$/.test(sku))||!Number.isInteger(photoCount)||photoCount<0||photoCount>20)return send({error:"Datos de verificación inválidos"},400);
+  const service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if(!service)return send({error:"Servicio de auditoría no disponible"},503);
+  const log=createClient(url,service).from("black_catalog_publish_log");
+  try{
+   const {data:entry,error}=await log.select("remote_id").eq("product_key",key).eq("state","created").maybeSingle();
+   if(error||!entry?.remote_id)return send({error:"No se encontró el alta registrada"},409);
+   const endpoint="https://api.tiendanube.com/v1/"+store+"/products/"+entry.remote_id;
+   const response=await fetch(endpoint,{headers});
+   if(!response.ok)return send({error:"Tiendanube no devolvió el producto (HTTP "+response.status+")"},502);
+   const product=await response.json(),variant=product.variants?.[0],expected=body.metadata||{};
+   const issues=[];
+   if(product.published!==false)issues.push("visibilidad");
+   if(product.name?.es!==body.name)issues.push("nombre");
+   if(product.description?.es!==body.description)issues.push("descripción");
+   if(Number(variant?.price)!==Number(body.price))issues.push("precio");
+   if(variant?.stock_management!==true||Number(variant?.stock)!==1)issues.push("stock");
+   if(!variant||Number(variant.weight)!==.25||Number(variant.depth)!==10||Number(variant.width)!==25||Number(variant.height)!==10)issues.push("caja");
+   if(sku&&variant?.sku!==sku)issues.push("SKU");
+   if(expected.brand&&product.brand!==expected.brand)issues.push("marca");
+   if(expected.category&&!product.categories?.some(category=>Number(category?.id??category)===Number(expected.category)))issues.push("categoría");
+   if(expected.seoTitle&&(product.seo_title?.es??product.seo_title)!==expected.seoTitle)issues.push("título SEO");
+   if(expected.seoDescription&&(product.seo_description?.es??product.seo_description)!==expected.seoDescription)issues.push("descripción SEO");
+   const tagList=(value:unknown)=>String(value||"").split(",").map(tag=>tag.trim().toLowerCase()).filter(Boolean).sort().join(",");
+   if(expected.tags&&tagList(product.tags)!==tagList(expected.tags))issues.push("tags");
+   const photos=Array.isArray(product.images)?product.images:[];
+   if(photos.length!==photoCount)issues.push("cantidad de fotos");
+   if(photoCount){
+    const keys=Array.from({length:photoCount},(_,i)=>key+":image:"+(i+1));
+    const {data:images,error:imageError}=await log.select("product_key,remote_id").in("product_key",keys).eq("state","created");
+    if(imageError||images?.length!==photoCount||keys.some((imageKey,i)=>!photos.some(photo=>Number(photo.position)===i+1&&Number(photo.id)===Number(images?.find(image=>image.product_key===imageKey)?.remote_id))))issues.push("orden de fotos");
+   }
+   return send({verified:issues.length===0,issues,product_id:entry.remote_id});
+  }catch{return send({error:"No se pudo verificar el producto"},502)}
+ }
  if(body.action==="upload_hidden_image"){
   const {sku,position,attachment}=body;
   const productKey=sku||reference;
@@ -88,6 +126,10 @@ Deno.serve(async req=>{
  if(!service)return send({error:"Servicio de auditoría no disponible"},503);
  const adminDb=createClient(url,service);
  const {error:reserveError}=await adminDb.from("black_catalog_publish_log").insert({product_key:productKey,product_name:name,state:"pending",requested_by:user.id});
+ if(reserveError?.code==="23505"&&reference&&!sku){
+  const {data:prior}=await adminDb.from("black_catalog_publish_log").select("remote_id,product_name").eq("product_key",productKey).eq("state","created").maybeSingle();
+  if(prior?.remote_id&&prior.product_name===name)return send({created:true,product_id:prior.remote_id,published:false,sku,resumed:true});
+ }
  if(reserveError){console.error("Catalog reservation failed",reserveError.code,reserveError.message);return send({error:reserveError.code==="23505"?"SKU ya reservado. No reintentar.":"Error al registrar publicación. Código: "+(reserveError.code||"desconocido"),error_code:reserveError.code||null},reserveError.code==="23505"?409:500);}
  try{
   const res=await fetch("https://api.tiendanube.com/v1/"+store+"/products",{method:"POST",headers:{...headers,"Content-Type":"application/json"},body:JSON.stringify({name:{es:name},description:{es:description},published:false,...(brand?{brand}:{}),...(tags?{tags}:{}),...(seoTitle?{seo_title:seoTitle}:{}),...(seoDescription?{seo_description:seoDescription}:{}),...(category?{categories:[category]}:{}),variants:[{price,...(sku?{sku}:{}),stock:1,weight:"0.250",depth:"10",width:"25",height:"10"}]})});

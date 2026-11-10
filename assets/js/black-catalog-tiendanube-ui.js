@@ -173,8 +173,14 @@ async function sendRow(row){
   if(!result?.uploaded)throw Error('No se confirmó la foto.');
   row.next++;
  }
+ row.note.textContent='Verificando ficha en Tiendanube…';
+ const verification=await invoke({action:'verify_hidden',...row.fields,photoCount:row.next});
+ if(!verification?.verified){
+  row.note.textContent='ID '+row.id+' · Revisar en Tiendanube: '+(verification?.issues?.join(', ')||'resultado sin confirmar')+'.';
+  throw Error('La verificación detectó diferencias: '+(verification?.issues?.join(', ')||'resultado sin confirmar'));
+ }
  row.done=true;row.images=[];
- row.note.textContent='Completo · ID '+row.id+' · '+row.next+' fotos.';
+ row.note.textContent='Verificado · ID '+row.id+' · '+row.next+' fotos.';
 }
 const individualRows=new Map();
 window.BlackCatalogTiendanube.sendApproved=async(draft,control,note)=>{
