@@ -7,10 +7,10 @@ form.style.marginTop='24px';
 form.innerHTML='<h3>Envío individual oculto</h3><p id="tnPhotos">Prueba manual sin fotos. Para incluir fotos aprobadas, prepará el envío desde la ficha generada.</p><label>Nombre confirmado<input id="tnName" maxlength="180"></label><label>SKU único<input id="tnSku" maxlength="60"></label><label>Precio ARS<input id="tnPrice" type="number" min="0.01" step="0.01"></label><label>Descripción HTML revisada<textarea id="tnDesc" rows="7"></textarea></label><label><input id="tnConsent" type="checkbox" style="width:auto"> Confirmo crear este producto oculto</label><div class="actions"><button id="tnSend" type="button">Crear producto oculto</button></div><p id="tnStatus" role="status"></p>';
 panel.append(form);
 const get=id=>document.getElementById(id),button=get('tnSend'),status=get('tnStatus');
-let photos=[],reviewed='',busy=false,submitted=false,job=null;
+let photos=[],reviewed='',busy=false,submitted=false,job=null,batchBusy=false;
 window.BlackCatalogTiendanube={prepare({name,price,description,photos:approved}){
  document.querySelector('#catalogSidebar [data-tab="integraciones"]')?.click();
- if(busy||job&&job.next<job.images.length){status.textContent='Terminá o revisá primero el envío en curso.';return}
+ if(batchBusy||busy||job&&job.next<job.images.length){status.textContent='Terminá o revisá primero el envío en curso.';return}
  photos=approved.slice();reviewed='';submitted=false;job=null;
  get('tnName').value=name;get('tnSku').value='';get('tnPrice').value=String(price??'');get('tnDesc').value=description;get('tnConsent').checked=false;
  get('tnPhotos').textContent=photos.length+' fotos aprobadas. La primera será la foto principal.';
@@ -42,7 +42,7 @@ async function invoke(body){
  }finally{clearTimeout(timer)}
 }
 button.onclick=async()=>{
- if(busy||submitted&&!job)return;
+ if(batchBusy||busy||submitted&&!job)return;
  let fields;
  if(!job){
   const name=get('tnName').value.trim(),sku=get('tnSku').value.trim(),price=get('tnPrice').value.trim(),description=get('tnDesc').value.trim();
@@ -79,5 +79,93 @@ button.onclick=async()=>{
   status.textContent=job?'Producto oculto '+job.id+' · '+job.next+' de '+job.images.length+' fotos confirmadas. '+error.message+' Revisá la galería antes de continuar.':error.message+(submitted?'. Revisá Tiendanube antes de intentar de nuevo.':'');
   button.textContent=job?'Continuar con fotos pendientes':submitted?'Revisar estado del envío':'Confirmar envío';
  }finally{busy=false;button.disabled=job?job.next===job.images.length:submitted}
+};
+
+const batch=document.createElement('section');
+batch.style.marginTop='24px';
+batch.hidden=true;
+batch.innerHTML='<h3>Envío masivo a Tiendanube</h3><p>Revisá las fichas y completá un SKU único por modelo. Los productos se crean ocultos.</p><div id="tnBatchRows"></div><label><input id="tnBatchConsent" type="checkbox" style="width:auto"> Confirmo enviar los productos de este lote como ocultos</label><button id="tnBatchRun" type="button">Enviar lote oculto</button><p id="tnBatchStatus" role="status"></p>';
+panel.append(batch);
+const batchButton=get('tnBatchRun'),batchStatus=get('tnBatchStatus');
+let rows=[],batchStarted=false;
+get('tnPrepareBatch')?.addEventListener('click',()=>{
+ const source=get('tnBatchSourceStatus');
+ if(busy||batchBusy||rows.some(row=>row.id&&!row.done)){source.textContent='Terminá el envío en curso antes de preparar otro lote.';return}
+ const cards=[...document.querySelectorAll('#bulkResults .catalog-item-select:checked')].map(box=>box.closest('[id^="catalog-item-"]')).filter(Boolean);
+ if(!cards.length){source.textContent='Seleccioná al menos un modelo.';return}
+ const entries=cards.map(card=>({card,draft:card.tnBatchDraft?.()}));
+ if(entries.some(entry=>!entry.draft)){source.textContent='Generá una descripción actualizada para cada modelo seleccionado y verificá que sus fotos sigan aprobadas.';return}
+ get('tnBatchRows').replaceChildren();
+ rows=entries.map(({card,draft})=>{
+  const row=document.createElement('div');row.className='panel';row.style.marginBottom='12px';
+  const title=document.createElement('strong');title.textContent=draft.name+' · '+draft.photos.length+' fotos';
+  const fields=document.createElement('div');
+  const sku=document.createElement('input');sku.maxLength=60;sku.placeholder='SKU único';sku.setAttribute('aria-label','SKU de '+draft.name);
+  const price=document.createElement('input');price.type='number';price.min='0.01';price.step='0.01';price.value=String(draft.price??'');price.setAttribute('aria-label','Precio ARS de '+draft.name);
+  const note=document.createElement('p');note.setAttribute('role','status');
+  fields.append(sku,price);row.append(title,fields,note);get('tnBatchRows').append(row);
+  return {card,draft,sku,price,note,next:0};
+ });
+ batchStarted=false;batch.hidden=false;get('tnBatchConsent').checked=false;get('tnBatchConsent').disabled=false;batchButton.disabled=false;batchButton.textContent='Enviar lote oculto';batchStatus.textContent='';
+ source.textContent='';
+ document.querySelector('#catalogSidebar [data-tab="integraciones"]')?.click();
+ batch.scrollIntoView({behavior:'smooth',block:'start'});
+});
+batchButton.onclick=async()=>{
+ if(busy||batchBusy||!rows.length)return;
+ if(!batchStarted){
+  if(!get('tnBatchConsent').checked){batchStatus.textContent='Confirmá el envío del lote para continuar.';return}
+  const skus=new Set();let invalid=false;
+  for(const row of rows){
+   const current=row.card.isConnected&&row.card.tnBatchDraft?.();
+   const {name,description,photos}=row.draft;
+   const sku=row.sku.value.trim(),price=row.price.value.trim();
+   const message=!current||current.description!==description||current.photos.length!==photos.length||current.photos.some((file,index)=>file!==photos[index])?'La ficha cambió. Prepará el lote nuevamente.':
+    !/^[A-Za-z0-9_-]{5,60}$/.test(sku)||skus.has(sku.toLowerCase())?'Ingresá un SKU válido y distinto para cada modelo.':
+    !/^\d{1,9}(\.\d{1,2})?$/.test(price)||Number(price)<=0?'Ingresá un precio válido.':
+    name.length<4||name.length>180||description.length<20||description.length>30000||photos.length>20?'Revisá nombre, descripción y cantidad de fotos (máximo 20).':'';
+   row.note.textContent=message;if(message)invalid=true;
+   skus.add(sku.toLowerCase());
+   row.fields={name,sku,price,description};
+  }
+  if(invalid){batchStatus.textContent='Corregí las fichas indicadas antes de enviar.';return}
+  batchStarted=true;
+  for(const row of rows){row.sku.disabled=true;row.price.disabled=true}
+  get('tnBatchConsent').disabled=true;
+ }
+ batchBusy=true;batchButton.disabled=true;
+ try{
+  for(const row of rows){
+   if(row.done||row.uncertain)continue;
+   try{
+    if(!row.id){
+     row.note.textContent='Preparando fotos…';
+     row.images=[];
+     for(const photo of row.draft.photos)row.images.push(await encode(photo));
+     row.note.textContent='Creando producto oculto…';row.uncertain=true;
+     const created=await invoke({action:'create_hidden',...row.fields,confirmed:true});
+     if(!created?.created||!created.product_id)throw Error('No se confirmó la creación.');
+     row.id=created.product_id;row.uncertain=false;
+    }
+    while(row.next<row.images.length){
+     const position=row.next+1;
+     row.note.textContent='ID '+row.id+' · Enviando foto '+position+' de '+row.images.length+'…';
+     const result=await invoke({action:'upload_hidden_image',sku:row.fields.sku,position,attachment:row.images[row.next],confirmed:true});
+     if(!result?.uploaded)throw Error('No se confirmó la foto.');
+     row.next++;
+    }
+    row.done=true;row.images=[];
+    row.note.textContent='Completo · ID '+row.id+' · '+row.next+' fotos.';
+   }catch(error){
+    row.note.textContent=(row.id?'ID '+row.id+' · '+row.next+' fotos confirmadas. ':'')+error.message+(row.uncertain?' Revisá el SKU en Tiendanube antes de reenviar.':'');
+   }
+  }
+ }finally{
+  batchBusy=false;
+  const complete=rows.filter(row=>row.done).length;
+  batchStatus.textContent=complete+' de '+rows.length+' fichas completas.';
+  batchButton.disabled=!rows.some(row=>!row.done&&!row.uncertain);
+  batchButton.textContent=batchButton.disabled?'Lote procesado':'Reintentar pendientes';
+ }
 };
 })();
