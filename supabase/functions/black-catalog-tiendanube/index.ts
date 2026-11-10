@@ -1,6 +1,105 @@
 import {createClient} from "npm:@supabase/supabase-js@2";
 const h={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization,apikey,content-type,x-client-info","Content-Type":"application/json"};
 const send=(x:unknown,s=200)=>new Response(JSON.stringify(x),{status:s,headers:h});
+
+const catalogText = value => typeof value === "object" && value !== null ? String(value.es ?? Object.values(value)[0] ?? "") : String(value ?? "");
+const catalogCategoryIds = product => (product.categories || []).map(category => Number(category?.id ?? category)).sort((a,b) => a-b);
+const catalogFields = product => ({
+ name: catalogText(product.name), description: catalogText(product.description), brand: product.brand || "",
+ tags: product.tags || "", seo_title: catalogText(product.seo_title), seo_description: catalogText(product.seo_description),
+ handle: catalogText(product.handle), categories: catalogCategoryIds(product), published: product.published,
+ free_shipping: Boolean(product.free_shipping)
+});
+const catalogCanonical = value => {
+ if (Array.isArray(value)) return "[" + value.map(catalogCanonical).join(",") + "]";
+ if (value && typeof value === "object") return "{" + Object.keys(value).sort().map(key => JSON.stringify(key) + ":" + catalogCanonical(value[key])).join(",") + "}";
+ return JSON.stringify(value);
+};
+async function catalogRevision(product) {
+ const bytes = new TextEncoder().encode(catalogCanonical(product));
+ const digest = await crypto.subtle.digest("SHA-256", bytes);
+ return Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2,"0")).join("");
+}
+function catalogValidateChanges(product, changes, variants) {
+ if (!changes || typeof changes !== "object" || Array.isArray(changes) || !Array.isArray(variants) || variants.length > 100) throw Error("Cambios inválidos.");
+ const payload = {};
+ const limits = {name:180, description:250000, brand:120, tags:400, seo_title:70, seo_description:320, handle:180};
+ for (const [key,value] of Object.entries(changes)) {
+  if (Object.hasOwn(limits,key)) {
+   if (typeof value !== "string" || value.length > limits[key] || key === "name" && !value.trim()) throw Error("Revisá el campo " + key + ".");
+   if (key === "handle" && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)) throw Error("La URL debe usar letras minúsculas, números y guiones.");
+   payload[key] = ["name","description","handle"].includes(key) ? {...(typeof product[key] === "object" ? product[key] : {}), es:value} :
+    ["seo_title","seo_description"].includes(key) && typeof product[key] === "object" && product[key] !== null ? {...product[key], es:value} : value;
+  } else if (["published","free_shipping"].includes(key)) {
+   if (typeof value !== "boolean") throw Error("Estado inválido.");
+   payload[key] = value;
+  } else if (key === "categories") {
+   if (!Array.isArray(value) || value.length > 50 || value.some(id => !Number.isSafeInteger(id) || id <= 0)) throw Error("Categorías inválidas.");
+   payload.categories = [...new Set(value)];
+  } else throw Error("Campo no permitido: " + key);
+ }
+ const ids = new Set();
+ const variantPayloads = variants.map(change => {
+  if (!change || !Number.isSafeInteger(change.id) || ids.has(change.id)) throw Error("Variante inválida o repetida.");
+  ids.add(change.id);
+  const original = product.variants?.find(item => item.id === change.id);
+  if (!original) throw Error("La variante ya no existe en este producto.");
+  const patch = {};
+  for (const [key,value] of Object.entries(change)) {
+   if (key === "id") continue;
+   if (["price","promotional_price","cost","weight","width","height","depth"].includes(key)) {
+    if (value === null && key !== "price") { patch[key] = null; continue; }
+    if (typeof value !== "string" || !/^\d{1,9}(\.\d{1,4})?$/.test(value) || Number(value) < 0) throw Error("Revisá precio o dimensiones de la variante.");
+    patch[key] = value;
+   } else if (["sku","barcode","mpn"].includes(key)) {
+    if (typeof value !== "string" || value.length > 100) throw Error("Código de variante inválido.");
+    patch[key] = value;
+   } else if (key === "stock") {
+    if (original.inventory_levels?.length) throw Error("Este stock se modifica por ubicación.");
+    if (value !== "" && (!Number.isSafeInteger(value) || value < 0 || value > 100000000)) throw Error("Stock inválido.");
+    patch.stock = value;
+   } else if (key === "inventory_levels") {
+    if (!Array.isArray(value) || !value.length || value.length > 100) throw Error("Inventario por ubicación inválido.");
+    const seen = new Set();
+    patch.inventory_levels = value.map(level => {
+     if (!level || !original.inventory_levels?.some(item => String(item.location_id) === String(level.location_id)) || seen.has(String(level.location_id))) throw Error("Ubicación inválida o repetida.");
+     seen.add(String(level.location_id));
+     if (level.stock !== "" && (!Number.isSafeInteger(level.stock) || level.stock < 0 || level.stock > 100000000)) throw Error("Stock por ubicación inválido.");
+     return {location_id:level.location_id, stock:level.stock};
+    });
+   } else throw Error("Campo de variante no permitido: " + key);
+  }
+  return {id:change.id, patch};
+ });
+ if (!Object.keys(payload).length && !variantPayloads.some(item => Object.keys(item.patch).length)) throw Error("No hay cambios para guardar.");
+ return {payload, variantPayloads};
+}
+function catalogVerifyChanges(product, changes, variants) {
+ const issues = [];
+ const actual = catalogFields(product);
+ for (const [key,value] of Object.entries(changes)) {
+  if (catalogCanonical(actual[key]) !== catalogCanonical(value)) issues.push(key);
+ }
+ for (const change of variants) {
+  const variant = product.variants?.find(item => item.id === change.id);
+  if (!variant) { issues.push("variante " + change.id); continue; }
+  for (const [key,value] of Object.entries(change)) {
+   if (key === "id") continue;
+   if (key === "inventory_levels") {
+    if (value.some(level => {
+     const found = variant.inventory_levels?.find(item => String(item.location_id) === String(level.location_id));
+     return !found || (level.stock === "" ? found.stock !== null : Number(found.stock) !== level.stock);
+    })) issues.push("stock por ubicación");
+   } else if (key === "stock") {
+    if (value === "" ? variant.stock_management !== false : variant.stock_management !== true || Number(variant.stock) !== value) issues.push("stock");
+   } else if (["price","promotional_price","cost","weight","width","height","depth"].includes(key)) {
+    if (value === null ? variant[key] !== null : Number(variant[key]) !== Number(value)) issues.push(key);
+   } else if (String(variant[key] ?? "") !== value) issues.push(key);
+  }
+ }
+ return [...new Set(issues)];
+}
+
 Deno.serve(async req=>{
  if(req.method==="OPTIONS")return new Response("",{headers:h});
  if(req.method!=="POST")return send({error:"Método no permitido"},405);
@@ -17,6 +116,77 @@ Deno.serve(async req=>{
  const store=Deno.env.get("TIENDANUBE_STORE_ID"),token=Deno.env.get("TIENDANUBE_ACCESS_TOKEN");
  if(!store||!token)return send({error:"Faltan credenciales"},503);
  const headers={"Authentication":"bearer "+token,"User-Agent":"BlackCatalogAI (blackoptica.ar@gmail.com)","Accept":"application/json"};
+
+ if (["catalog_list","catalog_get","catalog_update"].includes(body.action)) {
+  const base = "https://api.tiendanube.com/v1/" + store;
+  const remote = async (path, options={}) => {
+   const response = await fetch(base + path, {...options, headers:{...headers, "Content-Type":"application/json"}});
+   if (!response.ok) throw Error("Tiendanube respondió HTTP " + response.status + (response.status === 429 ? ". Esperá unos segundos antes de volver a consultar." : "."));
+   return response.json();
+  };
+  let auditId = null;
+  let wrote = false;
+  try {
+   if (body.action === "catalog_list") {
+    const page = Number(body.page || 1);
+    if (!Number.isSafeInteger(page) || page < 1 || page > 10000) return send({error:"Página inválida."},400);
+    const params = new URLSearchParams({page:String(page), per_page:"50"});
+    const response = await fetch(base + "/products?" + params,{headers});
+    if (response.status === 404 && page > 1) return send({products:[], has_more:false, page});
+    if (!response.ok) throw Error("Tiendanube respondió HTTP " + response.status + ".");
+    const products = await response.json();
+    if (!Array.isArray(products)) throw Error("Listado de productos inválido.");
+    const summaries = products.map(product => ({
+     id:product.id, name:catalogText(product.name), brand:product.brand || "",
+     published:product.published, tags:product.tags || "", categories:product.categories || [],
+     images:(product.images || []).slice().sort((a,b) => a.position-b.position),
+     variants:product.variants || [], updated_at:product.updated_at
+    }));
+    const total = response.headers.get("x-total-count");
+    return send({products:summaries, has_more:total && /^\d+$/.test(total) ? page*50 < Number(total) : products.length === 50, page});
+   }
+   const id = Number(body.id);
+   if (!Number.isSafeInteger(id) || id <= 0) return send({error:"Producto inválido."},400);
+   const product = await remote("/products/" + id);
+   if (body.action === "catalog_get") return send({product, revision:await catalogRevision(product)});
+   if (body.confirmed !== true || typeof body.revision !== "string") return send({error:"Revisá y confirmá los cambios."},400);
+   if (body.revision !== await catalogRevision(product)) return send({error:"El producto cambió en Tiendanube. Volvé a abrirlo y revisá la versión actual.", conflict:true},409);
+   let validated;
+   try { validated = catalogValidateChanges(product, body.changes, body.variants || []); }
+   catch (error) { return send({error:error.message},400); }
+   const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+   if (!service) return send({error:"Servicio de auditoría no disponible."},503);
+   const db = createClient(url,service);
+   const audit = await db.from("black_catalog_publish_log").insert({
+    product_key:"edit:" + id + ":" + crypto.randomUUID(), remote_id:id, state:"pending", requested_by:user.id,
+    product_name:catalogText(product.name)
+   }).select("id").single();
+   if (audit.error || !audit.data) return send({error:"No se pudo registrar la edición."},500);
+   auditId = audit.data.id;
+   if (Object.keys(validated.payload).length) {
+    wrote = true;
+    await remote("/products/" + id, {method:"PUT", body:JSON.stringify(validated.payload)});
+   }
+   for (const variant of validated.variantPayloads) {
+    if (!Object.keys(variant.patch).length) continue;
+    wrote = true;
+    await remote("/products/" + id + "/variants/" + variant.id, {method:"PUT", body:JSON.stringify(variant.patch)});
+   }
+   const saved = await remote("/products/" + id);
+   const issues = catalogVerifyChanges(saved, body.changes, body.variants || []);
+   const auditResult = await db.from("black_catalog_publish_log").update({
+    state:issues.length ? "failed" : "created", last_error:issues.length ? "Diferencias: " + issues.join(", ") : null, updated_at:new Date().toISOString()
+   }).eq("id",auditId);
+   return send({saved:true, verified:issues.length===0, issues, audit_recorded:!auditResult.error, product:saved, revision:await catalogRevision(saved)});
+  } catch (error) {
+   if (auditId) {
+    const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    await createClient(url,service).from("black_catalog_publish_log").update({state:"failed", last_error:String(error.message).slice(0,500), updated_at:new Date().toISOString()}).eq("id",auditId);
+   }
+   return send({error:error.message || "No se pudo consultar Tiendanube.", partial:wrote},502);
+  }
+ }
+
  if(body.action==="check_connection"){
   try{const res=await fetch("https://api.tiendanube.com/v1/"+store+"/products?per_page=1",{headers});if(!res.ok)return send({error:"Tiendanube HTTP "+res.status},502);return send({connected:true,store_id:store,mode:"read_only"})}catch{return send({error:"Error de conexión"},502)}
  }
