@@ -85,12 +85,11 @@ const batch=document.createElement('section');
 batch.style.marginTop='24px';
 batch.hidden=true;
 batch.innerHTML='<h3>Envío masivo a Tiendanube</h3><p>Revisá las fichas. El SKU es opcional y se completa en cada modelo. Los productos se crean ocultos.</p><div id="tnBatchRows"></div><label><input id="tnBatchConsent" type="checkbox" style="width:auto"> Confirmo enviar los productos de este lote como ocultos</label><button id="tnBatchRun" type="button">Enviar lote oculto</button><p id="tnBatchStatus" role="status"></p>';
-get('bulkSection').append(batch);
+(get('tnPublicationBatch')||get('bulkSection')).append(batch);
 const batchButton=get('tnBatchRun'),batchStatus=get('tnBatchStatus');
 let rows=[],batchStarted=false;
 const attemptedReferences=new Set();
-get('tnPrepareBatch')?.addEventListener('click',()=>{
- const source=get('tnBatchSourceStatus');
+function prepareBatch(source){
  if(busy||batchBusy||rows.some(row=>row.id&&!row.done)){source.textContent='Terminá el envío en curso antes de preparar otro lote.';return}
  const cards=[...document.querySelectorAll('#bulkResults .catalog-item-select:checked')].map(box=>box.closest('[id^="catalog-item-"]')).filter(Boolean);
  if(!cards.length){source.textContent='Seleccioná al menos un modelo.';return}
@@ -108,8 +107,11 @@ get('tnPrepareBatch')?.addEventListener('click',()=>{
  });
  batchStarted=false;batch.hidden=false;get('tnBatchConsent').checked=false;get('tnBatchConsent').disabled=false;batchButton.disabled=false;batchButton.textContent='Enviar lote oculto';batchStatus.textContent='';
  source.textContent='';
+ batch.closest('details')?.setAttribute('open','');
  batch.scrollIntoView({behavior:'smooth',block:'start'});
-});
+}
+window.BlackCatalogTiendanube.prepareBatch=prepareBatch;
+get('tnPrepareBatch')?.addEventListener('click',()=>prepareBatch(get('tnBatchSourceStatus')));
 batchButton.onclick=async()=>{
  if(busy||batchBusy||!rows.length)return;
  if(!batchStarted){

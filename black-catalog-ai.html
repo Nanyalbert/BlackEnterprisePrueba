@@ -542,7 +542,7 @@ new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true
 .catalog-ui #tiendanubeIntegration{border-color:#414a58}
 .catalog-ui button:focus-visible{outline:2px solid #a7bfff;outline-offset:3px}
 @media(max-width:700px){.catalog-ui .catalog-safe-editor{padding:15px!important}.catalog-ui .catalog-safe-editor .catalog-photo-compare{grid-template-columns:1fr!important}.catalog-ui .catalog-safe-editor .actions>button{flex:1 1 100%}}
-</style><link rel="stylesheet" href="assets/css/black-os-unified.css?v=20261019-02"><script src="assets/js/black-catalog-tiendanube-ui.js?v=20261110-smart-send" defer></script><script src="assets/js/black-catalog-safe-photo.js?v=20261103-prepared-default-1"></script><!-- Black Catalog AI: recorrido progresivo, carga única y paneles plegables -->
+</style><link rel="stylesheet" href="assets/css/black-os-unified.css?v=20261019-02"><script src="assets/js/black-catalog-tiendanube-ui.js?v=20261110-publication-batch" defer></script><script src="assets/js/black-catalog-safe-photo.js?v=20261103-prepared-default-1"></script><!-- Black Catalog AI: recorrido progresivo, carga única y paneles plegables -->
 <style>
 #catalogWizard{display:flex;flex-direction:column;gap:12px;margin-top:12px}
 #catalogWizard .cw-step{border:1px solid #3e4147;border-radius:18px;background:#181a1f;overflow:hidden;transition:border-color .2s,box-shadow .2s}
@@ -620,7 +620,9 @@ new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true
  analyze?.addEventListener('click',()=>{setTimeout(()=>{if(results?.querySelector('.catalog-product-card'))unlock(2)},0)});
  makeFooter(bodies[2],'Continuar a publicación',()=>{if(!results?.querySelector('.catalog-product-card')){window.alert('Primero identificá y agrupá los productos.');return}unlock(3)});
  const note=document.createElement('p');note.className='cw-note';note.textContent='Aprobá y enviá una ficha desde el modelo o prepará un lote con los modelos seleccionados. Los productos quedan ocultos. Usá Integraciones para verificar la conexión y hacer pruebas.';bodies[3].append(note);
- makeFooter(bodies[3],'Preparar lote para Tiendanube',()=>document.getElementById('tnPrepareBatch')?.click());
+ const publicationStatus=document.createElement('p');publicationStatus.id='tnPublicationStatus';publicationStatus.setAttribute('role','status');bodies[3].append(publicationStatus);
+ makeFooter(bodies[3],'Preparar lote para Tiendanube',()=>{const prepare=window.BlackCatalogTiendanube?.prepareBatch;if(prepare)prepare(publicationStatus);else publicationStatus.textContent='El módulo de envío todavía no está disponible. Recargá el catálogo e intentá nuevamente.';});
+ const publicationBatch=document.createElement('div');publicationBatch.id='tnPublicationBatch';bodies[3].append(publicationBatch);
  // Los módulos antiguos agregan controles al final de bulkSection. Se incorporan a la etapa de revisión.
  const observer=new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes){if(node.nodeType!==1||node===wizard||node===progress||node.parentNode!==root)continue;bodies[2].append(node)}});
  observer.observe(root,{childList:true});
