@@ -322,7 +322,7 @@ document.getElementById('analyzeBulk').onclick=()=>{
   if(!approved.length||approved.some((file,index)=>!file||file!==approvedFiles[index]))return null;
   const front=g.files.findIndex(({file})=>file.name===g.info.frontPhotoName);
   if(front>0)approved.unshift(approved.splice(front,1)[0]);
-  return {name:generatedName,price:priceInput.value,sku:skuInput.value.trim(),reference:sendReference,description:result.html,photos:approved,metadata:{brand:brandInput.value.trim(),tags:tagsInput.value.trim(),seoTitle:titleSEO.value.trim(),seoDescription:descriptionSEO.value.trim(),category:Number(categorySelect.value)||0,categoryName:categorySelect.value?categorySelect.selectedOptions[0].textContent:''}};
+  return {name:generatedName,model:g.info.model,color:g.info.color,kind:g.info.category,measurements:{...g.info.measurements},price:priceInput.value,sku:skuInput.value.trim(),reference:sendReference,description:result.html,photos:approved,metadata:{brand:brandInput.value.trim(),tags:tagsInput.value.trim(),seoTitle:titleSEO.value.trim(),seoDescription:descriptionSEO.value.trim(),category:Number(categorySelect.value)||0,categoryName:categorySelect.value?categorySelect.selectedOptions[0].textContent:''}};
  };
  const sendToStore=document.createElement('button');sendToStore.type='button';sendToStore.className='secondary';sendToStore.textContent='Aprobar y enviar a Tiendanube como oculto';
  sendToStore.onclick=()=>{const draft=card.tnBatchDraft?.();if(!draft){state.textContent='Regenerá la descripción y revisá las fotos aprobadas.';return}window.BlackCatalogTiendanube?.sendApproved(draft,sendToStore,state);};card.append(preview,copyHtml,download,sendToStore);preview.click()}catch(e){state.textContent='Error al generar descripción: '+e.message;ai.dataset.error=String(e.message||e);ai.dataset.outcome='error'}finally{ai.dataset.outcome=ai.dataset.outcome||'success';ai.dataset.processing='done';ai.disabled=false}};ai.onclick=()=>ai.runAnalysis();work.append(action,v3,ai,state);
@@ -572,7 +572,7 @@ new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true
 .catalog-ui #tiendanubeIntegration{border-color:#414a58}
 .catalog-ui button:focus-visible{outline:2px solid #a7bfff;outline-offset:3px}
 @media(max-width:700px){.catalog-ui .catalog-safe-editor{padding:15px!important}.catalog-ui .catalog-safe-editor .catalog-photo-compare{grid-template-columns:1fr!important}.catalog-ui .catalog-safe-editor .actions>button{flex:1 1 100%}}
-</style><link rel="stylesheet" href="assets/css/black-os-unified.css?v=20261019-02"><script src="assets/js/black-catalog-tiendanube-ui.js?v=20261110-verified-send" defer></script><script src="assets/js/black-catalog-safe-photo.js?v=20261103-prepared-default-1"></script><!-- Black Catalog AI: recorrido progresivo, carga única y paneles plegables -->
+</style><link rel="stylesheet" href="assets/css/black-os-unified.css?v=20261019-02"><script src="assets/js/black-catalog-tiendanube-ui.js?v=20261110-color-variants" defer></script><script src="assets/js/black-catalog-safe-photo.js?v=20261103-prepared-default-1"></script><!-- Black Catalog AI: recorrido progresivo, carga única y paneles plegables -->
 <style>
 #catalogWizard{display:flex;flex-direction:column;gap:12px;margin-top:12px}
 #catalogWizard .cw-step{border:1px solid #3e4147;border-radius:18px;background:#181a1f;overflow:hidden;transition:border-color .2s,box-shadow .2s}

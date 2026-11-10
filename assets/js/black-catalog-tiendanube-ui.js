@@ -91,7 +91,61 @@ batch.innerHTML='<h3>Envío masivo a Tiendanube</h3><p>Revisá las fichas. El SK
 const batchButton=get('tnBatchRun'),batchStatus=get('tnBatchStatus');
 let rows=[],batchStarted=false;
 const attemptedReferences=new Set();
-function prepareBatch(source){
+const groupText = value => String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+const measureKeys = ['lens','bridge','height','temple','total'];
+function colorGroupKey(draft){
+ const {brand,category}=draft.metadata;
+ const measures=measureKeys.map(key=>Number(draft.measurements?.[key])||0);
+ if(!groupText(brand)||!groupText(draft.model)||!groupText(draft.color)||!measures[0]||!measures[1]||!draft.kind||draft.kind==='unknown')return '';
+ return JSON.stringify([groupText(brand),groupText(draft.model),draft.kind,category,measures]);
+}
+function groupReference(members){
+ const key='black-catalog:colors:'+members.map(row=>row.fields.reference).sort().join('|');
+ let reference='catalog:'+crypto.randomUUID();
+ try{
+  const saved=localStorage.getItem(key);
+  if(saved)reference=saved;else localStorage.setItem(key,reference);
+ }catch(_){}
+ return reference;
+}
+function combineColors(members){
+ const first=members[0].draft,photos=[],colors=[];
+ for(const row of members){
+  colors.push({name:row.draft.color.trim(),sku:row.fields.sku,price:row.fields.price,position:photos.length+1});
+  photos.push(...row.draft.photos);
+ }
+ const brand=first.metadata.brand,name=brand+' '+first.model.trim();
+ const description=window.BlackCatalogMasterV2.render({name,brand,category:first.kind,measurements:first.measurements});
+ return {
+  draft:{photos},next:0,note:members[0].note,
+  references:members.map(row=>row.fields.reference),
+  fields:{name,sku:'',price:colors[0].price,description,reference:groupReference(members),colors,
+   metadata:{brand,category:first.metadata.category,seoTitle:name.slice(0,70),
+    seoDescription:('Descubrí '+name+' y elegí entre los colores disponibles.').slice(0,320),tags:first.kind==='optical'?'receta':first.kind==='sun'?'sol':'clip-on'}}
+ };
+}
+async function readStoreModels(){
+ const products=[],seen=new Set();let page=1;
+ for(;;){
+  const data=await invoke({action:'catalog_list',page});
+  if(data.page!==page||!Array.isArray(data.products))throw Error('Tiendanube devolvió un listado inesperado.');
+  const incoming=data.products.filter(product=>!seen.has(product.id));
+  if(data.products.length&&!incoming.length)throw Error('Tiendanube repitió una página del catálogo.');
+  for(const product of incoming){seen.add(product.id);products.push(product);}
+  if(!data.has_more)return products;
+  page++;
+ }
+}
+function findStoreModel(draft,products){
+ const model=groupText(draft.model),brand=groupText(draft.metadata.brand);
+ if(!model||!brand)return null;
+ return products.find(product=>{
+  const name=' '+groupText(product.name)+' ';
+  return name.includes(' '+model+' ')&&(groupText(product.brand)===brand||!product.brand&&name.includes(' '+brand+' '));
+ });
+}
+
+async function prepareBatch(source){
  if(busy||batchBusy||rows.some(row=>row.id&&!row.done)){source.textContent='Terminá el envío en curso antes de preparar otro lote.';return}
  const cards=[...document.querySelectorAll('#bulkResults .catalog-item-select:checked')].map(box=>box.closest('[id^="catalog-item-"]')).filter(Boolean);
  if(!cards.length){source.textContent='Seleccioná al menos un modelo.';return}
@@ -107,12 +161,39 @@ function prepareBatch(source){
   const summary=document.createElement('p');const info=draft.metadata;
   summary.textContent='Categoría: '+(info.categoryName||'sin asignar')+' · Marca: '+(info.brand||'sin confirmar')+' · Tags: '+(info.tags||'—')+' · Título SEO: '+(info.seoTitle||'—')+' · Descripción SEO: '+(info.seoDescription||'—');
   row.append(title,details,summary,note);get('tnBatchRows').append(row);
-  return {card,draft,note,next:0};
+  return {card,draft,note,next:0,element:row};
  });
  batchStarted=false;batch.hidden=false;get('tnBatchConsent').checked=false;get('tnBatchConsent').disabled=false;batchButton.disabled=false;batchButton.textContent='Enviar lote oculto';batchStatus.textContent='';
  source.textContent='';
  batch.closest('details')?.setAttribute('open','');
  batch.scrollIntoView({behavior:'smooth',block:'start'});
+ batchBusy=true;batchButton.disabled=true;batchStatus.textContent='Buscando modelos existentes en Tiendanube…';
+ try{
+  const storeModels=await readStoreModels();
+  const groups=new Map();
+  for(const row of rows){
+   row.existing=findStoreModel(row.draft,storeModels);
+   if(row.existing){
+    row.note.textContent='Ya existe en Tiendanube: '+row.existing.name+' · ID '+row.existing.id+'. Se omite del envío.';
+    continue;
+   }
+   const key=colorGroupKey(row.draft);
+   if(key){const members=groups.get(key)||[];members.push(row);groups.set(key,members);}
+  }
+  for(const members of groups.values()){
+   if(members.length<2||new Set(members.map(row=>groupText(row.draft.color))).size!==members.length||members.reduce((sum,row)=>sum+row.draft.photos.length,0)>20)continue;
+   const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.style.width='auto';
+   label.append(check,document.createTextNode(' Agrupar como un producto con colores: '+members.map(row=>row.draft.color).join(', ')));
+   const explanation=document.createElement('p');explanation.textContent='Al agrupar, se genera una descripción común del modelo y cada color conserva sus fotos, precio y SKU.';members[0].element.append(label,explanation);
+   for(const row of members)row.group={members,check};
+  }
+  const existing=rows.filter(row=>row.existing).length;
+  batchStatus.textContent=existing?existing+' fichas coinciden con modelos de la tienda y se omiten.':'Revisá las opciones de agrupación antes de confirmar.';
+  batchButton.disabled=existing===rows.length;
+ }catch(error){
+  batchStatus.textContent='No se pudo comprobar el catálogo. '+error.message+' Volvé a preparar el lote.';
+ }finally{batchBusy=false}
+
 }
 window.BlackCatalogTiendanube.prepareBatch=prepareBatch;
 get('tnPrepareBatch')?.addEventListener('click',()=>prepareBatch(get('tnBatchSourceStatus')));
@@ -122,10 +203,11 @@ batchButton.onclick=async()=>{
   if(!get('tnBatchConsent').checked){batchStatus.textContent='Confirmá el envío del lote para continuar.';return}
   const skus=new Set();let invalid=false;
   for(const row of rows){
+   if(row.existing)continue;
    const current=row.card.isConnected&&row.card.tnBatchDraft?.();
    const {name,description,photos}=row.draft;
    const {sku,price,reference,metadata}=row.draft;
-   const message=attemptedReferences.has(reference)?'Este modelo ya tiene un envío iniciado. Prepará el lote sin este modelo.':!current||current.description!==description||JSON.stringify(current.metadata)!==JSON.stringify(metadata)||current.sku!==sku||current.price!==price||current.photos.length!==photos.length||current.photos.some((file,index)=>file!==photos[index])?'La ficha cambió. Prepará el lote nuevamente.':
+   const message=attemptedReferences.has(reference)?'Este modelo ya tiene un envío iniciado. Prepará el lote sin este modelo.':!current||current.description!==description||colorGroupKey(current)!==colorGroupKey(row.draft)||current.color!==row.draft.color||JSON.stringify(current.metadata)!==JSON.stringify(metadata)||current.sku!==sku||current.price!==price||current.photos.length!==photos.length||current.photos.some((file,index)=>file!==photos[index])?'La ficha cambió. Prepará el lote nuevamente.':
     sku&&(!/^[A-Za-z0-9_-]{5,60}$/.test(sku)||skus.has(sku.toLowerCase()))?'Si cargás un SKU, debe tener entre 5 y 60 caracteres válidos y ser único.':
     !/^\d{1,9}(\.\d{1,2})?$/.test(price)||Number(price)<=0?'Ingresá un precio válido.':
     name.length<4||name.length>180||description.length<20||description.length>30000||photos.length>20?'Revisá nombre, descripción y cantidad de fotos (máximo 20).':'';
@@ -134,6 +216,21 @@ batchButton.onclick=async()=>{
    row.fields={name,sku,price,description,reference,metadata};
   }
   if(invalid){batchStatus.textContent='Corregí las fichas indicadas antes de enviar.';return}
+  const grouped=new Set(),planned=[];
+  for(const row of rows){
+   if(row.existing)continue;
+   if(!row.group?.check.checked){planned.push(row);continue;}
+   if(grouped.has(row.group.check))continue;
+   grouped.add(row.group.check);
+   const combined=combineColors(row.group.members);
+   if(combined.fields.name.length>180||combined.fields.colors.some(color=>color.name.length>80)){
+    batchStatus.textContent='Revisá el nombre del modelo y los colores antes de agrupar.';return;
+   }
+   planned.push(combined);
+  }
+  for(const row of rows)if(row.group)row.group.check.disabled=true;
+  for(const row of rows)if(row.group?.check.checked&&row!==row.group.members[0])row.note.textContent='Incluido como variante del modelo agrupado.';
+  rows=planned;
   batchStarted=true;
   get('tnBatchConsent').disabled=true;
  }
@@ -162,6 +259,7 @@ async function sendRow(row){
   row.images=[];
   for(const photo of row.draft.photos)row.images.push(await encode(photo));
   row.note.textContent='Creando producto oculto…';row.uncertain=true;attemptedReferences.add(row.fields.reference);
+  for(const reference of row.references||[])attemptedReferences.add(reference);
   const created=await invoke({action:'create_hidden',...row.fields,confirmed:true});
   if(!created?.created||!created.product_id)throw Error('No se confirmó la creación.');
   row.id=created.product_id;row.uncertain=false;
@@ -172,6 +270,11 @@ async function sendRow(row){
   const result=await invoke({action:'upload_hidden_image',sku:row.fields.sku,reference:row.fields.reference,position,attachment:row.images[row.next],confirmed:true});
   if(!result?.uploaded)throw Error('No se confirmó la foto.');
   row.next++;
+ }
+ if(row.fields.colors?.length){
+  row.note.textContent='Asociando la foto principal de cada color…';
+  const result=await invoke({action:'link_hidden_colors',...row.fields,confirmed:true});
+  if(!result?.linked)throw Error('No se confirmó la asociación de fotos.');
  }
  row.note.textContent='Verificando ficha en Tiendanube…';
  const verification=await invoke({action:'verify_hidden',...row.fields,photoCount:row.next});

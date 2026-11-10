@@ -208,6 +208,53 @@ Deno.serve(async req=>{
    return send({categories});
   }catch{return send({error:"No se pudieron consultar las categorías"},502)}
  }
+ const colorVariants = Array.isArray(body.colors) ? body.colors : [];
+ const normalizedColor = value => String(value ?? "").trim().toLocaleLowerCase("es");
+ const colorName = variant => normalizedColor(catalogText(variant.values?.[0]));
+ if (["create_hidden","link_hidden_colors","verify_hidden"].includes(body.action) && colorVariants.length) {
+  const names = new Set(), skus = new Set(), positions = new Set();
+  if (colorVariants.length < 2 || colorVariants.length > 20 || colorVariants.some(color => {
+   if (!color || typeof color.name !== "string" || !color.name.trim() || color.name.length > 80 ||
+       typeof color.price !== "string" || !/^\d{1,9}(\.\d{1,2})?$/.test(color.price) || Number(color.price) <= 0 ||
+       typeof color.sku !== "string" || color.sku && !/^[A-Za-z0-9_-]{5,60}$/.test(color.sku) ||
+       !Number.isInteger(color.position) || color.position < 1 || color.position > 20) return true;
+   const name = normalizedColor(color.name), sku = color.sku.toLowerCase();
+   if (names.has(name) || positions.has(color.position) || sku && skus.has(sku)) return true;
+   names.add(name); positions.add(color.position); if (sku) skus.add(sku);
+   return false;
+  })) return send({error:"Revisá los colores, precios, SKU y fotos principales de las variantes."},400);
+ }
+ if (body.action === "link_hidden_colors") {
+  if (!reference || body.confirmed !== true || !colorVariants.length) return send({error:"Confirmación de variantes inválida."},400);
+  const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!service) return send({error:"Servicio de auditoría no disponible."},503);
+  const log = createClient(url,service).from("black_catalog_publish_log");
+  try {
+   const {data:entry,error} = await log.select("remote_id").eq("product_key",reference).eq("state","created").maybeSingle();
+   if (error || !entry?.remote_id) return send({error:"No se encontró el alta registrada."},409);
+   const endpoint = "https://api.tiendanube.com/v1/" + store + "/products/" + entry.remote_id;
+   const response = await fetch(endpoint,{headers});
+   if (!response.ok) return send({error:"No se pudo consultar el producto."},502);
+   const product = await response.json();
+   if (product.published !== false || catalogText(product.name) !== body.name || product.variants?.length !== colorVariants.length) return send({error:"La ficha cambió en Tiendanube. Revisá sus variantes."},409);
+   const keys = colorVariants.map(color => reference + ":image:" + color.position);
+   const {data:images,error:imageError} = await log.select("product_key,remote_id").in("product_key",keys).eq("state","created");
+   const associations = colorVariants.map((color,index) => ({
+    variant:product.variants.find(variant => colorName(variant) === normalizedColor(color.name)),
+    photo:images?.find(image => image.product_key === keys[index])?.remote_id,
+    position:color.position
+   }));
+   if (imageError || associations.some(({variant,photo,position}) => !variant || !photo || !product.images?.some(image => Number(image.id) === Number(photo) && Number(image.position) === position))) return send({error:"Falta confirmar una foto principal o un color."},409);
+   for (const {variant,photo} of associations) {
+    if (Number(variant.image_id) === Number(photo)) continue;
+    const updated = await fetch(endpoint + "/variants/" + variant.id,{
+     method:"PUT",headers:{...headers,"Content-Type":"application/json"},body:JSON.stringify({image_id:Number(photo)})
+    });
+    if (!updated.ok) return send({error:"No se confirmó la foto de la variante (HTTP "+updated.status+")."},502);
+   }
+   return send({linked:true});
+  } catch { return send({error:"No se pudo asociar la foto de una variante."},502); }
+ }
  if(body.action==="verify_hidden"){
   const sku=typeof body.sku==="string"?body.sku:"";
   const key=sku||reference,photoCount=Number(body.photoCount);
@@ -226,10 +273,20 @@ Deno.serve(async req=>{
    if(product.published!==false)issues.push("visibilidad");
    if(product.name?.es!==body.name)issues.push("nombre");
    if(product.description?.es!==body.description)issues.push("descripción");
-   if(Number(variant?.price)!==Number(body.price))issues.push("precio");
+   if(!colorVariants.length&&Number(variant?.price)!==Number(body.price))issues.push("precio");
    if(variant?.stock_management!==true||Number(variant?.stock)!==1)issues.push("stock");
    if(!variant||Number(variant.weight)!==.25||Number(variant.depth)!==10||Number(variant.width)!==25||Number(variant.height)!==10)issues.push("caja");
    if(sku&&variant?.sku!==sku)issues.push("SKU");
+   if(colorVariants.length){
+    if(product.variants?.length!==colorVariants.length)issues.push("cantidad de colores");
+    for(const color of colorVariants){
+     const found=product.variants?.find(item=>colorName(item)===normalizedColor(color.name));
+     const photo=product.images?.find(item=>Number(item.position)===color.position);
+     if(!found||Number(found.price)!==Number(color.price)||Number(found.stock)!==1||found.stock_management!==true||(color.sku&&found.sku!==color.sku)||
+      Number(found.weight)!==.25||Number(found.depth)!==10||Number(found.width)!==25||Number(found.height)!==10||
+      !photo||Number(found.image_id)!==Number(photo.id))issues.push("variante "+color.name);
+    }
+   }
    if(expected.brand&&product.brand!==expected.brand)issues.push("marca");
    if(expected.category&&!product.categories?.some(category=>Number(category?.id??category)===Number(expected.category)))issues.push("categoría");
    if(expected.seoTitle&&(product.seo_title?.es??product.seo_title)!==expected.seoTitle)issues.push("título SEO");
@@ -290,6 +347,7 @@ Deno.serve(async req=>{
  const name=String(body.name||"").trim(),sku=String(body.sku||"").trim(),description=String(body.description||"").trim(),price=String(body.price||"").trim();
  const productKey=sku||reference;
  if(!body.confirmed||!productKey||name.length<4||name.length>180||(sku&&!/^[A-Za-z0-9_-]{5,60}$/.test(sku))||description.length<20||description.length>30000||! /^\d{1,9}(\.\d{1,2})?$/.test(price)||Number(price)<=0)return send({error:"Revisá nombre, SKU único, descripción, precio y confirmación"},400);
+ if(colorVariants.length&&(!reference||sku))return send({error:"Las variantes requieren una referencia de lote y SKU por color."},400);
  const metadata=body.metadata||{};
  const brand=String(metadata.brand||"").trim().slice(0,120),tags=String(metadata.tags||"").split(",").map(s=>s.trim()).filter(Boolean).slice(0,12).join(",").slice(0,400);
  const seoTitle=String(metadata.seoTitle||"").trim().slice(0,70),seoDescription=String(metadata.seoDescription||"").trim().slice(0,320);
@@ -305,7 +363,7 @@ Deno.serve(async req=>{
  }
  if(reserveError){console.error("Catalog reservation failed",reserveError.code,reserveError.message);return send({error:reserveError.code==="23505"?"SKU ya reservado. No reintentar.":"Error al registrar publicación. Código: "+(reserveError.code||"desconocido"),error_code:reserveError.code||null},reserveError.code==="23505"?409:500);}
  try{
-  const res=await fetch("https://api.tiendanube.com/v1/"+store+"/products",{method:"POST",headers:{...headers,"Content-Type":"application/json"},body:JSON.stringify({name:{es:name},description:{es:description},published:false,...(brand?{brand}:{}),...(tags?{tags}:{}),...(seoTitle?{seo_title:seoTitle}:{}),...(seoDescription?{seo_description:seoDescription}:{}),...(category?{categories:[category]}:{}),variants:[{price,...(sku?{sku}:{}),stock:1,weight:"0.250",depth:"10",width:"25",height:"10"}]})});
+  const res=await fetch("https://api.tiendanube.com/v1/"+store+"/products",{method:"POST",headers:{...headers,"Content-Type":"application/json"},body:JSON.stringify({name:{es:name},description:{es:description},published:false,...(brand?{brand}:{}),...(tags?{tags}:{}),...(seoTitle?{seo_title:seoTitle}:{}),...(seoDescription?{seo_description:seoDescription}:{}),...(category?{categories:[category]}:{}),...(colorVariants.length?{attributes:[{es:"Color"}]}:{}),variants:(colorVariants.length?colorVariants:[{price,sku}]).map(color=>({price:color.price,...(color.sku?{sku:color.sku}:{}),...(colorVariants.length?{values:[{es:color.name}]}:{}),stock:1,weight:"0.250",depth:"10",width:"25",height:"10"}))})});
   if(!res.ok){await adminDb.from("black_catalog_publish_log").update({state:"failed",last_error:"HTTP "+res.status,updated_at:new Date().toISOString()}).eq("product_key",productKey);return send({error:"Tiendanube rechazó la creación (HTTP "+res.status+"). Revisá el registro antes de reintentar."},502)}
   const product=await res.json();
   if(!product?.id)return send({error:"Resultado no confirmado. Verificá Tiendanube antes de cualquier reintento."},502);
