@@ -17,6 +17,8 @@ window.BlackCatalogTiendanube={prepare({name,price,description,photos:approved})
  button.disabled=false;button.textContent='Crear producto oculto';status.textContent='Ingresá un SKU único y revisá los datos antes de confirmar.';
  form.scrollIntoView({behavior:'smooth',block:'start'});
 }};
+let categoryRequest;
+window.BlackCatalogTiendanube.listCategories=()=>categoryRequest??=invoke({action:'list_categories'}).then(data=>data.categories).catch(error=>{categoryRequest=null;throw error});
 async function encode(file){
  const photo=await createImageBitmap(file);
  try{
@@ -84,7 +86,7 @@ button.onclick=async()=>{
 const batch=document.createElement('section');
 batch.style.marginTop='24px';
 batch.hidden=true;
-batch.innerHTML='<h3>Envío masivo a Tiendanube</h3><p>Revisá las fichas. El SKU es opcional y se completa en cada modelo. Los productos se crean ocultos.</p><div id="tnBatchRows"></div><label><input id="tnBatchConsent" type="checkbox" style="width:auto"> Confirmo enviar los productos de este lote como ocultos</label><button id="tnBatchRun" type="button">Enviar lote oculto</button><p id="tnBatchStatus" role="status"></p>';
+batch.innerHTML='<h3>Envío masivo a Tiendanube</h3><p>Revisá las fichas. El SKU es opcional y se completa en cada modelo. Los productos se crean ocultos. Caja fija: 0,250 kg · 10 × 25 × 10 cm (profundidad × ancho × alto). Stock inicial: 1.</p><div id="tnBatchRows"></div><label><input id="tnBatchConsent" type="checkbox" style="width:auto"> Confirmo enviar los productos de este lote como ocultos</label><button id="tnBatchRun" type="button">Enviar lote oculto</button><p id="tnBatchStatus" role="status"></p>';
 (get('tnPublicationBatch')||get('bulkSection')).append(batch);
 const batchButton=get('tnBatchRun'),batchStatus=get('tnBatchStatus');
 let rows=[],batchStarted=false;
@@ -102,7 +104,9 @@ function prepareBatch(source){
   const title=document.createElement('strong');title.textContent=draft.name+' · '+draft.photos.length+' fotos';
   const details=document.createElement('p');details.textContent='Precio ARS '+(draft.price||'pendiente')+' · '+(draft.sku?'SKU '+draft.sku:'Sin SKU');
   const note=document.createElement('p');note.setAttribute('role','status');
-  row.append(title,details,note);get('tnBatchRows').append(row);
+  const summary=document.createElement('p');const info=draft.metadata;
+  summary.textContent='Categoría: '+(info.categoryName||'sin asignar')+' · Marca: '+(info.brand||'sin confirmar')+' · Tags: '+(info.tags||'—')+' · Título SEO: '+(info.seoTitle||'—')+' · Descripción SEO: '+(info.seoDescription||'—');
+  row.append(title,details,summary,note);get('tnBatchRows').append(row);
   return {card,draft,note,next:0};
  });
  batchStarted=false;batch.hidden=false;get('tnBatchConsent').checked=false;get('tnBatchConsent').disabled=false;batchButton.disabled=false;batchButton.textContent='Enviar lote oculto';batchStatus.textContent='';
@@ -120,14 +124,14 @@ batchButton.onclick=async()=>{
   for(const row of rows){
    const current=row.card.isConnected&&row.card.tnBatchDraft?.();
    const {name,description,photos}=row.draft;
-   const {sku,price,reference}=row.draft;
-   const message=attemptedReferences.has(reference)?'Este modelo ya tiene un envío iniciado. Prepará el lote sin este modelo.':!current||current.description!==description||current.sku!==sku||current.price!==price||current.photos.length!==photos.length||current.photos.some((file,index)=>file!==photos[index])?'La ficha cambió. Prepará el lote nuevamente.':
+   const {sku,price,reference,metadata}=row.draft;
+   const message=attemptedReferences.has(reference)?'Este modelo ya tiene un envío iniciado. Prepará el lote sin este modelo.':!current||current.description!==description||JSON.stringify(current.metadata)!==JSON.stringify(metadata)||current.sku!==sku||current.price!==price||current.photos.length!==photos.length||current.photos.some((file,index)=>file!==photos[index])?'La ficha cambió. Prepará el lote nuevamente.':
     sku&&(!/^[A-Za-z0-9_-]{5,60}$/.test(sku)||skus.has(sku.toLowerCase()))?'Si cargás un SKU, debe tener entre 5 y 60 caracteres válidos y ser único.':
     !/^\d{1,9}(\.\d{1,2})?$/.test(price)||Number(price)<=0?'Ingresá un precio válido.':
     name.length<4||name.length>180||description.length<20||description.length>30000||photos.length>20?'Revisá nombre, descripción y cantidad de fotos (máximo 20).':'';
    row.note.textContent=message;if(message)invalid=true;
    skus.add(sku.toLowerCase());
-   row.fields={name,sku,price,description,reference};
+   row.fields={name,sku,price,description,reference,metadata};
   }
   if(invalid){batchStatus.textContent='Corregí las fichas indicadas antes de enviar.';return}
   batchStarted=true;
@@ -179,11 +183,11 @@ window.BlackCatalogTiendanube.sendApproved=async(draft,control,note)=>{
  if(row?.done||row?.uncertain)return;
  if(!row){
   if(attemptedReferences.has(draft.reference)){note.textContent='Este modelo ya tiene un envío iniciado. Revisá el estado del lote.';return}
-  const {name,sku,price,description,reference,photos}=draft;
+  const {name,sku,price,description,reference,photos,metadata}=draft;
   if(name.length<4||name.length>180||description.length<20||description.length>30000||!/^\d{1,9}(\.\d{1,2})?$/.test(price)||Number(price)<=0||(sku&&!/^[A-Za-z0-9_-]{5,60}$/.test(sku))||!photos.length||photos.length>20){
    note.textContent='Revisá el precio, la descripción, las fotos y el SKU si lo completaste.';return;
   }
-  row={draft,fields:{name,sku,price,description,reference},next:0};
+  row={draft,fields:{name,sku,price,description,reference,metadata},next:0};
   individualRows.set(reference,row);
  }
  row.note=note;busy=true;control.disabled=true;

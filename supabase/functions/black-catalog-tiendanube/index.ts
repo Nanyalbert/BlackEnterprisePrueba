@@ -20,6 +20,21 @@ Deno.serve(async req=>{
  if(body.action==="check_connection"){
   try{const res=await fetch("https://api.tiendanube.com/v1/"+store+"/products?per_page=1",{headers});if(!res.ok)return send({error:"Tiendanube HTTP "+res.status},502);return send({connected:true,store_id:store,mode:"read_only"})}catch{return send({error:"Error de conexión"},502)}
  }
+ if(body.action==="list_categories"){
+  try{
+   const categories=[];
+   for(let page=1;page<=10;page++){
+    const response=await fetch("https://api.tiendanube.com/v1/"+store+"/categories?per_page=100&page="+page,{headers});
+    if(response.status===404&&page>1)break;
+    if(!response.ok)return send({error:"No se pudieron consultar las categorías (HTTP "+response.status+")"},502);
+    const items=await response.json();
+    if(!Array.isArray(items))return send({error:"Listado de categorías inválido"},502);
+    categories.push(...items.flatMap(item=>Number.isSafeInteger(item.id)?[{id:item.id,parent:item.parent??null,name:String(item.name?.es||Object.values(item.name||{})[0]||item.id)}]:[]));
+    if(items.length<100)break;
+   }
+   return send({categories});
+  }catch{return send({error:"No se pudieron consultar las categorías"},502)}
+ }
  if(body.action==="upload_hidden_image"){
   const {sku,position,attachment}=body;
   const productKey=sku||reference;
@@ -64,13 +79,18 @@ Deno.serve(async req=>{
  const name=String(body.name||"").trim(),sku=String(body.sku||"").trim(),description=String(body.description||"").trim(),price=String(body.price||"").trim();
  const productKey=sku||reference;
  if(!body.confirmed||!productKey||name.length<4||name.length>180||(sku&&!/^[A-Za-z0-9_-]{5,60}$/.test(sku))||description.length<20||description.length>30000||! /^\d{1,9}(\.\d{1,2})?$/.test(price)||Number(price)<=0)return send({error:"Revisá nombre, SKU único, descripción, precio y confirmación"},400);
+ const metadata=body.metadata||{};
+ const brand=String(metadata.brand||"").trim().slice(0,120),tags=String(metadata.tags||"").split(",").map(s=>s.trim()).filter(Boolean).slice(0,12).join(",").slice(0,400);
+ const seoTitle=String(metadata.seoTitle||"").trim().slice(0,70),seoDescription=String(metadata.seoDescription||"").trim().slice(0,320);
+ const category=Number(metadata.category||0);
+ if(!Number.isSafeInteger(category)||category<0)return send({error:"Categoría inválida"},400);
  const service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
  if(!service)return send({error:"Servicio de auditoría no disponible"},503);
  const adminDb=createClient(url,service);
  const {error:reserveError}=await adminDb.from("black_catalog_publish_log").insert({product_key:productKey,product_name:name,state:"pending",requested_by:user.id});
  if(reserveError){console.error("Catalog reservation failed",reserveError.code,reserveError.message);return send({error:reserveError.code==="23505"?"SKU ya reservado. No reintentar.":"Error al registrar publicación. Código: "+(reserveError.code||"desconocido"),error_code:reserveError.code||null},reserveError.code==="23505"?409:500);}
  try{
-  const res=await fetch("https://api.tiendanube.com/v1/"+store+"/products",{method:"POST",headers:{...headers,"Content-Type":"application/json"},body:JSON.stringify({name:{es:name},description:{es:description},published:false,variants:[{price,...(sku?{sku}:{}),stock_management:false}]})});
+  const res=await fetch("https://api.tiendanube.com/v1/"+store+"/products",{method:"POST",headers:{...headers,"Content-Type":"application/json"},body:JSON.stringify({name:{es:name},description:{es:description},published:false,...(brand?{brand}:{}),...(tags?{tags}:{}),...(seoTitle?{seo_title:seoTitle}:{}),...(seoDescription?{seo_description:seoDescription}:{}),...(category?{categories:[category]}:{}),variants:[{price,...(sku?{sku}:{}),stock:1,weight:"0.250",depth:"10",width:"25",height:"10"}]})});
   if(!res.ok){await adminDb.from("black_catalog_publish_log").update({state:"failed",last_error:"HTTP "+res.status,updated_at:new Date().toISOString()}).eq("product_key",productKey);return send({error:"Tiendanube rechazó la creación (HTTP "+res.status+"). Revisá el registro antes de reintentar."},502)}
   const product=await res.json();
   if(!product?.id)return send({error:"Resultado no confirmado. Verificá Tiendanube antes de cualquier reintento."},502);

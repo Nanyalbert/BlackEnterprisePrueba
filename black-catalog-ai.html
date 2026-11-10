@@ -276,19 +276,51 @@ document.getElementById('analyzeBulk').onclick=()=>{
  if(approvedFiles.some(x=>!x))throw Error('Falta aprobar alguna fotografía preparada de este modelo. Volvé a la etapa de preparación.');
  await prepareFrontImage();
  delete card.tnBatchDraft;
+ card.querySelector('.catalog-store-fields')?.remove();
  const analyzedMeasures=JSON.stringify(g.info.measurements||{});
  const result=await window.BlackCatalogV3.analyzeGroup(g.info,approvedFiles,state);
  const suggestedCategory=result.result?.category||'unknown';
  if(['optical','sun','clip2','clip5'].includes(suggestedCategory)){g.info.category=suggestedCategory;categoryInput.value=suggestedCategory}
  const title=titleWithCategory(result.result?.suggestedTitle||g.info.name,g.info.category);
  if(title){g.info.name=title;nameInput.value=title;heading.textContent=(i+1)+'. '+title;const option=document.querySelector('#catalogProductPicker option[value="catalog-item-'+i+'"]');if(option)option.textContent=(i+1)+'. '+title;state.textContent+=' · Título y categoría sugeridos por IA (editables)'}try{if(card.dataset.analysisSaved==='true'){state.textContent+=' · Nueva versión en pantalla: no se duplicó la ficha en historial. Exportá el HTML para conservar esta revisión.'}else{if(!window.BlackCatalogHistory?.saveAnalysis)throw Error('Historial no disponible');await window.BlackCatalogHistory.saveAnalysis({...g.info,photo_names:g.files.map(x=>x.file.name)},result.html,result.result,approvedFiles);card.dataset.analysisSaved='true';state.textContent+=' · Guardado en historial'}}catch(saveError){state.textContent+=' · Aviso: no se guardó historial ('+saveError.message+'), pero el HTML sí se generó'}const copyHtml=document.createElement('button');copyHtml.type='button';copyHtml.className='secondary';copyHtml.textContent='Copiar código HTML';copyHtml.onclick=()=>navigator.clipboard.writeText(result.html).then(()=>{copyHtml.textContent='Código copiado ✓'});const download=document.createElement('button');download.type='button';download.className='secondary';download.textContent='Descargar HTML';download.onclick=()=>window.BlackCatalogV3.downloadHtml(result.html,g.info.name);const preview=document.createElement('button');preview.type='button';preview.className='secondary';preview.textContent='Vista previa IA';preview.onclick=()=>{const f=document.createElement('iframe');f.sandbox='';f.srcdoc=result.html;f.title='Descripción HTML '+g.info.name;f.style.cssText='width:100%;height:510px;background:white;border:1px solid #777;border-radius:10px;margin-top:12px';const existing=card.querySelector('iframe');if(existing)existing.remove();card.append(f);f.scrollIntoView({behavior:'smooth',block:'nearest'})};const generatedName=g.info.name;
+ const storeFields=document.createElement('fieldset');storeFields.className='catalog-store-fields';
+ const legend=document.createElement('legend');legend.textContent='Ficha para Tiendanube';storeFields.append(legend);
+ const defaults=document.createElement('p');defaults.textContent='Producto físico · Caja: 0,250 kg · 10 cm profundidad × 25 cm ancho × 10 cm alto · Stock inicial: 1';storeFields.append(defaults);
+ const categoryLabel=document.createElement('label');categoryLabel.textContent='Categoría de la tienda';
+ const categorySelect=document.createElement('select');categorySelect.append(new Option('Sin asignar',''));categoryLabel.append(categorySelect);storeFields.append(categoryLabel);
+ const categoryStatus=document.createElement('small');categoryStatus.setAttribute('role','status');storeFields.append(categoryStatus);
+ const kind=g.info.category;
+ const categoriesButton=document.createElement('button');categoriesButton.type='button';categoriesButton.className='secondary';categoriesButton.textContent='Cargar categorías de Tiendanube';storeFields.append(categoriesButton);
+ categoriesButton.onclick=async()=>{
+  const service=window.BlackCatalogTiendanube;if(!service?.listCategories){categoryStatus.textContent='Recargá el catálogo para consultar las categorías.';return}
+  categoriesButton.disabled=true;categoryStatus.textContent='Consultando categorías…';
+  try{
+   const categories=await service.listCategories();
+   const byId=new Map(categories.map(item=>[item.id,item.name]));
+   for(const item of categories)categorySelect.append(new Option((byId.has(item.parent)?byId.get(item.parent)+' / ':'')+item.name,String(item.id)));
+   const expected=kind==='optical'?/^(anteojos de receta|armazones de receta|receta)$/:kind==='sun'?/^(anteojos de sol|lentes de sol|sol)$/:/^clip[- ]?on$/;
+   const matches=kind&&kind!=='unknown'?categories.filter(item=>expected.test(item.name.trim().toLowerCase())):[];
+   if(matches.length===1)categorySelect.value=String(matches[0].id);
+   categoryStatus.textContent=matches.length===1?'Categoría sugerida. Revisala antes del envío.':categories.length?'Elegí la categoría correspondiente.':'La tienda no devolvió categorías.';
+   categoriesButton.hidden=true;
+  }catch(error){categoryStatus.textContent=error.message}
+  finally{categoriesButton.disabled=false}
+ };
+ const seoHeading=document.createElement('h4');seoHeading.textContent='SEO y búsqueda en la tienda';storeFields.append(seoHeading);
+ const makeStoreField=(label,value,max,tag='input')=>{const wrapper=document.createElement('label');wrapper.textContent=label;const input=document.createElement(tag);input.maxLength=max;input.value=String(value||'').trim().slice(0,max);wrapper.append(input);storeFields.append(wrapper);return input};
+ const tags=[g.info.brand,({optical:'receta',sun:'sol',clip2:'clip-on',clip5:'clip-on'})[kind],result.result?.shape,result.result?.visibleColor||g.info.color].map(value=>String(value||'').trim().toLowerCase()).filter(value=>value&&!/^(unknown|desconocido|sin confirmar)$/.test(value));
+ const tagsInput=makeStoreField('Tags (separados por comas)',[...new Set(tags)].join(', '),400);
+ const brandInput=makeStoreField('Marca',g.info.brand,120);
+ const titleSEO=makeStoreField('Título SEO',result.result?.suggestedTitle||generatedName,70);
+ const descriptionSEO=makeStoreField('Descripción SEO',result.result?.editorial||generatedName,320,'textarea');
+ card.append(storeFields);categoriesButton.click();
  card.tnBatchDraft=()=>{
   if(g.info.name!==generatedName||JSON.stringify(g.info.measurements||{})!==analyzedMeasures)return null;
   const approved=g.files.map(({file})=>window.BlackCatalogPhotoSelections?.getApprovedFile(file.name));
   if(!approved.length||approved.some((file,index)=>!file||file!==approvedFiles[index]))return null;
   const front=g.files.findIndex(({file})=>file.name===g.info.frontPhotoName);
   if(front>0)approved.unshift(approved.splice(front,1)[0]);
-  return {name:generatedName,price:priceInput.value,sku:skuInput.value.trim(),reference:sendReference,description:result.html,photos:approved};
+  return {name:generatedName,price:priceInput.value,sku:skuInput.value.trim(),reference:sendReference,description:result.html,photos:approved,metadata:{brand:brandInput.value.trim(),tags:tagsInput.value.trim(),seoTitle:titleSEO.value.trim(),seoDescription:descriptionSEO.value.trim(),category:Number(categorySelect.value)||0,categoryName:categorySelect.value?categorySelect.selectedOptions[0].textContent:''}};
  };
  const sendToStore=document.createElement('button');sendToStore.type='button';sendToStore.className='secondary';sendToStore.textContent='Aprobar y enviar a Tiendanube como oculto';
  sendToStore.onclick=()=>{const draft=card.tnBatchDraft?.();if(!draft){state.textContent='Regenerá la descripción y revisá las fotos aprobadas.';return}window.BlackCatalogTiendanube?.sendApproved(draft,sendToStore,state);};card.append(preview,copyHtml,download,sendToStore);preview.click()}catch(e){state.textContent='Error al generar descripción: '+e.message;ai.dataset.error=String(e.message||e);ai.dataset.outcome='error'}finally{ai.dataset.outcome=ai.dataset.outcome||'success';ai.dataset.processing='done';ai.disabled=false}};ai.onclick=()=>ai.runAnalysis();work.append(action,v3,ai,state);
@@ -542,7 +574,7 @@ new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true
 .catalog-ui #tiendanubeIntegration{border-color:#414a58}
 .catalog-ui button:focus-visible{outline:2px solid #a7bfff;outline-offset:3px}
 @media(max-width:700px){.catalog-ui .catalog-safe-editor{padding:15px!important}.catalog-ui .catalog-safe-editor .catalog-photo-compare{grid-template-columns:1fr!important}.catalog-ui .catalog-safe-editor .actions>button{flex:1 1 100%}}
-</style><link rel="stylesheet" href="assets/css/black-os-unified.css?v=20261019-02"><script src="assets/js/black-catalog-tiendanube-ui.js?v=20261110-publication-batch" defer></script><script src="assets/js/black-catalog-safe-photo.js?v=20261103-prepared-default-1"></script><!-- Black Catalog AI: recorrido progresivo, carga única y paneles plegables -->
+</style><link rel="stylesheet" href="assets/css/black-os-unified.css?v=20261019-02"><script src="assets/js/black-catalog-tiendanube-ui.js?v=20261110-lumi-fields" defer></script><script src="assets/js/black-catalog-safe-photo.js?v=20261103-prepared-default-1"></script><!-- Black Catalog AI: recorrido progresivo, carga única y paneles plegables -->
 <style>
 #catalogWizard{display:flex;flex-direction:column;gap:12px;margin-top:12px}
 #catalogWizard .cw-step{border:1px solid #3e4147;border-radius:18px;background:#181a1f;overflow:hidden;transition:border-color .2s,box-shadow .2s}
