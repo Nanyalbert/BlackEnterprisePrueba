@@ -5,7 +5,7 @@ const root = document.getElementById('catalogManagerRoot');
 if (!root) return;
 const styles = document.createElement('style');
 styles.textContent = `
-.cm-toolbar{display:grid;grid-template-columns:2fr repeat(3,minmax(120px,1fr));gap:12px;align-items:end}
+.cm-toolbar{display:grid;grid-template-columns:2fr repeat(4,minmax(110px,1fr));gap:12px;align-items:end}
 .cm-toolbar label,.cm-form label{display:block;font-size:12px;color:#c8ccd3}
 .cm-toolbar input,.cm-toolbar select,.cm-form input,.cm-form select,.cm-form textarea{box-sizing:border-box;width:100%}
 .cm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0}
@@ -72,21 +72,24 @@ search.placeholder='Ej. Vulk Climber';
 const brand=selectField(toolbar,'Marca',[['','Todas las marcas']]);
 const category=selectField(toolbar,'Categoría',[['','Todas las categorías']]);
 const visibility=selectField(toolbar,'Visibilidad',[['','Todas'],['true','Publicado'],['false','Oculto']]);
+const pending=selectField(toolbar,'Pendientes',[['','Todos'],['photos','Sin fotos'],['category','Sin categoría'],['stock','Sin stock']]);
 const selectionStatus=el('p','','cm-note');
 selectionStatus.setAttribute('role','status');
 const grid=el('div',undefined,'cm-grid');
 const details=el('div'),bulkHost=el('div'),planHost=el('div');
+const cardPageSize=60;
+let cardLimit=cardPageSize;
 let products=[],page=0,hasMore=true,loaded=false,loading=false,writing=false,stopLoading=false,opening=0;
 let categories=[],categoriesLoaded=false,visible=[],editorDirty=false,currentPlan=null,bulkDirty=false;
 const selected=new Set();
-const reload=button('Actualizar desde Tiendanube',()=>load(true,false));
-const more=button('Cargar más productos',()=>load(false,false));more.hidden=true;
-const all=button('Cargar catálogo completo',()=>load(false,true));all.hidden=true;
+const reload=button('Actualizar desde Tiendanube',()=>load(true));
+const resume=button('Continuar carga',()=>load(false));resume.hidden=true;
+const showMore=button('Mostrar más resultados',()=>{cardLimit+=cardPageSize;render();});showMore.hidden=true;
 const stop=button('Detener carga',()=>{stopLoading=true;});stop.hidden=true;
-const selectVisible=button('Seleccionar visibles',()=>{visible.forEach(product=>selected.add(product.id));render();});
+const selectVisible=button('Seleccionar coincidencias',()=>{visible.forEach(product=>selected.add(product.id));render();});
 const clear=button('Quitar selección',()=>{selected.clear();render();});
 const editSelected=button('Editar seleccionados',openBulk,false);
-root.append(heading,toolbar,actions(reload,more,all,stop),mainStatus,actions(selectVisible,clear,editSelected),selectionStatus,grid,bulkHost,details,planHost);
+root.append(heading,toolbar,actions(reload,resume,stop),mainStatus,actions(selectVisible,clear,editSelected),selectionStatus,grid,actions(showMore),bulkHost,details,planHost);
 async function api(body){
  let timer;
  try {
@@ -121,11 +124,16 @@ function render(){
  const query=norm(search.value.trim());
  visible=products.filter(product=>{
   const haystack=norm([text(product.name),product.brand,product.tags,product.id,...(product.variants||[]).flatMap(item=>[item.sku,item.barcode,text(item.values?.[0])])].join(' '));
-  return (!query||haystack.includes(query))&&(!brand.value||(brand.value==='__empty'?!product.brand:product.brand===brand.value))&&
+  const variants=product.variants||[];
+  const matchesPending=!pending.value||
+   pending.value==='photos'&&!(product.images||[]).some(photo=>safeUrl(photo.src))||
+   pending.value==='category'&&!ids(product).length||
+   pending.value==='stock'&&variants.length>0&&variants.every(variant=>variant.stock_management===true&&variant.stock!=null&&Number(variant.stock)===0);
+  return matchesPending&&(!query||haystack.includes(query))&&(!brand.value||(brand.value==='__empty'?!product.brand:product.brand===brand.value))&&
    (!category.value||ids(product).includes(Number(category.value)))&&(!visibility.value||String(product.published)===visibility.value);
  });
  grid.replaceChildren();
- for(const product of visible){
+ for(const product of visible.slice(0,cardLimit)){
   const card=el('article',undefined,'cm-card');
   const photo=(product.images||[]).slice().sort((a,b)=>a.position-b.position)[0];
   if(photo&&safeUrl(photo.src)){
@@ -134,7 +142,7 @@ function render(){
   const body=el('div',undefined,'cm-card-body'),top=el('div',undefined,'cm-row'),label=el('label');
   const check=document.createElement('input');check.type='checkbox';check.style.width='auto';check.checked=selected.has(product.id);
   check.setAttribute('aria-label','Seleccionar '+text(product.name));
-  check.addEventListener('change',()=>{check.checked?selected.add(product.id):selected.delete(product.id);selectionStatus.textContent=selected.size+' seleccionados · '+visible.length+' visibles de '+products.length+' cargados.';});
+  check.addEventListener('change',()=>{check.checked?selected.add(product.id):selected.delete(product.id);selectionStatus.textContent=selected.size+' seleccionados · '+visible.length+' coincidencias · '+Math.min(cardLimit,visible.length)+' en pantalla de '+products.length+' productos cargados.';});
   label.append(check,document.createTextNode(' Seleccionar'));top.append(label,el('span',product.published?'Publicado':'Oculto','cm-chip'));
   body.append(top,el('h3',text(product.name)||'Sin nombre'),el('p',(product.brand||'Sin marca')+' · ID '+product.id));
   const variants=product.variants||[],prices=variants.map(item=>item.price).filter(value=>value!==null&&value!==undefined);
@@ -144,30 +152,32 @@ function render(){
   body.append(button('Ver y editar',()=>openEditor(product.id),false));card.append(body);grid.append(card);
  }
  if(!visible.length)grid.append(el('p',products.length?'No hay coincidencias entre los productos cargados.':'No se encontraron productos.','cm-note'));
- selectionStatus.textContent=selected.size+' seleccionados · '+visible.length+' visibles de '+products.length+' cargados.';
- more.hidden=!hasMore||!loaded;all.hidden=!hasMore||!loaded;
- for(const control of [reload,more,all,selectVisible,clear,editSelected])control.disabled=loading||writing;
+ selectionStatus.textContent=selected.size+' seleccionados · '+visible.length+' coincidencias · '+Math.min(cardLimit,visible.length)+' en pantalla de '+products.length+' productos cargados.';
+ resume.hidden=loading||!hasMore;
+ showMore.hidden=visible.length<=cardLimit;
+ for(const control of [reload,resume,selectVisible,clear,editSelected])control.disabled=loading||writing;
 }
-async function load(reset,complete){
+async function load(reset){
  if(loading||writing)return;
  if(reset&&(editorDirty||bulkDirty||currentPlan)){mainStatus.textContent='Cerrá la edición y descartá la revisión pendiente antes de actualizar.';return;}
- loading=true;stopLoading=false;stop.hidden=!complete;mainStatus.classList.remove('cm-error');render();
+ loading=true;stopLoading=false;stop.hidden=false;mainStatus.classList.remove('cm-error');render();
  try {
   if(!categoriesLoaded){
    try{categories=(await api({action:'list_categories'})).categories||[];categoriesLoaded=true;}
    catch(error){mainStatus.textContent=error.message;}
   }
-  if(reset){products=[];selected.clear();page=0;hasMore=true;}
+  if(reset){products=[];selected.clear();page=0;hasMore=true;cardLimit=cardPageSize;}
   do {
    if(!hasMore)break;
    mainStatus.textContent='Consultando Tiendanube · '+products.length+' productos cargados…';
    const data=await api({action:'catalog_list',page:page+1});
    const known=new Set(products.map(product=>product.id));
    products.push(...data.products.filter(product=>!known.has(product.id)));
+   if(data.page!==page+1)throw Error('Tiendanube devolvió una página inesperada. Continuá la carga para reintentar.');
    page=data.page;hasMore=data.has_more;loaded=true;filterOptions();render();
-  }while(complete&&hasMore&&!stopLoading);
-  mainStatus.textContent=products.length+' productos cargados desde Tiendanube. '+(hasMore?'Los filtros se aplican a los cargados. Usá Cargar catálogo completo para buscar en toda la tienda.':'Catálogo completo cargado.');
- }catch(error){mainStatus.textContent=error.message;mainStatus.classList.add('cm-error');}
+  }while(hasMore&&!stopLoading);
+  mainStatus.textContent=products.length+' productos cargados desde Tiendanube. '+(hasMore?'Carga pausada. Usá Continuar carga para incluir los productos restantes.':'Catálogo completo cargado.');
+ }catch(error){mainStatus.textContent=products.length+' productos cargados. '+error.message+' Usá Continuar carga para retomar.';mainStatus.classList.add('cm-error');}
  finally{loading=false;stop.hidden=true;render();}
 }
 function categoryOptions(current){
@@ -418,7 +428,7 @@ function showPlan(plans,onDiscard){
  },false);
  panel.append(consentLabel,actions(save,cancel),status);planHost.replaceChildren(panel);panel.scrollIntoView({behavior:'smooth',block:'start'});
 }
-for(const control of [search,brand,category,visibility])control.addEventListener(control===search?'input':'change',render);
-document.addEventListener('black-catalog:catalog-open',()=>{if(!loaded&&!loading)load(false,false);});
-if(location.hash==='#catalogo')load(false,false);
+for(const control of [search,brand,category,visibility,pending])control.addEventListener(control===search?'input':'change',()=>{cardLimit=cardPageSize;render();});
+document.addEventListener('black-catalog:catalog-open',()=>{if(!loaded&&!loading)load(false);});
+if(location.hash==='#catalogo')load(false);
 })();
