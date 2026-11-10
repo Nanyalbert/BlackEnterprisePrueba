@@ -143,7 +143,10 @@ Deno.serve(async req=>{
      variants:product.variants || [], updated_at:product.updated_at
     }));
     const total = response.headers.get("x-total-count");
-    return send({products:summaries, has_more:total && /^\d+$/.test(total) ? page*50 < Number(total) : products.length === 50, page});
+    const link = response.headers.get("link") || "";
+    const hasNextLink = /;\s*rel\s*=\s*"?next\b/i.test(link);
+    const countIndicatesMore = total !== null && /^\d+$/.test(total) && page*50 < Number(total);
+    return send({products:summaries, has_more:products.length > 0 && (hasNextLink || countIndicatesMore || products.length === 50), page});
    }
    const id = Number(body.id);
    if (!Number.isSafeInteger(id) || id <= 0) return send({error:"Producto inválido."},400);
