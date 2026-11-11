@@ -251,6 +251,57 @@ function buildEditor(data){
  panel.append(form);
  const preview=document.createElement('iframe');preview.sandbox='';preview.title='Vista previa de la descripción';preview.className='cm-preview';preview.srcdoc=controls.description.value;
  panel.append(actions(button('Actualizar vista previa',()=>{preview.srcdoc=controls.description.value;})),preview,el('h4','Variantes, inventario y envío'));
+ const aiPanel=el('section',undefined,'cm-variant');
+ aiPanel.append(el('h4','Actualizar textos con IA'),el('p','La IA usa los datos y hasta tres fotos de la ficha guardada. Elegí qué sugerencias llevar al editor y revisá los cambios antes de guardarlos.','cm-note'));
+ const aiNotes=inputField(aiPanel,'Indicaciones para la redacción (opcional)','','textarea',2000);
+ aiNotes.placeholder='Ej. Actualizar el tono de la descripción y conservar los datos técnicos.';
+ const aiStatus=el('p','','cm-note');aiStatus.setAttribute('role','status');
+ const aiResults=el('div');
+ const generateAI=button('Generar propuesta con IA',async()=>{
+  if(writing||currentPlan)return;
+  writing=true;generateAI.disabled=true;render();aiStatus.textContent='Analizando la ficha y sus fotos…';aiResults.replaceChildren();
+  try{
+   const result=await api({action:'catalog_suggest',id:product.id,revision:data.revision,notes:aiNotes.value});
+   if(!panel.isConnected)return;
+   if(result.revision!==data.revision||!result.proposal)throw Error('La ficha cambió. Volvé a abrirla antes de aplicar sugerencias.');
+   const labels={description:'Descripción',seo_title:'Título SEO',seo_description:'Descripción SEO',tags:'Tags',name:'Nombre'};
+   const chosen=new Map();
+   for(const key of ['description','seo_title','seo_description','tags','name']){
+    const value=result.proposal[key];if(typeof value!=='string'||!value.trim())continue;
+    const wrapper=el('details');wrapper.open=key==='description';
+    wrapper.append(el('summary',labels[key]));
+    const label=el('label'),check=document.createElement('input');check.type='checkbox';check.style.width='auto';check.checked=key!=='name';
+    label.append(check,document.createTextNode(' Usar esta propuesta'));wrapper.append(label);chosen.set(key,{check,value});
+    if(key==='description'){
+     const frames=el('div',undefined,'cm-form');
+     for(const [title,html] of [['Texto actual',controls.description.value],['Propuesta IA',value]]){
+      const holder=el('div');holder.append(el('p',title,'cm-note'));
+      const frame=document.createElement('iframe');frame.sandbox='';frame.title=title;frame.className='cm-preview';frame.srcdoc=html;holder.append(frame);frames.append(holder);
+     }
+     wrapper.append(frames);
+    }else{
+     wrapper.append(el('p','Actual · '+controls[key].value,'cm-note'),el('p','Propuesta · '+value));
+    }
+    aiResults.append(wrapper);
+   }
+   if(result.cautions?.length){
+    const list=el('ul');for(const caution of result.cautions)list.append(el('li',String(caution)));
+    aiResults.append(el('h4','Revisar antes de aplicar'),list);
+   }
+   aiResults.append(button('Usar textos seleccionados en el editor',()=>{
+    if(writing||currentPlan)return;
+    let count=0;
+    for(const [key,{check,value}] of chosen)if(check.checked){controls[key].value=value;count++;}
+    if(!count){aiStatus.textContent='Elegí al menos una propuesta.';return;}
+    editorDirty=true;preview.srcdoc=controls.description.value;
+    aiStatus.textContent='Propuestas incorporadas al editor. Pulsá Revisar cambios antes de guardar para confirmarlas.';
+   },false));
+   aiStatus.textContent='Propuesta lista para comparar.';
+  }catch(error){aiStatus.textContent=error.message;}
+  finally{writing=false;generateAI.disabled=false;render();}
+ },false);
+ aiPanel.append(actions(generateAI),aiStatus,aiResults);panel.append(aiPanel);
+
  const variantForms=[];
  for(const variant of product.variants||[]){
   const box=el('fieldset',undefined,'cm-variant'),title=(variant.values||[]).map(text).filter(Boolean).join(' · ')||'Variante única';
@@ -280,6 +331,7 @@ function buildEditor(data){
  const note=el('p','','cm-note');note.setAttribute('role','status');
  panel.append(actions(button('Revisar cambios antes de guardar',()=>{
   try{
+   if(writing)return;
    if(currentPlan)throw Error('Descartá primero la revisión pendiente.');
    const patch={},changes=[],variants=[];
    for(const key of ['name','brand','tags','seo_title','seo_description','handle','description']){
