@@ -16,6 +16,7 @@ const brand=select('Marca',[['','Todas las marcas']]);
 const category=select('Categoría',[['','Todas las categorías']]);
 const grouping=select('Organizar las placas',[['category','Por categoría'],['brand','Por marca']]);
 const format=select('Formato',[['story','Historia · 1080 × 1920'],['feed','Publicación · 1080 × 1350']]);
+const showNames=select('Nombres de los modelos',[['yes','Mostrar nombres'],['no','Ocultar nombres']]);
 const titleLabel=node('label','Título (opcional)'),customTitle=document.createElement('input');customTitle.maxLength=70;customTitle.placeholder='La IA propone un título si lo dejás vacío';titleLabel.append(customTitle);controls.append(titleLabel);
 const footerLabel=node('label','Texto inferior (opcional)'),footerText=document.createElement('input');footerText.maxLength=70;footerText.value='BY BLACK ÓPTICA';footerText.placeholder='Ej. 20% OFF · Desde $99.000';footerLabel.append(footerText);controls.append(footerLabel);
 const maxPerPiece=select('Modelos por placa',[['6','Hasta 6'],['4','Hasta 4']]);
@@ -55,8 +56,8 @@ async function api(body){
 }
 function setBusy(value){
  busy=value;
- for(const element of [refresh,generate,brand,category,grouping,format,customTitle,footerText,maxPerPiece])element.disabled=value;
- for(const select of root.querySelectorAll('.rs-item select'))select.disabled=value;
+ for(const element of [refresh,generate,brand,category,grouping,format,showNames,customTitle,footerText,maxPerPiece])element.disabled=value;
+ for(const select of root.querySelectorAll('.rs-piece select'))select.disabled=value;
  stop.hidden=!value;downloadAll.disabled=value||!pieces.some(piece=>piece.blob);
 }
 async function readCatalog(){
@@ -152,7 +153,7 @@ async function generatePieces(){
    const size=Number(maxPerPiece.value);
    for(let offset=0;offset<group.items.length;offset+=size){
     const items=group.items.slice(offset,offset+size);
-    const piece={items,title,footer:footerText.value.trim(),logo:customTitle.value.trim()?null:logoFor(items),format:format.value,group:group.label,index:pieces.length+1,checkedAt:new Date()};
+    const piece={items,showNames:showNames.value==='yes',title,footer:footerText.value.trim(),logo:customTitle.value.trim()?null:logoFor(items),format:format.value,group:group.label,index:pieces.length+1,checkedAt:new Date()};
     pieces.push(piece);buildPiece(piece);
    }
   }
@@ -190,11 +191,13 @@ function buildPiece(piece){
   photos.addEventListener('change',()=>{if(busy)return;item.imageId=Number(photos.value);renderPiece(piece);});
   row.append(variants,photos);options.append(row);
  }
+ const namesLabel=node('label','Nombres en esta placa'),namesSelect=document.createElement('select');namesSelect.append(new Option('Mostrar nombres','yes'),new Option('Ocultar nombres','no'));namesSelect.value=piece.showNames?'yes':'no';namesSelect.disabled=busy;namesLabel.append(namesSelect);
+ namesSelect.addEventListener('change',()=>{if(busy||piece.rendering)return;piece.showNames=namesSelect.value==='yes';renderPiece(piece);});
  const download=button('Descargar PNG',()=>downloadPiece(piece));
  const retry=button('Volver a componer',()=>{if(!busy)renderPiece(piece);});
  const buttons=node('div',undefined,'actions');buttons.append(download,retry);
- card.append(preview,title,titleLabel,footerLabel,setTitle,note,options,buttons);list.append(card);
- Object.assign(piece,{card,preview,note,download,retry});download.disabled=true;
+ card.append(preview,title,titleLabel,footerLabel,namesLabel,setTitle,note,options,buttons);list.append(card);
+ Object.assign(piece,{card,preview,note,download,retry,namesSelect});download.disabled=true;
 }
 async function loadImage(data){
  const image=new Image();image.src=data;await image.decode();return image;
@@ -267,24 +270,26 @@ async function compose(piece){
   const offset=(columns-lastRowCount)*(size+gap)/2;
   const x=startX+offset+col*(size+gap),y=startY+row*(size+gap);
   ctx.fillStyle='#fff';ctx.beginPath();ctx.roundRect(x,y,size,size,32);ctx.fill();
-  drawContained(ctx,images[index],{x:x+24,y:y+35,w:size-48,h:size-110});
+  drawContained(ctx,images[index],{x:x+24,y:y+35,w:size-48,h:size-(piece.showNames?110:70)});
+  if(piece.showNames){
   ctx.fillStyle='#111';
   const shortName=piece.items[index].name.replace(/anteojos? de (?:sol|receta)/gi,'').split(/[|—]/)[0].trim();
   const label=fitText(ctx,shortName,size-40,22,16);ctx.fillText(label,x+size/2,y+size-38);
+  }
  }
  if(piece.footer){ctx.fillStyle='#fff';const footer=fitText(ctx,piece.footer,930,30,18);ctx.fillText(footer,540,canvas.height-105);}
  return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(Error('No se pudo exportar la placa.')),'image/png'));
 }
 async function renderPiece(piece){
  if(piece.rendering)return;
- piece.rendering=true;piece.download.disabled=true;piece.retry.disabled=true;piece.blob=null;
+ piece.rendering=true;piece.namesSelect.disabled=true;piece.download.disabled=true;piece.retry.disabled=true;piece.blob=null;
  piece.note.textContent='Componiendo las fotos originales…';piece.note.classList.remove('rs-error');
  try{
   const blob=await compose(piece);
   if(piece.url)URL.revokeObjectURL(piece.url);piece.blob=blob;piece.url=URL.createObjectURL(blob);piece.preview.src=piece.url;piece.preview.hidden=false;
   piece.note.textContent='Lista. Revisá las fotos frontales en la vista previa.';piece.download.disabled=false;
  }catch(error){piece.note.textContent=error.message;piece.note.classList.add('rs-error');piece.preview.hidden=true;}
- finally{piece.rendering=false;piece.retry.disabled=false;if(!busy)updateProgress();}
+ finally{piece.rendering=false;piece.namesSelect.disabled=busy;piece.retry.disabled=false;if(!busy)updateProgress();}
 }
 async function validate(piece){
  const result=await api({action:'social_validate',items:piece.items.map(item=>({productId:item.product.id,variantId:item.variantId,imageId:item.imageId}))});
