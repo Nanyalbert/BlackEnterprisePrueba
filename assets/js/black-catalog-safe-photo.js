@@ -71,7 +71,7 @@ panel.querySelector('#safeRun').onclick=async()=>{
  summary.textContent='Preparando '+files.length+' fotografías…';
  for(const file of files){
   const row=document.createElement('article');row.className='catalog-compare-row';rows.append(row);
-  row.innerHTML='<strong>'+esc(file.name)+'</strong><div class="catalog-photo-compare" style="margin-top:12px"><figure><figcaption>ORIGINAL · REFERENCIA</figcaption><img class="safeOriginal" alt="Original"></figure><figure><figcaption>PREPARADA · SE USARÁ AL APROBAR</figcaption><img class="safeResult" alt="Retoque fiel"></figure></div><div class="safe-controls"><label>Tamaño del armazón <input class="safeWidth" type="range" min="65" max="90" step="1" value="83"></label><span class="safeWidthValue">83 %</span></div><div class="safe-controls"><label>Posición vertical del armazón <input class="safePosition" type="range" min="560" max="760" step="10" value="680"></label><span class="safePositionValue">+80 px</span></div><div class="actions"><button type="button" class="secondary safeReset">Restablecer encuadre</button></div><div class="safe-size-note">Vista previa cuadrada · 1200 × 1200 px · tamaño inicial 83 % del ancho.</div><div class="actions"><button type="button" class="secondary safePreview">Ampliar resultado</button><button type="button" class="secondary safePreviewOriginal">Ampliar original</button></div><label>¿Qué querés corregir?</label><textarea class="safeNote" rows="2" placeholder="Ej.: quedó muy chico, fondo blanco irregular, quedó muy grande. No se permite modificar el armazón."></textarea><div class="actions"><button type="button" class="secondary safeRedo">Aplicar ajustes</button><button type="button" class="safeApprove">Aprobar fotografía preparada</button></div><small class="safeStatus" role="status"></small>';
+  row.innerHTML='<strong>'+esc(file.name)+'</strong><div class="catalog-photo-compare" style="margin-top:12px"><figure><figcaption>ORIGINAL · REFERENCIA</figcaption><img class="safeOriginal" alt="Original"></figure><figure><figcaption>PREPARADA · SE USARÁ AL APROBAR</figcaption><img class="safeResult" alt="Retoque fiel"></figure></div><div class="safe-controls"><label>Tamaño del armazón <input class="safeWidth" type="range" min="65" max="90" step="1" value="83"></label><span class="safeWidthValue">83 %</span></div><div class="safe-controls"><label>Posición vertical del armazón <input class="safePosition" type="range" min="560" max="760" step="10" value="680"></label><span class="safePositionValue">+80 px</span></div><div class="actions"><button type="button" class="secondary safeReset">Restablecer encuadre</button><button type="button" class="secondary safeAI">Probar fondo de estudio con IA (opcional)</button></div><div class="safe-size-note">Vista previa cuadrada · 1200 × 1200 px · tamaño inicial 83 % del ancho.</div><div class="actions"><button type="button" class="secondary safePreview">Ampliar resultado</button><button type="button" class="secondary safePreviewOriginal">Ampliar original</button></div><label>¿Qué querés corregir?</label><textarea class="safeNote" rows="2" placeholder="Ej.: quedó muy chico, fondo blanco irregular, quedó muy grande. No se permite modificar el armazón."></textarea><div class="actions"><button type="button" class="secondary safeRedo">Aplicar ajustes</button><button type="button" class="safeApprove">Aprobar fotografía preparada</button></div><small class="safeStatus" role="status"></small>';
   const orig=row.querySelector('.safeOriginal'),result=row.querySelector('.safeResult'),status=row.querySelector('.safeStatus'),note=row.querySelector('.safeNote');
   const objectUrl=URL.createObjectURL(file);orig.src=objectUrl;active.push(objectUrl);
   let img;try{img=await load(file)}catch(e){if(currentGeneration===generation)status.textContent=e.message;continue}
@@ -93,6 +93,49 @@ panel.querySelector('#safeRun').onclick=async()=>{
    status.textContent=processed.cleaned?'Pendiente de aprobación · fondo claro y encuadre preparados. Revisá los bordes y cristales transparentes.':'Pendiente de aprobación · encuadre preparado. No se pudo eliminar todo el fondo con seguridad; revisá la comparación.';
   }
   render();
+  // Edición generativa opcional: nunca se ejecuta al preparar el lote.
+  // El resultado no se aprueba automáticamente y puede descartarse restaurando el encuadre.
+  row.querySelector('.safeAI').onclick=async()=>{
+   const aiButton=row.querySelector('.safeAI');
+   if(!window.BlackPortal?.getSupabase){status.textContent='La edición IA requiere iniciar sesión en Black OS.';return}
+   if(!confirm('La edición con IA consume créditos de API y puede alterar el color de los cristales, logos o detalles del armazón. Se mostrará para revisión y NO se aprobará automáticamente. ¿Querés probarla?'))return;
+   aiButton.disabled=true;
+   status.textContent='Generando fondo de estudio con IA… Conservaremos el original para comparar.';
+   try{
+    // Enviar el original: el retoque local no separa el producto de fondos complejos.
+    const image=await new Promise((resolve,reject)=>{
+     const reader=new FileReader();
+     reader.onload=()=>resolve(reader.result);
+     reader.onerror=()=>reject(Error('No se pudo leer la fotografía original'));
+     reader.readAsDataURL(file);
+    });
+    if(image.length>9000000)throw Error('La imagen supera el tamaño admitido por el editor IA. Reducí el archivo original antes de volver a intentar.');
+    const response=await window.BlackPortal.getSupabase().functions.invoke('black-catalog-photo-edit',{body:{image}});
+    if(response.error||response.data?.error)throw Error(response.data?.detail||response.data?.error||response.error?.message||'Error de edición');
+    const edited=response.data?.image;
+    if(typeof edited!=='string'||!/^data:image\/png;base64,/.test(edited))throw Error('El servicio no devolvió una imagen válida');
+    // Mantener la salida aprobable en 1200 × 1200, sin estirar el producto.
+    const aiImage=await new Promise((resolve,reject)=>{
+     const imageElement=new Image();
+     imageElement.onload=()=>resolve(imageElement);
+     imageElement.onerror=()=>reject(Error('No se pudo abrir la imagen editada'));
+     imageElement.src=edited;
+    });
+    const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=1200;
+    const context=canvas.getContext('2d');
+    context.fillStyle='#fff';context.fillRect(0,0,1200,1200);
+    const fit=Math.min(1200/aiImage.naturalWidth,1200/aiImage.naturalHeight);
+    const dw=aiImage.naturalWidth*fit,dh=aiImage.naturalHeight*fit;
+    context.drawImage(aiImage,(1200-dw)/2,(1200-dh)/2,dw,dh);
+    output=canvas.toDataURL('image/png');
+    result.src=output;
+    approved=false;row.dataset.photoReady='true';row.dataset.photoApproved='false';
+    document.dispatchEvent(new CustomEvent('black-catalog:photo-dirty',{detail:{originalName:file.name}}));
+    row.querySelector('.safeApprove').textContent='Aprobar resultado IA (revisar primero)';
+    status.textContent='Resultado IA listo, SIN aprobar. Compará con el original: color exacto de cristales y clip-on, forma, logo, bisagras y cantidad de piezas. Si cambió algo, NO lo apruebes. Usá «Restablecer encuadre» para volver al modo fiel.';
+   }catch(error){status.textContent='No se pudo generar el fondo de estudio: '+error.message+'. La preparación fiel sigue disponible.'}
+   finally{aiButton.disabled=false}
+  };
   row.querySelector('.safeRedo').onclick=()=>{const n=note.value.toLowerCase();if(/más chico|muy grande|alejar|menos zoom/.test(n)){widthPercent=Math.max(65,widthPercent-3);widthControl.value=String(widthPercent)}
   if(/más abajo|bajar|bajalo|más bajo/.test(n)){targetY=Math.min(760,targetY+30);position.value=String(targetY)}
   if(/más arriba|subir|subilo|más alto/.test(n)){targetY=Math.max(560,targetY-30);position.value=String(targetY)}
@@ -105,7 +148,7 @@ panel.querySelector('#safeRun').onclick=async()=>{
      const approvedFile=new File([blob],newName,{type:'image/png'});
      // El evento vincula el resultado con su ficha en la carga actual, sin alterar el archivo fuente.
      document.dispatchEvent(new CustomEvent('black-catalog:photo-approved',{detail:{originalName:file.name,file:approvedFile,variant:'editada'}}));
-     approved=true;row.dataset.photoApproved='true';status.textContent='Aprobada ✓ · se utilizará la versión preparada al agrupar. El original sigue disponible como referencia.';
+     approved=true;row.dataset.photoApproved='true';status.textContent='Aprobada ✓ · se utilizará la versión seleccionada al agrupar. El original sigue disponible como referencia.';
      button.textContent='Fotografía aprobada ✓';
    }catch(error){status.textContent='No se pudo guardar la aprobación: '+error.message}
    finally{button.disabled=false}
