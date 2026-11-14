@@ -100,6 +100,9 @@ panel.querySelector('#safeRun').onclick=async()=>{
    if(!window.BlackPortal?.getSupabase){status.textContent='La edición IA requiere iniciar sesión en Black OS.';return}
    if(!confirm('La edición con IA consume créditos de API y puede alterar el color de los cristales, logos o detalles del armazón. Se mostrará para revisión y NO se aprobará automáticamente. ¿Querés probarla?'))return;
    aiButton.disabled=true;
+   const requestGeneration=generation;
+   row.dataset.photoReady='false';
+   row.querySelector('.safeApprove').disabled=true;
    status.textContent='Generando fondo de estudio con IA… Conservaremos el original para comparar.';
    try{
     // Enviar el original: el retoque local no separa el producto de fondos complejos.
@@ -114,6 +117,7 @@ panel.querySelector('#safeRun').onclick=async()=>{
     if(response.error||response.data?.error)throw Error(response.data?.detail||response.data?.error||response.error?.message||'Error de edición');
     const edited=response.data?.image;
     if(typeof edited!=='string'||!/^data:image\/png;base64,/.test(edited))throw Error('El servicio no devolvió una imagen válida');
+    if(requestGeneration!==generation)return; // Se cambió el lote mientras respondía la IA.
     // Mantener la salida aprobable en 1200 × 1200, sin estirar el producto.
     const aiImage=await new Promise((resolve,reject)=>{
      const imageElement=new Image();
@@ -127,23 +131,27 @@ panel.querySelector('#safeRun').onclick=async()=>{
     const fit=Math.min(1200/aiImage.naturalWidth,1200/aiImage.naturalHeight);
     const dw=aiImage.naturalWidth*fit,dh=aiImage.naturalHeight*fit;
     context.drawImage(aiImage,(1200-dw)/2,(1200-dh)/2,dw,dh);
+    if(requestGeneration!==generation)return;
     output=canvas.toDataURL('image/png');
     result.src=output;
     approved=false;row.dataset.photoReady='true';row.dataset.photoApproved='false';
     document.dispatchEvent(new CustomEvent('black-catalog:photo-dirty',{detail:{originalName:file.name}}));
     row.querySelector('.safeApprove').textContent='Aprobar resultado IA (revisar primero)';
     status.textContent='Resultado IA listo, SIN aprobar. Compará con el original: color exacto de cristales y clip-on, forma, logo, bisagras y cantidad de piezas. Si cambió algo, NO lo apruebes. Usá «Restablecer encuadre» para volver al modo fiel.';
-   }catch(error){status.textContent='No se pudo generar el fondo de estudio: '+error.message+'. La preparación fiel sigue disponible.'}
-   finally{aiButton.disabled=false}
+   }catch(error){if(requestGeneration===generation)status.textContent='No se pudo generar el fondo de estudio: '+error.message+'. La preparación fiel sigue disponible.'}
+   finally{if(requestGeneration===generation){row.dataset.photoReady='true';row.querySelector('.safeApprove').disabled=false;aiButton.disabled=false}}
   };
   row.querySelector('.safeRedo').onclick=()=>{const n=note.value.toLowerCase();if(/más chico|muy grande|alejar|menos zoom/.test(n)){widthPercent=Math.max(65,widthPercent-3);widthControl.value=String(widthPercent)}
   if(/más abajo|bajar|bajalo|más bajo/.test(n)){targetY=Math.min(760,targetY+30);position.value=String(targetY)}
   if(/más arriba|subir|subilo|más alto/.test(n)){targetY=Math.max(560,targetY-30);position.value=String(targetY)}
   row.querySelector('.safePositionValue').textContent=(targetY>=600?'+':'')+(targetY-600)+' px';if(/más grande|muy chico|acercar/.test(n)){widthPercent=Math.min(90,widthPercent+3);widthControl.value=String(widthPercent)}row.querySelector('.safeWidthValue').textContent=widthPercent+' %';if(/limpiar fondo|blanquear fondo|quitar fondo/.test(n)){clean=true;threshold=Math.max(225,threshold-5)}if(/conservar fondo|sin quitar fondo|mantener fondo/.test(n))clean=false;render();status.textContent+=' Corrección aplicada solo al encuadre o fondo. No se reinterpretó el producto.'};
   row._approvePrepared=async()=>{
+   if(row.dataset.photoReady!=='true'||!output)throw Error('Esperá a que termine la preparación de esta fotografía.');
    const button=row.querySelector('.safeApprove');button.disabled=true;
    try{
-     const response=await fetch(output),blob=await response.blob();
+     const approvalGeneration=generation,selectedOutput=output;
+     const response=await fetch(selectedOutput),blob=await response.blob();
+     if(approvalGeneration!==generation||selectedOutput!==output)throw Error('La fotografía cambió durante la aprobación. Revisá el resultado actual.');
      const newName=file.name;
      const approvedFile=new File([blob],newName,{type:'image/png'});
      // El evento vincula el resultado con su ficha en la carga actual, sin alterar el archivo fuente.
